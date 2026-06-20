@@ -45,7 +45,7 @@ export default function LobbyPage() {
       setMode('hosting-waiting-answer')
 
       session.onConnect(() => {
-        // Guest connected — send initial state
+        // Guest connected — create game state, send initial projection, navigate
         const lang = i18n.language.startsWith('de') ? 'de' : 'en'
         const initialState: GameState = createInitialState({ vpTarget, language: lang })
         session.sendState({
@@ -56,7 +56,7 @@ export default function LobbyPage() {
           },
         })
         navigate('/game', {
-          state: { role: 'host', initialGameState: initialState },
+          state: { role: 'host', initialGameState: initialState, hostSession: session },
         })
       })
     } catch (e) {
@@ -82,6 +82,12 @@ export default function LobbyPage() {
       guestSessionRef.current = session
       setGuestAnswerCode(session.answerCode)
       setMode('joining')
+
+      session.onStateUpdate((projectedState) => {
+        navigate('/game', {
+          state: { role: 'guest', projectedState, guestSession: session },
+        })
+      })
     } catch {
       setError(t('lobby.invalidCode'))
       setMode('idle')
@@ -98,9 +104,9 @@ export default function LobbyPage() {
       setGuestAnswerCode(session.answerCode)
       setMode('joining')
 
-      session.onStateUpdate((state) => {
+      session.onStateUpdate((projectedState) => {
         navigate('/game', {
-          state: { role: 'guest', projectedState: state },
+          state: { role: 'guest', projectedState, guestSession: session },
         })
       })
     } catch {

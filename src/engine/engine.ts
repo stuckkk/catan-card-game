@@ -1,7 +1,7 @@
 import {
   GameState, PlayerState, PlayerId, ResourceType, Resources,
   GameAction, ProjectedState, DiceRoll, EventSymbol, ProductionNumber,
-  EMPTY_RESOURCES, DeckId, CentralSlot,
+  DeckId, CentralSlot,
 } from './types'
 import {
   getCard, getRegion, CARD_REGISTRY,
@@ -165,10 +165,16 @@ interface InitialBoard {
 }
 
 function makeInitialPrincipalityAndRegions(): InitialBoard {
-  // Each player starts with 1 settlement and 2 regions
-  const startingRegions = shuffle(REGION_DEFINITIONS).slice(0, 2)
+  // One region of each resource type, randomly chosen from available variants
+  const resourceTypes: ResourceType[] = ['wood', 'wool', 'gold', 'brick', 'ore', 'grain']
+  const chosenRegions = resourceTypes.map(rt => {
+    const options = REGION_DEFINITIONS.filter(r => r.resourceType === rt)
+    return options[Math.floor(Math.random() * options.length)]
+  })
 
-  const regions = startingRegions.map(rd => ({
+  // Shuffle and split 3-3 between the two starting settlements
+  const shuffled = shuffle(chosenRegions)
+  const regions = shuffled.map(rd => ({
     regionId: rd.id,
     storedResources: 0,
     expansionAbove: null,
@@ -176,12 +182,9 @@ function makeInitialPrincipalityAndRegions(): InitialBoard {
   }))
 
   const principality: CentralSlot[] = [
-    {
-      kind: 'settlement',
-      cardId: 'settlement',
-      regionIndices: [0, 1],
-      expansionSlots: [null, null],
-    },
+    { kind: 'settlement', cardId: 'settlement', regionIndices: [0, 1, 2], expansionSlots: [null, null] },
+    { kind: 'road',       cardId: 'road',       regionIndices: [],         expansionSlots: [] },
+    { kind: 'settlement', cardId: 'settlement', regionIndices: [3, 4, 5], expansionSlots: [null, null] },
   ]
 
   return { principality, regions }
@@ -191,11 +194,11 @@ function makeInitialPlayer(id: PlayerId): PlayerState {
   const { principality, regions } = makeInitialPrincipalityAndRegions()
   return {
     id,
-    resources: { ...EMPTY_RESOURCES },
+    resources: { wood: 1, wool: 1, gold: 1, brick: 1, ore: 1, grain: 1 },
     hand: [],
     principality,
     regions,
-    playedCards: ['settlement'],  // starting settlement is in play
+    playedCards: ['settlement', 'road', 'settlement'],
   }
 }
 
@@ -400,8 +403,8 @@ function applyBuildRoad(state: GameState, actingPlayer: PlayerId, slotIndex: num
 
   // Extend principality if building at the edge
   if (slotIndex === principality.length) {
-    principality.push({ kind: 'road', cardId: 'road', regionIndices: [null, null], expansionSlots: [] })
-    principality.push({ kind: 'empty-settlement', cardId: null, regionIndices: [null, null], expansionSlots: [] })
+    principality.push({ kind: 'road', cardId: 'road', regionIndices: [], expansionSlots: [] })
+    principality.push({ kind: 'empty-settlement', cardId: null, regionIndices: [], expansionSlots: [] })
   } else {
     if (principality[slotIndex]?.kind !== 'empty-road') return state
     principality[slotIndex] = { ...principality[slotIndex], kind: 'road', cardId: 'road' }

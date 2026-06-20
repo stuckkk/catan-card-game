@@ -71,8 +71,8 @@ export type CentralSlotKind = 'empty-road' | 'road' | 'empty-settlement' | 'sett
 export interface CentralSlot {
   kind: CentralSlotKind
   cardId: string | null
-  /** Indices into the regions array of PlayerState. Settlements have 2, cities have 2 (same regions). */
-  regionIndices: [number | null, number | null]
+  /** Indices into the regions array of PlayerState. Empty for roads. Starting settlements have 3; built settlements have 2. */
+  regionIndices: number[]
   /** Placed expansion card IDs. Settlements: 2 slots, Cities: 4 slots. */
   expansionSlots: (string | null)[]
 }
