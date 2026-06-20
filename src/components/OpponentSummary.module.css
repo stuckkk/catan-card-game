@@ -1,0 +1,48 @@
+.summary {
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.toggle {
+  width: 100%;
+  background: none;
+  border-radius: 0;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--color-text);
+  text-align: left;
+}
+
+.toggle:hover { background: var(--color-surface-2); }
+
+.quickStats {
+  display: flex;
+  gap: 8px;
+  flex: 1;
+}
+
+.vp { color: var(--color-gold); font-weight: 600; }
+.hand { color: var(--color-text-muted); }
+.token { color: var(--color-accent); font-size: 11px; }
+
+.chevron {
+  margin-left: auto;
+  font-size: 10px;
+  color: var(--color-text-muted);
+}
+
+.detail {
+  padding: 8px 16px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.statRow {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+}

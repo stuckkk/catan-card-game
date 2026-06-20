@@ -1,0 +1,189 @@
+{
+  "lobby": {
+    "title": "Catan: Das Duell",
+    "createGame": "Spiel erstellen",
+    "joinGame": "Spiel beitreten",
+    "vpTarget": "Siegpunkte-Ziel",
+    "language": "Sprache",
+    "inviteLink": "Einladungslink",
+    "copyLink": "Link kopieren",
+    "linkCopied": "Kopiert!",
+    "waitingForGuest": "Warte auf Mitspieler...",
+    "pasteAnswerCode": "Füge den Antwort-Code deines Mitspielers ein:",
+    "answerCode": "Antwort-Code",
+    "connect": "Verbinden",
+    "orPasteOfferCode": "Oder Angebots-Code manuell einfügen:",
+    "offerCode": "Angebots-Code",
+    "yourAnswerCode": "Teile diesen Antwort-Code mit deinem Mitspieler:",
+    "connecting": "Verbinde...",
+    "invalidCode": "Ungültiger Code. Bitte nochmals prüfen."
+  },
+  "game": {
+    "yourTurn": "Du bist dran",
+    "opponentTurn": "Gegner ist dran",
+    "rollDice": "Würfeln",
+    "endTurn": "Aktionsphase beenden",
+    "skipSwap": "Tausch überspringen",
+    "swap": "Karte tauschen",
+    "phase": {
+      "roll": "Würfelphase",
+      "event-resolution": "Ereignisauflösung",
+      "production": "Produktion",
+      "action": "Aktionsphase",
+      "hand-check": "Handkarten prüfen",
+      "swap": "Tauschphase"
+    },
+    "vpTarget": "SP-Ziel: {{count}}",
+    "currentVP": "{{count}} SP",
+    "handSize": "Hand: {{count}} Karten",
+    "resources": "Rohstoffe",
+    "disconnected": "Gegner getrennt. Warte auf Wiederverbindung...",
+    "youWin": "Du hast gewonnen!",
+    "opponentWins": "Dein Gegner hat gewonnen!",
+    "playAgain": "Nochmal spielen",
+    "backToLobby": "Zur Lobby"
+  },
+  "resources": {
+    "wood": "Holz",
+    "wool": "Wolle",
+    "gold": "Gold",
+    "brick": "Lehm",
+    "ore": "Erz",
+    "grain": "Getreide"
+  },
+  "symbols": {
+    "strength": "Stärke",
+    "commerce": "Handel",
+    "progress": "Fortschritt"
+  },
+  "advantage": {
+    "hero": "Heldentoken",
+    "trade": "Handelstoken"
+  },
+  "dice": {
+    "bandit": "Räuber!",
+    "trade": "Handel",
+    "festival": "Fest",
+    "harvest": "Ernte",
+    "event": "Ereignis"
+  },
+  "regions": {
+    "forest": "Wald",
+    "meadow": "Wiese",
+    "river": "Fluss",
+    "claypit": "Lehmgrube",
+    "mountain": "Berg",
+    "field": "Feld"
+  },
+  "cards": {
+    "road": {
+      "name": "Straße",
+      "description": "Benötigt zum Bau neuer Siedlungen. Kosten: 1 Holz, 2 Lehm."
+    },
+    "settlement": {
+      "name": "Siedlung",
+      "description": "Gewährt 1 SP und 2 Erweiterungsplätze."
+    },
+    "city": {
+      "name": "Stadt",
+      "description": "Wertet eine Siedlung auf. Gewährt 2 SP und 4 Erweiterungsplätze."
+    },
+    "militiaman": {
+      "name": "Milizsoldat",
+      "description": "Gewährt 1 Stärkepunkt."
+    },
+    "swordsman": {
+      "name": "Schwertkämpfer",
+      "description": "Gewährt 2 Stärkepunkte."
+    },
+    "knight": {
+      "name": "Ritter",
+      "description": "Gewährt 3 Stärkepunkte."
+    },
+    "merchant": {
+      "name": "Kaufmann",
+      "description": "Gewährt 1 Handelspunkt."
+    },
+    "market": {
+      "name": "Markt",
+      "description": "Gewährt 2 Handelspunkte."
+    },
+    "school": {
+      "name": "Schule",
+      "description": "Gewährt 1 Fortschrittspunkt (+1 Handkartenlimit)."
+    },
+    "library": {
+      "name": "Bibliothek",
+      "description": "Gewährt 2 Fortschrittspunkte (+2 Handkartenlimit)."
+    },
+    "watchtower": {
+      "name": "Wachturm",
+      "description": "Gewährt 1 Siegpunkt."
+    },
+    "tradeShipWood": { "name": "Holz-Handelsschiff" },
+    "tradeShipWool": { "name": "Woll-Handelsschiff" },
+    "tradeShipGold": { "name": "Gold-Handelsschiff" },
+    "tradeShipBrick": { "name": "Lehm-Handelsschiff" },
+    "tradeShipOre": { "name": "Erz-Handelsschiff" },
+    "tradeShipGrain": { "name": "Getreide-Handelsschiff" },
+    "tradeShip": {
+      "description": "Ermöglicht 2:1-Handel für den entsprechenden Rohstofftyp."
+    },
+    "fortress": {
+      "name": "Festung",
+      "description": "Gewährt 3 Stärkepunkte. Nur auf Stadtplätzen."
+    },
+    "cathedral": {
+      "name": "Dom",
+      "description": "Gewährt 1 SP und 2 Fortschrittspunkte. Nur auf Stadtplätzen."
+    },
+    "guildHall": {
+      "name": "Gildenhaus",
+      "description": "Gewährt 3 Handelspunkte. Nur auf Stadtplätzen."
+    },
+    "university": {
+      "name": "Universität",
+      "description": "Gewährt 3 Fortschrittspunkte. Nur auf Stadtplätzen."
+    },
+    "goldMine": {
+      "name": "Goldmine",
+      "description": "Produziert 1 extra Gold auf einem Gebiet."
+    },
+    "irrigation": {
+      "name": "Bewässerung",
+      "description": "Produziert 1 extra Getreide auf einem Gebiet."
+    },
+    "sawmill": {
+      "name": "Sägewerk",
+      "description": "Produziert 1 extra Holz auf einem Gebiet."
+    },
+    "forge": {
+      "name": "Schmiede",
+      "description": "Produziert 1 extra Erz auf einem Gebiet."
+    },
+    "ambush": {
+      "name": "Hinterhalt",
+      "description": "Stehle 1 Rohstoff vom Gegner."
+    },
+    "celebration": {
+      "name": "Fest",
+      "description": "Erhalte 1 Gold."
+    },
+    "invention": {
+      "name": "Erfindung",
+      "description": "Erhalte 1 Fortschrittspunkt diesen Zug."
+    },
+    "eventPlague": {
+      "name": "Seuche",
+      "description": "Dein Gegner verliert 1 Wolle."
+    },
+    "eventGoodHarvest": {
+      "name": "Gute Ernte",
+      "description": "Erhalte 2 Getreide."
+    },
+    "eventTradeProfit": {
+      "name": "Handelsgewinn",
+      "description": "Erhalte 2 Gold."
+    }
+  }
+}

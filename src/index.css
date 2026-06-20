@@ -1,0 +1,115 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --color-wood: #8B6914;
+  --color-wool: #8FBC8F;
+  --color-gold: #DAA520;
+  --color-brick: #C84B31;
+  --color-ore: #7A7A7A;
+  --color-grain: #D4A843;
+
+  --color-green-card: #2D6A2D;
+  --color-red-card: #8B1A1A;
+  --color-brown-card: #6B3A1F;
+  --color-yellow-card: #B8960C;
+
+  --color-settlement: #4A7FA5;
+  --color-city: #1A4A6B;
+  --color-road: #5C4B32;
+
+  --color-bg: #1a1a2e;
+  --color-surface: #16213e;
+  --color-surface-2: #0f3460;
+  --color-border: #2a4a6a;
+  --color-text: #e0e0e0;
+  --color-text-muted: #8a9bb0;
+  --color-accent: #e94560;
+  --color-success: #4caf50;
+
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+
+  --shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 4px 20px rgba(0, 0, 0, 0.6);
+
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  font-size: 14px;
+  color: var(--color-text);
+  background: var(--color-bg);
+}
+
+body {
+  min-height: 100dvh;
+  background: var(--color-bg);
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 8px 16px;
+  font-size: 14px;
+  font-family: inherit;
+  transition: opacity 0.15s, transform 0.1s;
+}
+
+button:active { transform: scale(0.97); }
+button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+button.primary {
+  background: var(--color-accent);
+  color: white;
+  font-weight: 600;
+}
+
+button.secondary {
+  background: var(--color-surface-2);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+}
+
+input, textarea {
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  padding: 8px 12px;
+  font-size: 14px;
+  font-family: inherit;
+  width: 100%;
+}
+
+input:focus, textarea:focus {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+select {
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  padding: 8px 12px;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+label {
+  display: block;
+  font-size: 12px;
+  color: var(--color-text-muted);
+  margin-bottom: 4px;
+}
+
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  box-shadow: var(--shadow);
+}

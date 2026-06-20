@@ -1,0 +1,80 @@
+.principality {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.axis {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.axisSlot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 64px;
+  padding: 6px 4px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  flex-shrink: 0;
+}
+
+.road         { border-color: var(--color-road); }
+.settlement   { border-color: var(--color-settlement); }
+.city         { border-color: var(--color-city); }
+.empty-road   { border-style: dashed; opacity: 0.6; }
+.empty-settlement { border-style: dashed; opacity: 0.6; }
+
+.slotLabel {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+}
+
+.buildBtn {
+  background: var(--color-surface-2);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  font-size: 11px;
+  padding: 2px 8px;
+}
+
+.buildBtn:hover { border-color: var(--color-accent); color: var(--color-accent); }
+
+.upgradeBtn {
+  background: transparent;
+  border: 1px solid var(--color-city);
+  border-radius: var(--radius-sm);
+  color: var(--color-city);
+  font-size: 10px;
+  padding: 2px 6px;
+}
+
+.expansionSlots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  justify-content: center;
+}
+
+.emptyExpansion {
+  width: 40px;
+  height: 55px;
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-sm);
+  opacity: 0.4;
+}
+
+.regions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}

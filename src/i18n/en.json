@@ -1,0 +1,189 @@
+{
+  "lobby": {
+    "title": "Catan: The Duel",
+    "createGame": "Create Game",
+    "joinGame": "Join Game",
+    "vpTarget": "Victory Points Target",
+    "language": "Language",
+    "inviteLink": "Invite Link",
+    "copyLink": "Copy Link",
+    "linkCopied": "Copied!",
+    "waitingForGuest": "Waiting for opponent to join...",
+    "pasteAnswerCode": "Paste the answer code from your opponent:",
+    "answerCode": "Answer Code",
+    "connect": "Connect",
+    "orPasteOfferCode": "Or paste the offer code manually:",
+    "offerCode": "Offer Code",
+    "yourAnswerCode": "Share this answer code with your opponent:",
+    "connecting": "Connecting...",
+    "invalidCode": "Invalid code. Please check and try again."
+  },
+  "game": {
+    "yourTurn": "Your turn",
+    "opponentTurn": "Opponent's turn",
+    "rollDice": "Roll Dice",
+    "endTurn": "End Action Phase",
+    "skipSwap": "Skip Swap",
+    "swap": "Swap Card",
+    "phase": {
+      "roll": "Roll Phase",
+      "event-resolution": "Event Resolution",
+      "production": "Production",
+      "action": "Action Phase",
+      "hand-check": "Hand Check",
+      "swap": "Swap Phase"
+    },
+    "vpTarget": "VP Target: {{count}}",
+    "currentVP": "{{count}} VP",
+    "handSize": "Hand: {{count}} cards",
+    "resources": "Resources",
+    "disconnected": "Opponent disconnected. Waiting for reconnect...",
+    "youWin": "You win!",
+    "opponentWins": "Opponent wins!",
+    "playAgain": "Play Again",
+    "backToLobby": "Back to Lobby"
+  },
+  "resources": {
+    "wood": "Wood",
+    "wool": "Wool",
+    "gold": "Gold",
+    "brick": "Brick",
+    "ore": "Ore",
+    "grain": "Grain"
+  },
+  "symbols": {
+    "strength": "Strength",
+    "commerce": "Commerce",
+    "progress": "Progress"
+  },
+  "advantage": {
+    "hero": "Hero Token",
+    "trade": "Trade Token"
+  },
+  "dice": {
+    "bandit": "Bandit!",
+    "trade": "Trade",
+    "festival": "Festival",
+    "harvest": "Harvest",
+    "event": "Event"
+  },
+  "regions": {
+    "forest": "Forest",
+    "meadow": "Meadow",
+    "river": "River",
+    "claypit": "Clay Pit",
+    "mountain": "Mountain",
+    "field": "Field"
+  },
+  "cards": {
+    "road": {
+      "name": "Road",
+      "description": "Required to build new Settlements. Cost: 1 Wood, 2 Brick."
+    },
+    "settlement": {
+      "name": "Settlement",
+      "description": "Grants 1 VP and 2 Expansion Slots."
+    },
+    "city": {
+      "name": "City",
+      "description": "Upgrades a Settlement. Grants 2 VP and 4 Expansion Slots."
+    },
+    "militiaman": {
+      "name": "Militiaman",
+      "description": "Grants 1 Strength Point."
+    },
+    "swordsman": {
+      "name": "Swordsman",
+      "description": "Grants 2 Strength Points."
+    },
+    "knight": {
+      "name": "Knight",
+      "description": "Grants 3 Strength Points."
+    },
+    "merchant": {
+      "name": "Merchant",
+      "description": "Grants 1 Commerce Point."
+    },
+    "market": {
+      "name": "Market",
+      "description": "Grants 2 Commerce Points."
+    },
+    "school": {
+      "name": "School",
+      "description": "Grants 1 Progress Point (+1 Hand Limit)."
+    },
+    "library": {
+      "name": "Library",
+      "description": "Grants 2 Progress Points (+2 Hand Limit)."
+    },
+    "watchtower": {
+      "name": "Watchtower",
+      "description": "Grants 1 Victory Point."
+    },
+    "tradeShipWood": { "name": "Wood Trade Ship" },
+    "tradeShipWool": { "name": "Wool Trade Ship" },
+    "tradeShipGold": { "name": "Gold Trade Ship" },
+    "tradeShipBrick": { "name": "Brick Trade Ship" },
+    "tradeShipOre": { "name": "Ore Trade Ship" },
+    "tradeShipGrain": { "name": "Grain Trade Ship" },
+    "tradeShip": {
+      "description": "Enables 2:1 trade for the matching resource type."
+    },
+    "fortress": {
+      "name": "Fortress",
+      "description": "Grants 3 Strength Points. City slot only."
+    },
+    "cathedral": {
+      "name": "Cathedral",
+      "description": "Grants 1 VP and 2 Progress Points. City slot only."
+    },
+    "guildHall": {
+      "name": "Guild Hall",
+      "description": "Grants 3 Commerce Points. City slot only."
+    },
+    "university": {
+      "name": "University",
+      "description": "Grants 3 Progress Points. City slot only."
+    },
+    "goldMine": {
+      "name": "Gold Mine",
+      "description": "Produces 1 extra Gold when placed on a Region."
+    },
+    "irrigation": {
+      "name": "Irrigation",
+      "description": "Produces 1 extra Grain when placed on a Region."
+    },
+    "sawmill": {
+      "name": "Sawmill",
+      "description": "Produces 1 extra Wood when placed on a Region."
+    },
+    "forge": {
+      "name": "Forge",
+      "description": "Produces 1 extra Ore when placed on a Region."
+    },
+    "ambush": {
+      "name": "Ambush",
+      "description": "Steal 1 resource from your opponent."
+    },
+    "celebration": {
+      "name": "Celebration",
+      "description": "Receive 1 Gold."
+    },
+    "invention": {
+      "name": "Invention",
+      "description": "Gain 1 Progress Point this turn."
+    },
+    "eventPlague": {
+      "name": "Plague",
+      "description": "Your opponent loses 1 Wool."
+    },
+    "eventGoodHarvest": {
+      "name": "Good Harvest",
+      "description": "Receive 2 Grain."
+    },
+    "eventTradeProfit": {
+      "name": "Trade Profit",
+      "description": "Receive 2 Gold."
+    }
+  }
+}

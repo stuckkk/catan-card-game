@@ -1,0 +1,3 @@
+# Hybrid card effect model: declarative data with a custom effect escape hatch
+
+Card effects are expressed as structured data (Declarative Effects) wherever possible — granting points, producing resources, modifying Hand Limit. A `customEffect` function hook is available for cards whose effects cannot be expressed declaratively. This keeps the card catalog as plain TypeScript data objects (easy to add new cards without touching engine code) while not boxing out complex one-of-a-kind card behaviors. A fully declarative model would require an ever-growing effect vocabulary; a fully imperative model would make cards opaque and hard to inspect or serialize.

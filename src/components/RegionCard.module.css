@@ -1,0 +1,35 @@
+.region {
+  background: var(--color-surface-2);
+  border: 1px solid var(--rc, var(--color-border));
+  border-radius: var(--radius-sm);
+  padding: 4px;
+  width: 52px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.number {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--rc);
+}
+
+.icon { font-size: 16px; line-height: 1; }
+
+.pips {
+  display: flex;
+  gap: 3px;
+}
+
+.pip {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--color-border);
+}
+
+.pip.filled {
+  background: var(--rc);
+}

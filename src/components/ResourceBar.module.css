@@ -1,0 +1,20 @@
+.bar {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.resource {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: var(--color-surface-2);
+  border: 1px solid var(--rc, var(--color-border));
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+  min-width: 44px;
+}
+
+.icon { font-size: 14px; line-height: 1; }
+.count { font-size: 16px; font-weight: 700; line-height: 1.2; }
+.name { font-size: 9px; color: var(--color-text-muted); text-transform: uppercase; }
