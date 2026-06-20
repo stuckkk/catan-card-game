@@ -16,7 +16,11 @@
     "offerCode": "Angebots-Code",
     "yourAnswerCode": "Teile diesen Antwort-Code mit deinem Mitspieler:",
     "connecting": "Verbinde...",
-    "invalidCode": "Ungültiger Code. Bitte nochmals prüfen."
+    "invalidCode": "Ungültiger Code. Bitte nochmals prüfen.",
+    "roomCode": "Raum-Code",
+    "shareLink": "Teile diesen Link mit deinem Freund. Er muss ihn nur anklicken.",
+    "connectionLost": "Verbindung unterbrochen.",
+    "backToLobby": "Zur Lobby"
   },
   "game": {
     "yourTurn": "Du bist dran",

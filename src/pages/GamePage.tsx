@@ -3,7 +3,8 @@ import { useTranslation } from 'react-i18next'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { applyAction, computePlayerStats, computeVP, projectForGuest } from '../engine/engine'
 import type { GameState, GameAction, ProjectedState, PlayerId } from '../engine/types'
-import type { HostSession, GuestSession } from '../network/webrtc'
+import type { HostSession, GuestSession } from '../network/trysteroSession'
+import { sessionStore } from '../network/sessionStore'
 import Principality from '../components/Principality'
 import Hand from '../components/Hand'
 import ResourceBar from '../components/ResourceBar'
@@ -28,12 +29,8 @@ export default function GamePage() {
   const [disconnected, setDisconnected] = useState(false)
   const [opponentExpanded, setOpponentExpanded] = useState(false)
 
-  const hostSessionRef = useRef<HostSession | null>(
-    (location.state as { hostSession?: HostSession })?.hostSession ?? null
-  )
-  const guestSessionRef = useRef<GuestSession | null>(
-    (location.state as { guestSession?: GuestSession })?.guestSession ?? null
-  )
+  const hostSessionRef = useRef<HostSession | null>(sessionStore.getHost())
+  const guestSessionRef = useRef<GuestSession | null>(sessionStore.getGuest())
 
   const myId: PlayerId = role === 'host' ? 'host' : 'guest'
 

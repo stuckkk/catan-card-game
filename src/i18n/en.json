@@ -16,7 +16,11 @@
     "offerCode": "Offer Code",
     "yourAnswerCode": "Share this answer code with your opponent:",
     "connecting": "Connecting...",
-    "invalidCode": "Invalid code. Please check and try again."
+    "invalidCode": "Invalid code. Please check and try again.",
+    "roomCode": "Room code",
+    "shareLink": "Share this link with your friend. They just need to click it.",
+    "connectionLost": "Connection lost.",
+    "backToLobby": "Back to Lobby"
   },
   "game": {
     "yourTurn": "Your turn",
