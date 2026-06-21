@@ -15,6 +15,7 @@ export interface HostSession {
 }
 
 export interface GuestSession {
+  roomId: string
   sendAction: (action: GameAction) => void
   onStateUpdate: (cb: (state: ProjectedState) => void) => void
   onConnect: (cb: () => void) => void
@@ -32,8 +33,8 @@ function makeRoomId(): string {
 // level, but our values are fully JSON-serializable — safe to cast via unknown.
 type AnyMessage = MessageAction<DataPayload>
 
-export function createHostSession(): HostSession {
-  const roomId = makeRoomId()
+export function createHostSession(existingRoomId?: string): HostSession {
+  const roomId = existingRoomId ?? makeRoomId()
   const room = joinRoom({ appId: APP_ID }, roomId)
   const stateAction = room.makeAction('state') as unknown as AnyMessage
   const actionAction = room.makeAction('action') as unknown as AnyMessage
@@ -46,11 +47,12 @@ export function createHostSession(): HostSession {
   const baseUrl = window.location.href.split('#')[0]
   const inviteUrl = `${baseUrl}#join=${roomId}`
 
+  // Adopt the newest peer to join. A reconnecting guest (page reload, network
+  // blip) returns with a fresh peer id, so we always latch onto the latest one
+  // and let the host re-send current state via onConnect.
   room.onPeerJoin = peerId => {
-    if (!guestPeerId) {
-      guestPeerId = peerId
-      connectHandler?.()
-    }
+    guestPeerId = peerId
+    connectHandler?.()
   }
 
   room.onPeerLeave = peerId => {
@@ -87,11 +89,11 @@ export function joinHostSession(roomId: string): GuestSession {
   let disconnectHandler: (() => void) | null = null
   let hostPeerId: string | null = null
 
+  // Adopt the newest peer as host so a host that reconnected (e.g. after a
+  // reload) is picked up rather than ignored.
   room.onPeerJoin = peerId => {
-    if (!hostPeerId) {
-      hostPeerId = peerId
-      connectHandler?.()
-    }
+    hostPeerId = peerId
+    connectHandler?.()
   }
 
   room.onPeerLeave = peerId => {
@@ -101,11 +103,15 @@ export function joinHostSession(roomId: string): GuestSession {
     }
   }
 
+  // Accept state from whichever peer is acting as host (covers the brief window
+  // before onPeerJoin latches the id after a reconnect).
   stateAction.onMessage = (state: unknown, { peerId }: { peerId: string }) => {
-    if (peerId === hostPeerId) stateHandler?.(state as ProjectedState)
+    hostPeerId = peerId
+    stateHandler?.(state as ProjectedState)
   }
 
   return {
+    roomId,
     sendAction: action => {
       if (hostPeerId) actionAction.send(action as unknown as DataPayload, { target: hostPeerId })
     },
