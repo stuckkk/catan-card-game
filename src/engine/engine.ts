@@ -1,7 +1,7 @@
 import {
   GameState, PlayerState, PlayerId, ResourceType, Resources,
   GameAction, ProjectedState, DiceRoll, EventSymbol, ProductionNumber,
-  DeckId, CentralSlot,
+  DeckId, CentralSlot, RegionState, RegionExpansionPosition,
 } from './types'
 import {
   getCard, getRegion, CARD_REGISTRY,
@@ -147,12 +147,21 @@ function getTradeRate(player: PlayerState, resource: ResourceType): 2 | 3 {
 
 // ─── Region Production ────────────────────────────────────────────────────────
 
+/** A Brown Expansion above or below a Region adds +1 to that Region's yield. */
+function regionYield(region: RegionState): number {
+  let bonus = 0
+  if (region.expansionAbove && getCard(region.expansionAbove).expansionColor === 'brown') bonus++
+  if (region.expansionBelow && getCard(region.expansionBelow).expansionColor === 'brown') bonus++
+  return 1 + bonus
+}
+
 function produceForPlayer(player: PlayerState, roll: ProductionNumber): PlayerState {
   const newRegions = player.regions.map(region => {
     const def = getRegion(region.regionId)
     if (def.productionNumber !== roll) return region
     if (region.storedResources >= 3) return region  // overflow — resource lost
-    return { ...region, storedResources: region.storedResources + 1 }
+    // Capacity is 3; any yield beyond that overflows and is lost.
+    return { ...region, storedResources: Math.min(3, region.storedResources + regionYield(region)) }
   })
   return { ...player, regions: newRegions }
 }
@@ -366,22 +375,28 @@ function resolveEventSymbol(state: GameState, symbol: EventSymbol): GameState {
 
 // ─── Action Handlers ──────────────────────────────────────────────────────────
 
-function applyRollDice(state: GameState): GameState {
-  if (state.phase !== 'roll') return state
-
+/** Roll both dice. RNG is injectable so tests can pin the outcome. */
+export function rollDice(rng: () => number = Math.random): DiceRoll {
   const eventSymbols: EventSymbol[] = ['bandit', 'trade', 'festival', 'harvest', 'event']
-  const eventSymbol = eventSymbols[Math.floor(Math.random() * eventSymbols.length)]
-  const productionNumber = (Math.floor(Math.random() * 6) + 1) as ProductionNumber
+  const eventSymbol = eventSymbols[Math.floor(rng() * eventSymbols.length)]
+  const productionNumber = (Math.floor(rng() * 6) + 1) as ProductionNumber
+  return { eventSymbol, productionNumber }
+}
 
-  const roll: DiceRoll = { eventSymbol, productionNumber }
-  const afterEvent = resolveEventSymbol({ ...state, lastRoll: roll, phase: 'event-resolution' }, eventSymbol)
+/** Deterministic resolution of a known roll: event first, then production. */
+export function applyRoll(state: GameState, roll: DiceRoll): GameState {
+  if (state.phase !== 'roll') return state
+  const afterEvent = resolveEventSymbol({ ...state, lastRoll: roll, phase: 'event-resolution' }, roll.eventSymbol)
 
-  // After event resolution, if phase is 'production', run production
+  // After event resolution, if phase is 'production', run production (Bandit skips it).
   if (afterEvent.phase === 'production') {
-    return runProduction(afterEvent, productionNumber)
+    return runProduction(afterEvent, roll.productionNumber)
   }
-
   return afterEvent
+}
+
+function applyRollDice(state: GameState): GameState {
+  return applyRoll(state, rollDice())
 }
 
 function runProduction(state: GameState, roll: ProductionNumber): GameState {
@@ -554,6 +569,112 @@ function applyPlaceExpansion(
   return newState
 }
 
+function applyPlaceRegionExpansion(
+  state: GameState,
+  actingPlayer: PlayerId,
+  cardId: string,
+  regionIndex: number,
+  position: RegionExpansionPosition
+): GameState {
+  if (state.phase !== 'action') return state
+  const player = state.players[actingPlayer]
+  const card = CARD_REGISTRY[cardId]
+  if (!card || card.expansionColor !== 'brown') return state
+  if (!player.hand.includes(cardId)) return state
+  if (!canAfford(player.resources, card.cost ?? {})) return state
+
+  const region = player.regions[regionIndex]
+  if (!region) return state
+  const field = position === 'above' ? 'expansionAbove' : 'expansionBelow'
+  if (region[field] !== null) return state
+
+  const regions = player.regions.map((r, i) =>
+    i === regionIndex ? { ...r, [field]: cardId } : r
+  )
+  const newHand = [...player.hand]
+  newHand.splice(newHand.indexOf(cardId), 1)
+
+  let newState: GameState = {
+    ...state,
+    players: {
+      ...state.players,
+      [actingPlayer]: {
+        ...player,
+        resources: subtractResources(player.resources, card.cost ?? {}),
+        hand: newHand,
+        regions,
+        playedCards: [...player.playedCards, cardId],
+      },
+    },
+  }
+  if (card.customEffect) newState = card.customEffect(newState, actingPlayer)
+  return newState
+}
+
+function applyDemolish(
+  state: GameState,
+  actingPlayer: PlayerId,
+  slotIndex: number,
+  expansionSlotIndex: number
+): GameState {
+  if (state.phase !== 'action') return state
+  const player = state.players[actingPlayer]
+  const slot = player.principality[slotIndex]
+  if (!slot) return state
+  const cardId = slot.expansionSlots[expansionSlotIndex]
+  if (!cardId) return state
+
+  const principality = player.principality.map((s, i) => {
+    if (i !== slotIndex) return s
+    const slots = [...s.expansionSlots]
+    slots[expansionSlotIndex] = null
+    return { ...s, expansionSlots: slots }
+  })
+  const playedCards = [...player.playedCards]
+  const pIdx = playedCards.indexOf(cardId)
+  if (pIdx !== -1) playedCards.splice(pIdx, 1)
+
+  return {
+    ...state,
+    players: {
+      ...state.players,
+      [actingPlayer]: { ...player, principality, playedCards },
+    },
+    discardPile: [...state.discardPile, cardId],
+  }
+}
+
+function applyDemolishRegionExpansion(
+  state: GameState,
+  actingPlayer: PlayerId,
+  regionIndex: number,
+  position: RegionExpansionPosition
+): GameState {
+  if (state.phase !== 'action') return state
+  const player = state.players[actingPlayer]
+  const region = player.regions[regionIndex]
+  if (!region) return state
+  const field = position === 'above' ? 'expansionAbove' : 'expansionBelow'
+  const cardId = region[field]
+  if (!cardId) return state
+
+  const regions = player.regions.map((r, i) =>
+    i === regionIndex ? { ...r, [field]: null } : r
+  )
+  const playedCards = [...player.playedCards]
+  const pIdx = playedCards.indexOf(cardId)
+  if (pIdx !== -1) playedCards.splice(pIdx, 1)
+
+  return {
+    ...state,
+    players: {
+      ...state.players,
+      [actingPlayer]: { ...player, regions, playedCards },
+    },
+    discardPile: [...state.discardPile, cardId],
+  }
+}
+
 function applyPlayActionCard(state: GameState, actingPlayer: PlayerId, cardId: string): GameState {
   const player = state.players[actingPlayer]
   const card = CARD_REGISTRY[cardId]
@@ -700,8 +821,55 @@ function applyFreeSwap(state: GameState, actingPlayer: PlayerId, discardCardId: 
     },
     decks: {
       ...state.decks,
-      [fromDeck]: [...deck.slice(0, -1), discardCardId],  // put discarded card under deck
+      // Draw the top (last) card; place the discarded card under the deck (index 0 = bottom).
+      [fromDeck]: [discardCardId, ...deck.slice(0, -1)],
     },
+    phase: 'roll',
+    activePlayer: opponent(actingPlayer),
+  }
+}
+
+function applyPaidSwap(
+  state: GameState,
+  actingPlayer: PlayerId,
+  discardCardId: string,
+  fromDeck: DeckId,
+  searchCardId: string,
+  searchDeck: DeckId,
+  payWith: ResourceType
+): GameState {
+  if (state.phase !== 'swap') return state
+  const player = state.players[actingPlayer]
+  if (player.resources[payWith] < 2) return state
+  if (!player.hand.includes(discardCardId)) return state
+
+  const search = state.decks[searchDeck]
+  const searchIdx = search.indexOf(searchCardId)
+  if (searchIdx === -1) return state  // named card not in that deck
+
+  // Pull the searched card out of its deck.
+  const newSearchDeck = [...search]
+  newSearchDeck.splice(searchIdx, 1)
+
+  const newHand = [...player.hand]
+  newHand.splice(newHand.indexOf(discardCardId), 1)
+  newHand.push(searchCardId)
+
+  // Apply the search-deck change first, then bury the discarded card under fromDeck.
+  const decks = { ...state.decks, [searchDeck]: newSearchDeck }
+  decks[fromDeck] = [discardCardId, ...decks[fromDeck]]
+
+  return {
+    ...state,
+    players: {
+      ...state.players,
+      [actingPlayer]: {
+        ...player,
+        resources: subtractResources(player.resources, { [payWith]: 2 }),
+        hand: newHand,
+      },
+    },
+    decks,
     phase: 'roll',
     activePlayer: opponent(actingPlayer),
   }
@@ -729,11 +897,15 @@ export function applyAction(state: GameState, actingPlayer: PlayerId, action: Ga
     case 'BUILD_SETTLEMENT':   next = applyBuildSettlement(state, actingPlayer, action.slotIndex); break
     case 'BUILD_CITY':         next = applyBuildCity(state, actingPlayer, action.slotIndex); break
     case 'PLACE_EXPANSION':    next = applyPlaceExpansion(state, actingPlayer, action.cardId, action.slotIndex, action.expansionSlotIndex); break
+    case 'PLACE_REGION_EXPANSION': next = applyPlaceRegionExpansion(state, actingPlayer, action.cardId, action.regionIndex, action.position); break
     case 'PLAY_ACTION_CARD':   next = applyPlayActionCard(state, actingPlayer, action.cardId); break
     case 'TRADE_WITH_BANK':    next = applyTradeWithBank(state, actingPlayer, action.give, action.receive); break
+    case 'DEMOLISH':           next = applyDemolish(state, actingPlayer, action.slotIndex, action.expansionSlotIndex); break
+    case 'DEMOLISH_REGION_EXPANSION': next = applyDemolishRegionExpansion(state, actingPlayer, action.regionIndex, action.position); break
     case 'END_ACTION_PHASE':   next = applyEndActionPhase(state, actingPlayer); break
     case 'DISCARD_TO_LIMIT':   next = applyDiscardToLimit(state, actingPlayer, action.cardIds); break
     case 'FREE_SWAP':          next = applyFreeSwap(state, actingPlayer, action.discardCardId, action.fromDeck); break
+    case 'PAID_SWAP':          next = applyPaidSwap(state, actingPlayer, action.discardCardId, action.fromDeck, action.searchCardId, action.searchDeck, action.payWith); break
     case 'SKIP_SWAP':          next = applySkipSwap(state, actingPlayer); break
     default:                   next = state
   }

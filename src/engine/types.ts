@@ -157,20 +157,28 @@ export type ProjectedState = Omit<GameState, 'players'> & {
 
 // ─── Actions (Guest → Host) ───────────────────────────────────────────────────
 
+export type RegionExpansionPosition = 'above' | 'below'
+
 export type GameAction =
   | { type: 'ROLL_DICE' }
   | { type: 'BUILD_ROAD'; slotIndex: number }
   | { type: 'BUILD_SETTLEMENT'; slotIndex: number }
   | { type: 'BUILD_CITY'; slotIndex: number }
+  /** Place a Green or Red Expansion in a Settlement/City Expansion Slot. */
   | { type: 'PLACE_EXPANSION'; cardId: string; slotIndex: number; expansionSlotIndex: number }
+  /** Place a Brown Expansion above or below a Region. */
+  | { type: 'PLACE_REGION_EXPANSION'; cardId: string; regionIndex: number; position: RegionExpansionPosition }
   | { type: 'PLAY_ACTION_CARD'; cardId: string }
   | { type: 'TRADE_WITH_BANK'; give: ResourceType; receive: ResourceType }
-  | { type: 'TRADE_WITH_OPPONENT'; give: ResourceType; giveAmount: number; receive: ResourceType; receiveAmount: number }
-  | { type: 'DEMOLISH'; slotIndex: number }
+  /** Demolish own Green/Red Expansion (free, to discard). */
+  | { type: 'DEMOLISH'; slotIndex: number; expansionSlotIndex: number }
+  /** Demolish own Brown Expansion (free, to discard). */
+  | { type: 'DEMOLISH_REGION_EXPANSION'; regionIndex: number; position: RegionExpansionPosition }
   | { type: 'END_ACTION_PHASE' }
   | { type: 'DISCARD_TO_LIMIT'; cardIds: string[] }
   | { type: 'FREE_SWAP'; discardCardId: string; fromDeck: DeckId }
-  | { type: 'PAID_SWAP'; discardCardId: string; fromDeck: DeckId; searchCardId: string }
+  /** Pay 2 of one Resource, place a card under a deck, then take a named card from any deck. */
+  | { type: 'PAID_SWAP'; discardCardId: string; fromDeck: DeckId; searchCardId: string; searchDeck: DeckId; payWith: ResourceType }
   | { type: 'SKIP_SWAP' }
 
 // ─── Network Messages ─────────────────────────────────────────────────────────
