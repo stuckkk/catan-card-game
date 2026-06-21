@@ -9,14 +9,10 @@
     "copyLink": "Link kopieren",
     "linkCopied": "Kopiert!",
     "waitingForGuest": "Warte auf Mitspieler...",
-    "pasteAnswerCode": "Füge den Antwort-Code deines Mitspielers ein:",
-    "answerCode": "Antwort-Code",
     "connect": "Verbinden",
-    "orPasteOfferCode": "Oder Angebots-Code manuell einfügen:",
-    "offerCode": "Angebots-Code",
-    "yourAnswerCode": "Teile diesen Antwort-Code mit deinem Mitspieler:",
+    "practice": "Lokal üben (ohne Gegner)",
+    "pasteRoomCode": "Oder Raum-Code manuell einfügen:",
     "connecting": "Verbinde...",
-    "invalidCode": "Ungültiger Code. Bitte nochmals prüfen.",
     "roomCode": "Raum-Code",
     "shareLink": "Teile diesen Link mit deinem Freund. Er muss ihn nur anklicken.",
     "connectionLost": "Verbindung unterbrochen.",
@@ -25,6 +21,7 @@
   "game": {
     "yourTurn": "Du bist dran",
     "opponentTurn": "Gegner ist dran",
+    "phaseTracker": "Zugphase",
     "rollDice": "Würfeln",
     "endTurn": "Aktionsphase beenden",
     "skipSwap": "Tausch überspringen",
@@ -46,6 +43,27 @@
     "opponentWins": "Dein Gegner hat gewonnen!",
     "playAgain": "Nochmal spielen",
     "backToLobby": "Zur Lobby"
+  },
+  "card": {
+    "cost": "Kosten",
+    "effect": "Effekt",
+    "victoryPoints": "Siegpunkte",
+    "improvedTrade": "2:1 Handel",
+    "play": "Ausspielen",
+    "close": "Schließen"
+  },
+  "cardType": {
+    "green": "Grüne Erweiterung",
+    "red": "Rote Erweiterung (nur Stadt)",
+    "brown": "Braune Erweiterung (Region)",
+    "central": "Zentralachse",
+    "road": "Straße",
+    "settlement": "Siedlung",
+    "city": "Stadt",
+    "action": "Aktionskarte",
+    "event": "Ereigniskarte",
+    "expansion": "Erweiterung",
+    "region": "Region"
   },
   "resources": {
     "wood": "Holz",

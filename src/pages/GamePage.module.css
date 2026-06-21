@@ -1,5 +1,5 @@
 .page {
-  min-height: 100dvh;
+  height: 100dvh; /* fixed height so the column is constrained and the board area scrolls */
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -21,26 +21,35 @@
 
 .myBoard {
   flex: 1;
+  min-height: 0; /* allow this flex child to shrink/scroll instead of pushing the panel off-screen */
+  display: flex;
+  align-items: center;
+  justify-content: center;
   overflow: auto;
-  padding: 12px;
+  padding: clamp(8px, 2vw, 24px);
 }
 
 .bottomPanel {
   background: var(--color-surface);
   border-top: 1px solid var(--color-border);
+  flex-shrink: 0; /* keep the controls; never let the board squeeze them away */
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 8px 12px;
-  max-height: 55dvh;
+  gap: 10px;
+  padding: 10px clamp(12px, 4vw, 24px);
+  max-height: 52dvh;
   overflow-y: auto;
+  /* Centre the controls and cap their width so they don't stretch on desktop. */
+  width: 100%;
+  max-width: 920px;
+  margin: 0 auto;
 }
 
 .statusBar {
   display: flex;
   align-items: center;
   gap: 12px;
-  font-size: 13px;
+  font-size: clamp(13px, 3vw, 16px);
 }
 
 .myTurn {

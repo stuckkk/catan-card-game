@@ -9,14 +9,10 @@
     "copyLink": "Copy Link",
     "linkCopied": "Copied!",
     "waitingForGuest": "Waiting for opponent to join...",
-    "pasteAnswerCode": "Paste the answer code from your opponent:",
-    "answerCode": "Answer Code",
     "connect": "Connect",
-    "orPasteOfferCode": "Or paste the offer code manually:",
-    "offerCode": "Offer Code",
-    "yourAnswerCode": "Share this answer code with your opponent:",
+    "practice": "Practice locally (no opponent)",
+    "pasteRoomCode": "Or paste a room code manually:",
     "connecting": "Connecting...",
-    "invalidCode": "Invalid code. Please check and try again.",
     "roomCode": "Room code",
     "shareLink": "Share this link with your friend. They just need to click it.",
     "connectionLost": "Connection lost.",
@@ -25,6 +21,7 @@
   "game": {
     "yourTurn": "Your turn",
     "opponentTurn": "Opponent's turn",
+    "phaseTracker": "Turn phase",
     "rollDice": "Roll Dice",
     "endTurn": "End Action Phase",
     "skipSwap": "Skip Swap",
@@ -46,6 +43,27 @@
     "opponentWins": "Opponent wins!",
     "playAgain": "Play Again",
     "backToLobby": "Back to Lobby"
+  },
+  "card": {
+    "cost": "Cost",
+    "effect": "Effect",
+    "victoryPoints": "Victory Points",
+    "improvedTrade": "2:1 Trade",
+    "play": "Play",
+    "close": "Close"
+  },
+  "cardType": {
+    "green": "Green Expansion",
+    "red": "Red Expansion (City only)",
+    "brown": "Brown Expansion (Region)",
+    "central": "Central Axis",
+    "road": "Road",
+    "settlement": "Settlement",
+    "city": "City",
+    "action": "Action Card",
+    "event": "Event Card",
+    "expansion": "Expansion",
+    "region": "Region"
   },
   "resources": {
     "wood": "Wood",

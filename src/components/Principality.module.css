@@ -1,80 +1,134 @@
-.principality {
+.board {
+  /* The single knob the whole board scales from. Grows with the viewport,
+     clamped so it stays tappable on phones and doesn't get huge on desktop. */
+  --card-w: clamp(46px, 8vw, 84px);
+  --card-h: calc(var(--card-w) * 1.28);
+  --exp-h: calc(var(--card-h) * 0.62); /* expansion slots tuck in shorter */
+  --gap: calc(var(--card-w) * 0.14);
+
   display: flex;
-  flex-direction: column;
-  gap: 12px;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
 }
 
+/* Wider screens: bigger cards to use the space (the board stays centred). */
+@media (min-width: 900px) {
+  .board { --card-w: clamp(84px, 8.5vw, 124px); }
+}
+
+/* Central Axis: settlement — road — settlement, laid out horizontally.
+   align-items: center keeps roads aligned with the settlement cores. */
 .axis {
   display: flex;
-  align-items: flex-start;
-  gap: 4px;
-  overflow-x: auto;
-  padding-bottom: 4px;
+  align-items: center;
+  gap: var(--gap);
+  padding: calc(var(--gap) * 2) 0;
 }
 
-.axisSlot {
+.unit {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
-  min-width: 64px;
-  padding: 6px 4px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--color-border);
-  background: var(--color-surface);
-  flex-shrink: 0;
+  gap: var(--gap);
 }
 
-.road         { border-color: var(--color-road); }
-.settlement   { border-color: var(--color-settlement); }
-.city         { border-color: var(--color-city); }
-.empty-road   { border-style: dashed; opacity: 0.6; }
-.empty-settlement { border-style: dashed; opacity: 0.6; }
-
-.slotLabel {
-  font-size: 10px;
-  font-weight: 600;
-  color: var(--color-text-muted);
-  text-transform: uppercase;
-}
-
-.buildBtn {
-  background: var(--color-surface-2);
-  border: 1px dashed var(--color-border);
-  border-radius: var(--radius-sm);
-  color: var(--color-text-muted);
-  font-size: 11px;
-  padding: 2px 8px;
-}
-
-.buildBtn:hover { border-color: var(--color-accent); color: var(--color-accent); }
-
-.upgradeBtn {
-  background: transparent;
-  border: 1px solid var(--color-city);
-  border-radius: var(--radius-sm);
-  color: var(--color-city);
-  font-size: 10px;
-  padding: 2px 6px;
-}
-
-.expansionSlots {
+.regionRow {
   display: flex;
-  flex-wrap: wrap;
-  gap: 3px;
-  justify-content: center;
+  gap: var(--gap);
 }
 
-.emptyExpansion {
-  width: 40px;
-  height: 55px;
+/* Stagger the region rows so they read diagonally off the settlement, like the
+   physical board, instead of stacking dead-centre above/below it. */
+.top    { transform: translateX(calc(var(--card-w) * -0.32)); }
+.bottom { transform: translateX(calc(var(--card-w) * 0.32)); }
+
+.expansions {
+  display: flex;
+  gap: var(--gap);
+}
+
+.emptyExp {
+  width: var(--card-w);
+  height: var(--exp-h);
   border: 1px dashed var(--color-border);
   border-radius: var(--radius-sm);
   opacity: 0.4;
 }
 
-.regions {
+.core {
+  width: var(--card-w);
+  min-height: var(--card-h);
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 6px 4px;
+  border-radius: var(--radius-sm);
+  border: 2px solid var(--color-border);
+  background: var(--color-surface-2);
+  text-align: center;
 }
+
+.settlement { border-color: var(--color-settlement); background: color-mix(in srgb, var(--color-settlement) 22%, var(--color-surface-2)); }
+.city       { border-color: var(--color-city); background: color-mix(in srgb, var(--color-city) 30%, var(--color-surface-2)); }
+
+.coreLabel {
+  font-size: clamp(9px, 2.4vw, 12px);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--color-text);
+}
+
+.upgradeBtn {
+  background: transparent;
+  border: 1px solid var(--color-city);
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  font-size: 10px;
+  padding: 2px 6px;
+}
+.upgradeBtn:hover { background: var(--color-city); }
+
+/* Road connector sits between two settlement units. */
+.roadWrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
+}
+
+.road {
+  width: calc(var(--card-w) * 0.5);
+  height: calc(var(--card-w) * 0.16);
+  border-radius: 999px;
+  background: var(--color-road);
+  border: 1px solid color-mix(in srgb, var(--color-road) 60%, black);
+}
+
+.buildRoad {
+  width: calc(var(--card-w) * 0.5);
+  height: calc(var(--card-w) * 0.32);
+  border-radius: var(--radius-sm);
+  border: 1px dashed var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font-size: 14px;
+  line-height: 1;
+  padding: 0;
+}
+.buildRoad:not(:disabled):hover { border-color: var(--color-accent); color: var(--color-accent); }
+
+.buildSettlement {
+  width: var(--card-w);
+  min-height: var(--card-h);
+  border-radius: var(--radius-sm);
+  border: 1px dashed var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font-size: 11px;
+  padding: 4px;
+}
+.buildSettlement:not(:disabled):hover { border-color: var(--color-accent); color: var(--color-accent); }

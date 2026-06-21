@@ -13,83 +13,134 @@ interface Props {
   onAction: (a: GameAction) => void
 }
 
-function SlotLabel({ kind }: { kind: CentralSlot['kind'] }) {
+interface UnitProps {
+  slot: CentralSlot
+  idx: number
+  regions: RegionState[]
+  canBuild: boolean
+  onAction: (a: GameAction) => void
+}
+
+/** One Settlement/City column: regions diagonally above & below, expansion slots in between. */
+function SettlementUnit({ slot, idx, regions, canBuild, onAction }: UnitProps) {
   const { t } = useTranslation()
-  const labels: Record<CentralSlot['kind'], string> = {
-    road: t('cards.road.name'),
-    'empty-road': '+Road',
-    settlement: t('cards.settlement.name'),
-    city: t('cards.city.name'),
-    'empty-settlement': '+Settle',
+
+  if (slot.kind === 'empty-settlement') {
+    return (
+      <div className={styles.unit}>
+        <button
+          className={styles.buildSettlement}
+          disabled={!canBuild}
+          onClick={() => onAction({ type: 'BUILD_SETTLEMENT', slotIndex: idx })}
+        >
+          + {t('cards.settlement.name')}
+        </button>
+      </div>
+    )
   }
-  return <span className={styles.slotLabel}>{labels[kind]}</span>
+
+  const half = Math.ceil(slot.expansionSlots.length / 2)
+  const aboveExp = slot.expansionSlots.slice(0, half)
+  const belowExp = slot.expansionSlots.slice(half)
+  const regs = slot.regionIndices.map(i => regions[i]).filter(Boolean) as RegionState[]
+  const topRegions = regs.slice(0, 2)
+  const bottomRegions = regs.slice(2)
+
+  return (
+    <div className={styles.unit}>
+      <div className={`${styles.regionRow} ${styles.top}`}>
+        {topRegions.map((r, i) => <RegionCard key={i} region={r} />)}
+      </div>
+
+      {aboveExp.length > 0 && (
+        <div className={styles.expansions}>
+          {aboveExp.map((cardId, i) =>
+            cardId
+              ? <CardView key={i} cardId={cardId} compact />
+              : <div key={i} className={styles.emptyExp} />
+          )}
+        </div>
+      )}
+
+      <div className={`${styles.core} ${styles[slot.kind]}`}>
+        <span className={styles.coreLabel}>{t(`cards.${slot.kind}.name`)}</span>
+        {slot.kind === 'settlement' && canBuild && (
+          <button
+            className={styles.upgradeBtn}
+            title={t('cards.city.name')}
+            onClick={() => onAction({ type: 'BUILD_CITY', slotIndex: idx })}
+          >
+            ⬆ {t('cards.city.name')}
+          </button>
+        )}
+      </div>
+
+      {belowExp.length > 0 && (
+        <div className={styles.expansions}>
+          {belowExp.map((cardId, i) =>
+            cardId
+              ? <CardView key={i} cardId={cardId} compact />
+              : <div key={i} className={styles.emptyExp} />
+          )}
+        </div>
+      )}
+
+      <div className={`${styles.regionRow} ${styles.bottom}`}>
+        {bottomRegions.map((r, i) => <RegionCard key={i} region={r} />)}
+      </div>
+    </div>
+  )
+}
+
+function RoadConnector({ slot, idx, canBuild, onAction }: Omit<UnitProps, 'regions'>) {
+  const { t } = useTranslation()
+  if (slot.kind === 'empty-road') {
+    return (
+      <div className={styles.roadWrap}>
+        <button
+          className={styles.buildRoad}
+          disabled={!canBuild}
+          title={t('cards.road.name')}
+          onClick={() => onAction({ type: 'BUILD_ROAD', slotIndex: idx })}
+        >
+          +
+        </button>
+      </div>
+    )
+  }
+  return (
+    <div className={styles.roadWrap}>
+      <div className={styles.road} title={t('cards.road.name')} />
+    </div>
+  )
 }
 
 export default function Principality({
   principality, regions, isMyBoard, phase, isMyTurn, onAction,
 }: Props) {
-  function handleEmptySettlement(idx: number) {
-    if (!isMyBoard || !isMyTurn || phase !== 'action') return
-    onAction({ type: 'BUILD_SETTLEMENT', slotIndex: idx })
-  }
-
-  function handleEmptyRoad(idx: number) {
-    if (!isMyBoard || !isMyTurn || phase !== 'action') return
-    onAction({ type: 'BUILD_ROAD', slotIndex: idx })
-  }
-
-  function handleUpgradeCity(idx: number) {
-    if (!isMyBoard || !isMyTurn || phase !== 'action') return
-    onAction({ type: 'BUILD_CITY', slotIndex: idx })
-  }
+  const { t } = useTranslation()
+  const canBuild = isMyBoard && isMyTurn && phase === 'action'
 
   return (
-    <div className={styles.principality}>
-      {/* Central Axis */}
+    <div className={styles.board}>
       <div className={styles.axis}>
-        {principality.map((slot, idx) => (
-          <div key={idx} className={[styles.axisSlot, styles[slot.kind]].join(' ')}>
-            <SlotLabel kind={slot.kind} />
-
-            {slot.kind === 'empty-road' && isMyBoard && isMyTurn && (
-              <button className={styles.buildBtn} onClick={() => handleEmptyRoad(idx)}>+</button>
-            )}
-
-            {slot.kind === 'settlement' && isMyBoard && isMyTurn && (
-              <button className={styles.upgradeBtn} onClick={() => handleUpgradeCity(idx)}>⬆</button>
-            )}
-
-            {slot.kind === 'empty-settlement' && isMyBoard && isMyTurn && (
-              <button className={styles.buildBtn} onClick={() => handleEmptySettlement(idx)}>+</button>
-            )}
-
-            {/* Expansion slots */}
-            {slot.expansionSlots.length > 0 && (
-              <div className={styles.expansionSlots}>
-                {slot.expansionSlots.map((cardId, eIdx) =>
-                  cardId
-                    ? <CardView key={eIdx} cardId={cardId} compact />
-                    : <div key={eIdx} className={styles.emptyExpansion} />
-                )}
-              </div>
-            )}
-          </div>
-        ))}
-
-        {/* Extend road button at the end */}
-        {isMyBoard && isMyTurn && phase === 'action' && (
-          <button
-            className={styles.buildBtn}
-            onClick={() => onAction({ type: 'BUILD_ROAD', slotIndex: principality.length })}
-          >+Road</button>
+        {principality.map((slot, idx) =>
+          slot.kind === 'road' || slot.kind === 'empty-road'
+            ? <RoadConnector key={idx} slot={slot} idx={idx} canBuild={canBuild} onAction={onAction} />
+            : <SettlementUnit key={idx} slot={slot} idx={idx} regions={regions} canBuild={canBuild} onAction={onAction} />
         )}
-      </div>
 
-      {/* Regions */}
-      <div className={styles.regions}>
-        {regions.map((region, idx) => (
-          <RegionCard key={idx} region={region} />
-        ))}
+        {canBuild && (
+          <div className={styles.roadWrap}>
+            <button
+              className={styles.buildRoad}
+              title={t('cards.road.name')}
+              onClick={() => onAction({ type: 'BUILD_ROAD', slotIndex: principality.length })}
+            >
+              +
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )
