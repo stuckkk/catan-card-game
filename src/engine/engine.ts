@@ -135,7 +135,7 @@ function checkVictory(state: GameState): PlayerId | null {
 
 // ─── Trade Rate ───────────────────────────────────────────────────────────────
 
-function getTradeRate(player: PlayerState, resource: ResourceType): 2 | 3 {
+export function getTradeRate(player: PlayerState, resource: ResourceType): 2 | 3 {
   for (const cardId of player.playedCards) {
     const def = getCard(cardId)
     for (const effect of def.effects) {
@@ -722,6 +722,8 @@ function applyTradeWithBank(
   give: ResourceType,
   receive: ResourceType
 ): GameState {
+  if (state.phase !== 'action') return state
+  if (give === receive) return state
   const player = state.players[actingPlayer]
   const rate = getTradeRate(player, give)
   if (player.resources[give] < rate) return state

@@ -209,6 +209,21 @@ describe('trade with bank', () => {
     const next = applyAction(state, 'host', { type: 'TRADE_WITH_BANK', give: 'wood', receive: 'grain' })
     expect(next.players.host.resources.wood).toBe(2) // unchanged
   })
+
+  it('rejects trading a resource for itself', () => {
+    const host = makePlayer('host', { resources: res({ wood: 3 }) })
+    const state = makeState({ players: { host, guest: makePlayer('guest') } })
+    const next = applyAction(state, 'host', { type: 'TRADE_WITH_BANK', give: 'wood', receive: 'wood' })
+    expect(next.players.host.resources.wood).toBe(3) // unchanged
+  })
+
+  it('rejects trading outside the action phase', () => {
+    const host = makePlayer('host', { resources: res({ wood: 3 }) })
+    const state = makeState({ phase: 'roll', players: { host, guest: makePlayer('guest') } })
+    const next = applyAction(state, 'host', { type: 'TRADE_WITH_BANK', give: 'wood', receive: 'grain' })
+    expect(next.players.host.resources.wood).toBe(3) // unchanged
+    expect(next.players.host.resources.grain).toBe(0)
+  })
 })
 
 // ─── Demolish ────────────────────────────────────────────────────────────────

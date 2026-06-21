@@ -9,6 +9,7 @@ import { sessionStore } from '../network/sessionStore'
 import { savePersisted, clearPersisted, loadPersisted } from '../network/persistence'
 import Principality from '../components/Principality'
 import PhaseTracker from '../components/PhaseTracker'
+import TradePanel from '../components/TradePanel'
 import Hand from '../components/Hand'
 import ResourceBar from '../components/ResourceBar'
 import DiceDisplay from '../components/DiceDisplay'
@@ -219,6 +220,14 @@ export default function GamePage() {
           resources={myResources}
           onAction={dispatchAction}
         />
+
+        {phase === 'action' && isMyTurn && myResources && myState && (
+          <TradePanel
+            resources={myResources}
+            playedCards={myState.playedCards}
+            onAction={dispatchAction}
+          />
+        )}
 
         <div className={styles.controls}>
           {phase === 'roll' && isMyTurn && (

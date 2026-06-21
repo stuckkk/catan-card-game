@@ -26,6 +26,11 @@
     "endTurn": "Aktionsphase beenden",
     "skipSwap": "Tausch überspringen",
     "swap": "Karte tauschen",
+    "trade": "Mit der Bank handeln",
+    "tradeGive": "Abgeben",
+    "tradeReceive": "Erhalten",
+    "tradeRate": "{{rate}}:1",
+    "tradeButton": "Tauschen",
     "phase": {
       "roll": "Würfelphase",
       "event-resolution": "Ereignisauflösung",

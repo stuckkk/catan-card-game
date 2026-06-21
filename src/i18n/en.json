@@ -26,6 +26,11 @@
     "endTurn": "End Action Phase",
     "skipSwap": "Skip Swap",
     "swap": "Swap Card",
+    "trade": "Trade with Bank",
+    "tradeGive": "Give",
+    "tradeReceive": "Get",
+    "tradeRate": "{{rate}}:1",
+    "tradeButton": "Trade",
     "phase": {
       "roll": "Roll Phase",
       "event-resolution": "Event Resolution",
