@@ -13,45 +13,35 @@ interface Props {
   onAction: (a: GameAction) => void
 }
 
-interface UnitProps {
+type RegionCell = { region: RegionState; regionIndex: number } | undefined
+
+/** The settlement/city core plus its expansion slots, stacked vertically in the axis row. */
+function SettlementCell({ slot, idx, canBuild, onAction }: {
   slot: CentralSlot
   idx: number
-  regions: RegionState[]
   canBuild: boolean
   onAction: (a: GameAction) => void
-}
-
-/** One Settlement/City column: regions diagonally above & below, expansion slots in between. */
-function SettlementUnit({ slot, idx, regions, canBuild, onAction }: UnitProps) {
+}) {
   const { t } = useTranslation()
 
   if (slot.kind === 'empty-settlement') {
     return (
-      <div className={styles.unit}>
-        <button
-          className={styles.buildSettlement}
-          disabled={!canBuild}
-          onClick={() => onAction({ type: 'BUILD_SETTLEMENT', slotIndex: idx })}
-        >
-          + {t('cards.settlement.name')}
-        </button>
-      </div>
+      <button
+        className={styles.buildSettlement}
+        disabled={!canBuild}
+        onClick={() => onAction({ type: 'BUILD_SETTLEMENT', slotIndex: idx })}
+      >
+        + {t('cards.settlement.name')}
+      </button>
     )
   }
 
   const half = Math.ceil(slot.expansionSlots.length / 2)
   const aboveExp = slot.expansionSlots.slice(0, half)
   const belowExp = slot.expansionSlots.slice(half)
-  const regs = slot.regionIndices.map(i => regions[i]).filter(Boolean) as RegionState[]
-  const topRegions = regs.slice(0, 2)
-  const bottomRegions = regs.slice(2)
 
   return (
-    <div className={styles.unit}>
-      <div className={`${styles.regionRow} ${styles.top}`}>
-        {topRegions.map((r, i) => <RegionCard key={i} region={r} />)}
-      </div>
-
+    <div className={styles.settlementCell}>
       {aboveExp.length > 0 && (
         <div className={styles.expansions}>
           {aboveExp.map((cardId, i) =>
@@ -84,33 +74,6 @@ function SettlementUnit({ slot, idx, regions, canBuild, onAction }: UnitProps) {
           )}
         </div>
       )}
-
-      <div className={`${styles.regionRow} ${styles.bottom}`}>
-        {bottomRegions.map((r, i) => <RegionCard key={i} region={r} />)}
-      </div>
-    </div>
-  )
-}
-
-function RoadConnector({ slot, idx, canBuild, onAction }: Omit<UnitProps, 'regions'>) {
-  const { t } = useTranslation()
-  if (slot.kind === 'empty-road') {
-    return (
-      <div className={styles.roadWrap}>
-        <button
-          className={styles.buildRoad}
-          disabled={!canBuild}
-          title={t('cards.road.name')}
-          onClick={() => onAction({ type: 'BUILD_ROAD', slotIndex: idx })}
-        >
-          +
-        </button>
-      </div>
-    )
-  }
-  return (
-    <div className={styles.roadWrap}>
-      <div className={styles.road} title={t('cards.road.name')} />
     </div>
   )
 }
@@ -121,17 +84,102 @@ export default function Principality({
   const { t } = useTranslation()
   const canBuild = isMyBoard && isMyTurn && phase === 'action'
 
+  // Settlement-bearing slots in axis order; everything else on the axis is a road.
+  const settlementSlots = principality
+    .map((slot, idx) => ({ slot, idx }))
+    .filter(({ slot }) => slot.kind !== 'road' && slot.kind !== 'empty-road')
+
+  const settCount = settlementSlots.length
+  const regionCols = settCount + 1
+
+  // Lay the regions into a shared top/bottom grid. Each settlement i borders the
+  // region columns i (left) and i+1 (right); the column *between* two settlements
+  // is shared, so each settlement's regions read diagonally off it — matching the
+  // physical board. Fill order leftTop → leftBottom → rightTop → rightBottom,
+  // skipping cells a neighbouring settlement already claimed.
+  const topRow: RegionCell[] = Array(regionCols).fill(undefined)
+  const bottomRow: RegionCell[] = Array(regionCols).fill(undefined)
+
+  settlementSlots.forEach(({ slot }, i) => {
+    const regs = slot.regionIndices
+      .map(ri => ({ region: regions[ri], regionIndex: ri }))
+      .filter(r => r.region) as { region: RegionState; regionIndex: number }[]
+    const targets: [RegionCell[], number][] = [
+      [topRow, i], [bottomRow, i], [topRow, i + 1], [bottomRow, i + 1],
+    ]
+    let ti = 0
+    for (const r of regs) {
+      while (ti < targets.length && targets[ti][0][targets[ti][1]] !== undefined) ti++
+      if (ti >= targets.length) break
+      targets[ti][0][targets[ti][1]] = r
+      ti++
+    }
+  })
+
+  // Map each road slot to the region column between its flanking settlements.
+  const roadByCol: Record<number, { slot: CentralSlot; idx: number }> = {}
+  let settOrder = -1
+  principality.forEach((slot, idx) => {
+    if (slot.kind !== 'road' && slot.kind !== 'empty-road') {
+      settOrder++
+      return
+    }
+    roadByCol[settOrder + 1] = { slot, idx }
+  })
+
+  const totalCols = 2 * settCount + 1
+
   return (
     <div className={styles.board}>
-      <div className={styles.axis}>
-        {principality.map((slot, idx) =>
-          slot.kind === 'road' || slot.kind === 'empty-road'
-            ? <RoadConnector key={idx} slot={slot} idx={idx} canBuild={canBuild} onAction={onAction} />
-            : <SettlementUnit key={idx} slot={slot} idx={idx} regions={regions} canBuild={canBuild} onAction={onAction} />
-        )}
+      <div
+        className={styles.grid}
+        style={{ gridTemplateColumns: `repeat(${totalCols}, var(--card-w))` }}
+      >
+        {/* Top regions */}
+        {topRow.map((cell, j) => cell && (
+          <div key={`t${j}`} className={styles.regionCell} style={{ gridColumn: 2 * j + 1, gridRow: 1 }}>
+            <RegionCard region={cell.region} />
+          </div>
+        ))}
 
+        {/* Central axis: settlements/cities */}
+        {settlementSlots.map(({ slot, idx }, i) => (
+          <div key={`s${i}`} className={styles.axisCell} style={{ gridColumn: 2 * i + 2, gridRow: 2 }}>
+            <SettlementCell slot={slot} idx={idx} canBuild={canBuild} onAction={onAction} />
+          </div>
+        ))}
+
+        {/* Roads sit in the shared column between two settlements */}
+        {Object.entries(roadByCol).map(([colStr, { slot, idx }]) => {
+          const col = Number(colStr)
+          return (
+            <div key={`r${col}`} className={styles.axisCell} style={{ gridColumn: 2 * col + 1, gridRow: 2 }}>
+              {slot.kind === 'empty-road' ? (
+                <button
+                  className={styles.buildRoad}
+                  disabled={!canBuild}
+                  title={t('cards.road.name')}
+                  onClick={() => onAction({ type: 'BUILD_ROAD', slotIndex: idx })}
+                >
+                  +
+                </button>
+              ) : (
+                <div className={styles.road} title={t('cards.road.name')} />
+              )}
+            </div>
+          )
+        })}
+
+        {/* Bottom regions */}
+        {bottomRow.map((cell, j) => cell && (
+          <div key={`b${j}`} className={styles.regionCell} style={{ gridColumn: 2 * j + 1, gridRow: 3 }}>
+            <RegionCard region={cell.region} />
+          </div>
+        ))}
+
+        {/* Extend the principality with a new road + settlement off the right flank */}
         {canBuild && (
-          <div className={styles.roadWrap}>
+          <div className={styles.axisCell} style={{ gridColumn: totalCols, gridRow: 2 }}>
             <button
               className={styles.buildRoad}
               title={t('cards.road.name')}
