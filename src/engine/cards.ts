@@ -1,4 +1,4 @@
-import type { CardDefinition, RegionDefinition } from './types'
+import type { CardDefinition, RegionDefinition, PlayerState, ResourceType, Resources } from './types'
 
 // ─── Central Axis Cards ───────────────────────────────────────────────────────
 
@@ -299,27 +299,18 @@ export const AMBUSH: CardDefinition = {
   category: 'action',
   effects: [],
   customEffect: (state, actingPlayer) => {
-    const opponent: 'host' | 'guest' = actingPlayer === 'host' ? 'guest' : 'host'
-    const opponentResources = state.players[opponent].resources
+    const opp: 'host' | 'guest' = actingPlayer === 'host' ? 'guest' : 'host'
+    const oppResources = regionResources(state.players[opp])
     // Steal 1 resource of choice — for now steal the most abundant one
-    const richestResource = (Object.keys(opponentResources) as (keyof typeof opponentResources)[])
-      .reduce((best, r) => opponentResources[r] > opponentResources[best] ? r : best, 'wood' as keyof typeof opponentResources)
-    if (opponentResources[richestResource] === 0) return state
+    const richestResource = (Object.keys(oppResources) as ResourceType[])
+      .reduce((best, r) => oppResources[r] > oppResources[best] ? r : best, 'wood' as ResourceType)
+    if (oppResources[richestResource] === 0) return state
     return {
       ...state,
       players: {
         ...state.players,
-        [opponent]: {
-          ...state.players[opponent],
-          resources: { ...opponentResources, [richestResource]: opponentResources[richestResource] - 1 },
-        },
-        [actingPlayer]: {
-          ...state.players[actingPlayer],
-          resources: {
-            ...state.players[actingPlayer].resources,
-            [richestResource]: state.players[actingPlayer].resources[richestResource] + 1,
-          },
-        },
+        [opp]: adjustRegions(state.players[opp], richestResource, -1),
+        [actingPlayer]: adjustRegions(state.players[actingPlayer], richestResource, +1),
       },
     }
   },
@@ -350,15 +341,14 @@ export const EVENT_PLAGUE: CardDefinition = {
   category: 'event',
   effects: [],
   customEffect: (state, actingPlayer) => {
-    const opponent: 'host' | 'guest' = actingPlayer === 'host' ? 'guest' : 'host'
-    const opponentResources = { ...state.players[opponent].resources }
+    const opp: 'host' | 'guest' = actingPlayer === 'host' ? 'guest' : 'host'
     // Remove 1 wool from opponent
-    if (opponentResources.wool > 0) opponentResources.wool -= 1
+    if (regionResources(state.players[opp]).wool <= 0) return state
     return {
       ...state,
       players: {
         ...state.players,
-        [opponent]: { ...state.players[opponent], resources: opponentResources },
+        [opp]: adjustRegions(state.players[opp], 'wool', -1),
       },
     }
   },
@@ -431,6 +421,39 @@ export function getRegion(id: string): RegionDefinition {
   const region = REGION_REGISTRY[id]
   if (!region) throw new Error(`Unknown region id: ${id}`)
   return region
+}
+
+// ─── Region resource helpers (for custom card effects) ─────────────────────────
+// Resources live on Region cards (0–3 pips). These mirror the engine helpers so
+// custom card effects can move resources without importing the engine (avoids a cycle).
+
+function regionResources(player: PlayerState): Resources {
+  const r: Resources = { wood: 0, wool: 0, gold: 0, brick: 0, ore: 0, grain: 0 }
+  for (const region of player.regions) {
+    r[getRegion(region.regionId).resourceType] += region.storedResources
+  }
+  return r
+}
+
+/** Move `amount` of `type` into (positive) or out of (negative) a player's regions, capped 0–3 each. */
+function adjustRegions(player: PlayerState, type: ResourceType, amount: number): PlayerState {
+  const regions = player.regions.map(r => ({ ...r }))
+  let remaining = Math.abs(amount)
+  const sign = Math.sign(amount)
+  for (const region of regions) {
+    if (remaining <= 0) break
+    if (getRegion(region.regionId).resourceType !== type) continue
+    if (sign > 0) {
+      const add = Math.min(3 - region.storedResources, remaining)
+      region.storedResources += add
+      remaining -= add
+    } else {
+      const take = Math.min(region.storedResources, remaining)
+      region.storedResources -= take
+      remaining -= take
+    }
+  }
+  return { ...player, regions }
 }
 
 // ─── Default Deck Compositions ────────────────────────────────────────────────

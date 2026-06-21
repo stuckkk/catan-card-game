@@ -44,7 +44,7 @@ export default function TradePanel({ resources, playedCards, onAction }: Props) 
             <button
               key={r}
               className={`${styles.chip} ${give === r ? styles.selected : ''}`}
-              disabled={resources[r] < 2}
+              disabled={resources[r] < getTradeRate({ playedCards } as PlayerState, r)}
               onClick={() => setGive(g => (g === r ? null : r))}
               title={t(`resources.${r}`)}
             >

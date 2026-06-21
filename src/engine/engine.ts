@@ -1,5 +1,5 @@
 import {
-  GameState, PlayerState, PlayerId, ResourceType, Resources,
+  GameState, PlayerState, PlayerId, ResourceType, Resources, EMPTY_RESOURCES,
   GameAction, ProjectedState, DiceRoll, EventSymbol, ProductionNumber,
   DeckId, CentralSlot, RegionState, RegionExpansionPosition,
 } from './types'
@@ -16,34 +16,70 @@ function opponent(player: PlayerId): PlayerId {
   return player === 'host' ? 'guest' : 'host'
 }
 
-function addResources(a: Resources, b: Partial<Resources>): Resources {
-  return {
-    wood:  a.wood  + (b.wood  ?? 0),
-    wool:  a.wool  + (b.wool  ?? 0),
-    gold:  a.gold  + (b.gold  ?? 0),
-    brick: a.brick + (b.brick ?? 0),
-    ore:   a.ore   + (b.ore   ?? 0),
-    grain: a.grain + (b.grain ?? 0),
-  }
-}
-
-function subtractResources(a: Resources, b: Partial<Resources>): Resources {
-  return {
-    wood:  a.wood  - (b.wood  ?? 0),
-    wool:  a.wool  - (b.wool  ?? 0),
-    gold:  a.gold  - (b.gold  ?? 0),
-    brick: a.brick - (b.brick ?? 0),
-    ore:   a.ore   - (b.ore   ?? 0),
-    grain: a.grain - (b.grain ?? 0),
-  }
+/** Return a copy of `hand` with the first occurrence of `cardId` removed. */
+function removeFirst(hand: string[], cardId: string): string[] {
+  const idx = hand.indexOf(cardId)
+  if (idx === -1) return [...hand]
+  const copy = [...hand]
+  copy.splice(idx, 1)
+  return copy
 }
 
 function canAfford(resources: Resources, cost: Partial<Resources>): boolean {
   return (Object.keys(cost) as ResourceType[]).every(r => resources[r] >= (cost[r] ?? 0))
 }
 
-function totalResources(r: Resources): number {
-  return r.wood + r.wool + r.gold + r.brick + r.ore + r.grain
+// ─── Region-based Resources ────────────────────────────────────────────────────
+// Resources are stored directly on a player's Regions (0–3 pips each). These
+// helpers treat the Regions as the single source of truth for spendable resources.
+
+/** A player's spendable resources, summed from region storage by resource type. */
+export function availableResources(player: PlayerState): Resources {
+  const r: Resources = { ...EMPTY_RESOURCES }
+  for (const region of player.regions) {
+    r[getRegion(region.regionId).resourceType] += region.storedResources
+  }
+  return r
+}
+
+/** Total stored resources across all regions (used for the Bandit > 7 check). */
+function totalAvailable(player: PlayerState): number {
+  return player.regions.reduce((sum, region) => sum + region.storedResources, 0)
+}
+
+/** Spend a cost from a player's regions, drawing greedily from regions of each
+ *  type. Assumes affordability was already checked via availableResources. */
+function spendFromRegions(player: PlayerState, cost: Partial<Resources>): PlayerState {
+  const regions = player.regions.map(r => ({ ...r }))
+  for (const [res, amount] of Object.entries(cost) as [ResourceType, number][]) {
+    let remaining = amount ?? 0
+    for (const region of regions) {
+      if (remaining <= 0) break
+      if (getRegion(region.regionId).resourceType !== res) continue
+      const take = Math.min(region.storedResources, remaining)
+      region.storedResources -= take
+      remaining -= take
+    }
+  }
+  return { ...player, regions }
+}
+
+/** Add resources to a player's regions of the matching type, capped at 3 each
+ *  (overflow is lost). Distributes across multiple matching regions. */
+function addToRegions(player: PlayerState, gain: Partial<Resources>): PlayerState {
+  const regions = player.regions.map(r => ({ ...r }))
+  for (const [res, amount] of Object.entries(gain) as [ResourceType, number][]) {
+    let remaining = amount ?? 0
+    for (const region of regions) {
+      if (remaining <= 0) break
+      if (getRegion(region.regionId).resourceType !== res) continue
+      const space = 3 - region.storedResources
+      const add = Math.min(space, remaining)
+      region.storedResources += add
+      remaining -= add
+    }
+  }
+  return { ...player, regions }
 }
 
 function shuffle<T>(arr: T[]): T[] {
@@ -185,7 +221,7 @@ function makeInitialPrincipalityAndRegions(): InitialBoard {
   const shuffled = shuffle(chosenRegions)
   const regions = shuffled.map(rd => ({
     regionId: rd.id,
-    storedResources: 0,
+    storedResources: 1,  // each player starts with 1 of every resource
     expansionAbove: null,
     expansionBelow: null,
   }))
@@ -203,7 +239,6 @@ function makeInitialPlayer(id: PlayerId): PlayerState {
   const { principality, regions } = makeInitialPrincipalityAndRegions()
   return {
     id,
-    resources: { wood: 1, wool: 1, gold: 1, brick: 1, ore: 1, grain: 1 },
     hand: [],
     principality,
     regions,
@@ -246,6 +281,7 @@ export function createInitialState(config: { vpTarget: number; language: 'en' | 
       event: eventDeck,
     },
     discardPile: [],
+    pendingTrade: null,
     eventLog: [],
   }
 }
@@ -259,8 +295,12 @@ function resolveEventSymbol(state: GameState, symbol: EventSymbol): GameState {
     case 'bandit': {
       // Any player with strictly more than 7 resources loses all Gold and Wool
       const purgeIfExcess = (p: PlayerState): PlayerState => {
-        if (totalResources(p.resources) <= 7) return p
-        return { ...p, resources: { ...p.resources, gold: 0, wool: 0 } }
+        if (totalAvailable(p) <= 7) return p
+        const regions = p.regions.map(region => {
+          const type = getRegion(region.regionId).resourceType
+          return type === 'gold' || type === 'wool' ? { ...region, storedResources: 0 } : region
+        })
+        return { ...p, regions }
       }
       return {
         ...state,
@@ -281,20 +321,20 @@ function resolveEventSymbol(state: GameState, symbol: EventSymbol): GameState {
       const guestHasTrade = guestStats.commercePoints >= 3 && guestStats.commercePoints > hostStats.commercePoints
 
       let s = state
-      if (hostHasTrade && s.players.guest.resources.gold > 0) {
+      if (hostHasTrade && availableResources(s.players.guest).gold > 0) {
         s = {
           ...s,
           players: {
-            host: { ...s.players.host, resources: addResources(s.players.host.resources, { gold: 1 }) },
-            guest: { ...s.players.guest, resources: subtractResources(s.players.guest.resources, { gold: 1 }) },
+            host: addToRegions(s.players.host, { gold: 1 }),
+            guest: spendFromRegions(s.players.guest, { gold: 1 }),
           },
         }
-      } else if (guestHasTrade && s.players.host.resources.gold > 0) {
+      } else if (guestHasTrade && availableResources(s.players.host).gold > 0) {
         s = {
           ...s,
           players: {
-            guest: { ...s.players.guest, resources: addResources(s.players.guest.resources, { gold: 1 }) },
-            host: { ...s.players.host, resources: subtractResources(s.players.host.resources, { gold: 1 }) },
+            guest: addToRegions(s.players.guest, { gold: 1 }),
+            host: spendFromRegions(s.players.host, { gold: 1 }),
           },
         }
       }
@@ -310,10 +350,10 @@ function resolveEventSymbol(state: GameState, symbol: EventSymbol): GameState {
 
       let s = state
       if (!guestMajority) {
-        s = { ...s, players: { ...s.players, host: { ...s.players.host, resources: addResources(s.players.host.resources, { gold: 1 }) } } }
+        s = { ...s, players: { ...s.players, host: addToRegions(s.players.host, { gold: 1 }) } }
       }
       if (!hostMajority) {
-        s = { ...s, players: { ...s.players, guest: { ...s.players.guest, resources: addResources(s.players.guest.resources, { gold: 1 }) } } }
+        s = { ...s, players: { ...s.players, guest: addToRegions(s.players.guest, { gold: 1 }) } }
       }
       return { ...s, phase: 'production' }
     }
@@ -323,8 +363,8 @@ function resolveEventSymbol(state: GameState, symbol: EventSymbol): GameState {
       return {
         ...state,
         players: {
-          host: { ...state.players.host, resources: addResources(state.players.host.resources, { gold: 1 }) },
-          guest: { ...state.players.guest, resources: addResources(state.players.guest.resources, { gold: 1 }) },
+          host: addToRegions(state.players.host, { gold: 1 }),
+          guest: addToRegions(state.players.guest, { gold: 1 }),
         },
         phase: 'production',
       }
@@ -351,10 +391,7 @@ function resolveEventSymbol(state: GameState, symbol: EventSymbol): GameState {
             ...s,
             players: {
               ...s.players,
-              [active]: {
-                ...s.players[active],
-                resources: addResources(s.players[active].resources, { [effect.resource]: effect.amount }),
-              },
+              [active]: addToRegions(s.players[active], { [effect.resource]: effect.amount }),
             },
           }
         }
@@ -412,7 +449,8 @@ function runProduction(state: GameState, roll: ProductionNumber): GameState {
 
 function applyBuildRoad(state: GameState, actingPlayer: PlayerId, slotIndex: number): GameState {
   const player = state.players[actingPlayer]
-  if (!canAfford(player.resources, { wood: 1, brick: 2 })) return state
+  const cost = { wood: 1, brick: 2 }
+  if (!canAfford(availableResources(player), cost)) return state
 
   const principality = [...player.principality]
 
@@ -430,8 +468,7 @@ function applyBuildRoad(state: GameState, actingPlayer: PlayerId, slotIndex: num
     players: {
       ...state.players,
       [actingPlayer]: {
-        ...player,
-        resources: subtractResources(player.resources, { wood: 1, brick: 2 }),
+        ...spendFromRegions(player, cost),
         principality,
         playedCards: [...player.playedCards, 'road'],
       },
@@ -441,7 +478,8 @@ function applyBuildRoad(state: GameState, actingPlayer: PlayerId, slotIndex: num
 
 function applyBuildSettlement(state: GameState, actingPlayer: PlayerId, slotIndex: number): GameState {
   const player = state.players[actingPlayer]
-  if (!canAfford(player.resources, { wood: 1, brick: 1, grain: 1, wool: 1 })) return state
+  const cost = { wood: 1, brick: 1, grain: 1, wool: 1 }
+  if (!canAfford(availableResources(player), cost)) return state
 
   const slot = player.principality[slotIndex]
   if (!slot || slot.kind !== 'empty-settlement') return state
@@ -452,8 +490,10 @@ function applyBuildSettlement(state: GameState, actingPlayer: PlayerId, slotInde
   if (available.length < 2) return state
   const [r1, r2] = shuffle(available)
 
+  // Spend the cost from existing regions first, then append the 2 new regions.
+  const spent = spendFromRegions(player, cost)
   const newRegions = [
-    ...player.regions,
+    ...spent.regions,
     { regionId: r1.id, storedResources: 0, expansionAbove: null, expansionBelow: null },
     { regionId: r2.id, storedResources: 0, expansionAbove: null, expansionBelow: null },
   ]
@@ -472,7 +512,6 @@ function applyBuildSettlement(state: GameState, actingPlayer: PlayerId, slotInde
       ...state.players,
       [actingPlayer]: {
         ...player,
-        resources: subtractResources(player.resources, { wood: 1, brick: 1, grain: 1, wool: 1 }),
         principality,
         regions: newRegions,
         playedCards: [...player.playedCards, 'settlement'],
@@ -483,7 +522,8 @@ function applyBuildSettlement(state: GameState, actingPlayer: PlayerId, slotInde
 
 function applyBuildCity(state: GameState, actingPlayer: PlayerId, slotIndex: number): GameState {
   const player = state.players[actingPlayer]
-  if (!canAfford(player.resources, { grain: 2, ore: 3 })) return state
+  const cost = { grain: 2, ore: 3 }
+  if (!canAfford(availableResources(player), cost)) return state
 
   const slot = player.principality[slotIndex]
   if (!slot || slot.kind !== 'settlement') return state
@@ -495,7 +535,9 @@ function applyBuildCity(state: GameState, actingPlayer: PlayerId, slotIndex: num
       : s
   )
 
-  // Replace 'settlement' in playedCards with 'city'
+  // Upgrade one 'settlement' entry to 'city' in the stat-count list. The specific
+  // settlement on the board is identified by slotIndex above; playedCards only
+  // affects derived totals, so replacing any one entry keeps the counts correct.
   const settlementIdx = player.playedCards.indexOf('settlement')
   const playedCards = [...player.playedCards]
   if (settlementIdx !== -1) playedCards[settlementIdx] = 'city'
@@ -505,8 +547,7 @@ function applyBuildCity(state: GameState, actingPlayer: PlayerId, slotIndex: num
     players: {
       ...state.players,
       [actingPlayer]: {
-        ...player,
-        resources: subtractResources(player.resources, { grain: 2, ore: 3 }),
+        ...spendFromRegions(player, cost),
         principality,
         playedCards,
       },
@@ -525,7 +566,7 @@ function applyPlaceExpansion(
   const card = CARD_REGISTRY[cardId]
   if (!card) return state
   if (!player.hand.includes(cardId)) return state
-  if (!canAfford(player.resources, card.cost ?? {})) return state
+  if (!canAfford(availableResources(player), card.cost ?? {})) return state
 
   const slot = player.principality[slotIndex]
   if (!slot) return state
@@ -545,17 +586,13 @@ function applyPlaceExpansion(
     return { ...s, expansionSlots: slots }
   })
 
-  const newHand = player.hand.filter((id, i) => !(id === cardId && i === player.hand.indexOf(cardId)))
-  let newResources = subtractResources(player.resources, card.cost ?? {})
-
   let newState: GameState = {
     ...state,
     players: {
       ...state.players,
       [actingPlayer]: {
-        ...player,
-        resources: newResources,
-        hand: newHand,
+        ...spendFromRegions(player, card.cost ?? {}),
+        hand: removeFirst(player.hand, cardId),
         principality,
         playedCards: [...player.playedCards, cardId],
       },
@@ -581,18 +618,18 @@ function applyPlaceRegionExpansion(
   const card = CARD_REGISTRY[cardId]
   if (!card || card.expansionColor !== 'brown') return state
   if (!player.hand.includes(cardId)) return state
-  if (!canAfford(player.resources, card.cost ?? {})) return state
+  if (!canAfford(availableResources(player), card.cost ?? {})) return state
 
   const region = player.regions[regionIndex]
   if (!region) return state
   const field = position === 'above' ? 'expansionAbove' : 'expansionBelow'
   if (region[field] !== null) return state
 
-  const regions = player.regions.map((r, i) =>
+  // Spend the cost from regions first, then attach the expansion to the region.
+  const spent = spendFromRegions(player, card.cost ?? {})
+  const regions = spent.regions.map((r, i) =>
     i === regionIndex ? { ...r, [field]: cardId } : r
   )
-  const newHand = [...player.hand]
-  newHand.splice(newHand.indexOf(cardId), 1)
 
   let newState: GameState = {
     ...state,
@@ -600,8 +637,7 @@ function applyPlaceRegionExpansion(
       ...state.players,
       [actingPlayer]: {
         ...player,
-        resources: subtractResources(player.resources, card.cost ?? {}),
-        hand: newHand,
+        hand: removeFirst(player.hand, cardId),
         regions,
         playedCards: [...player.playedCards, cardId],
       },
@@ -681,14 +717,11 @@ function applyPlayActionCard(state: GameState, actingPlayer: PlayerId, cardId: s
   if (!card || card.category !== 'action') return state
   if (!player.hand.includes(cardId)) return state
 
-  const newHand = [...player.hand]
-  newHand.splice(newHand.indexOf(cardId), 1)
-
   let newState: GameState = {
     ...state,
     players: {
       ...state.players,
-      [actingPlayer]: { ...player, hand: newHand },
+      [actingPlayer]: { ...player, hand: removeFirst(player.hand, cardId) },
     },
     discardPile: [...state.discardPile, cardId],
   }
@@ -700,10 +733,7 @@ function applyPlayActionCard(state: GameState, actingPlayer: PlayerId, cardId: s
         ...newState,
         players: {
           ...newState.players,
-          [actingPlayer]: {
-            ...newState.players[actingPlayer],
-            resources: addResources(newState.players[actingPlayer].resources, { [effect.resource]: effect.amount }),
-          },
+          [actingPlayer]: addToRegions(newState.players[actingPlayer], { [effect.resource]: effect.amount }),
         },
       }
     }
@@ -726,21 +756,64 @@ function applyTradeWithBank(
   if (give === receive) return state
   const player = state.players[actingPlayer]
   const rate = getTradeRate(player, give)
-  if (player.resources[give] < rate) return state
+  if (availableResources(player)[give] < rate) return state
+
+  // Spend `rate` of the given resource from regions, gain 1 of the received resource.
+  const traded = addToRegions(spendFromRegions(player, { [give]: rate }), { [receive]: 1 })
+  return {
+    ...state,
+    players: { ...state.players, [actingPlayer]: traded },
+  }
+}
+
+// ─── Player-to-Player Trade ─────────────────────────────────────────────────────
+
+/** Active player offers a resource trade to the opponent. Only one offer at a time. */
+function applyProposeTrade(
+  state: GameState,
+  actingPlayer: PlayerId,
+  give: Partial<Resources>,
+  receive: Partial<Resources>,
+): GameState {
+  if (state.phase !== 'action') return state
+  if (state.pendingTrade) return state  // an offer is already on the table
+  // Proposer must currently hold what they're offering.
+  if (!canAfford(availableResources(state.players[actingPlayer]), give)) return state
+  // A trade must actually move something each way.
+  if (totalOf(give) === 0 || totalOf(receive) === 0) return state
+
+  return { ...state, pendingTrade: { from: actingPlayer, give, receive } }
+}
+
+/** The opponent (or proposer) responds to the pending offer. */
+function applyRespondTrade(state: GameState, actingPlayer: PlayerId, accept: boolean): GameState {
+  const offer = state.pendingTrade
+  if (!offer) return state
+
+  // Decline / cancel: either party may clear the offer.
+  if (!accept) return { ...state, pendingTrade: null }
+
+  // Only the opponent of the proposer may accept.
+  const responder = opponent(offer.from)
+  if (actingPlayer !== responder) return state
+
+  // Both sides must be able to honour the trade.
+  if (!canAfford(availableResources(state.players[offer.from]), offer.give)) return { ...state, pendingTrade: null }
+  if (!canAfford(availableResources(state.players[responder]), offer.receive)) return { ...state, pendingTrade: null }
+
+  // Proposer gives `give` and gains `receive`; responder does the inverse.
+  const proposer = addToRegions(spendFromRegions(state.players[offer.from], offer.give), offer.receive)
+  const accepter = addToRegions(spendFromRegions(state.players[responder], offer.receive), offer.give)
 
   return {
     ...state,
-    players: {
-      ...state.players,
-      [actingPlayer]: {
-        ...player,
-        resources: addResources(
-          subtractResources(player.resources, { [give]: rate }),
-          { [receive]: 1 }
-        ),
-      },
-    },
+    players: { ...state.players, [offer.from]: proposer, [responder]: accepter },
+    pendingTrade: null,
   }
+}
+
+function totalOf(r: Partial<Resources>): number {
+  return Object.values(r).reduce((sum, n) => sum + (n ?? 0), 0)
 }
 
 function applyEndActionPhase(state: GameState, actingPlayer: PlayerId): GameState {
@@ -810,10 +883,8 @@ function applyFreeSwap(state: GameState, actingPlayer: PlayerId, discardCardId: 
   if (deck.length === 0) return state
   if (!player.hand.includes(discardCardId)) return state
 
-  const newHand = [...player.hand]
-  newHand.splice(newHand.indexOf(discardCardId), 1)
   const drawnCard = deck[deck.length - 1]
-  newHand.push(drawnCard)
+  const newHand = [...removeFirst(player.hand, discardCardId), drawnCard]
 
   return {
     ...state,
@@ -842,7 +913,7 @@ function applyPaidSwap(
 ): GameState {
   if (state.phase !== 'swap') return state
   const player = state.players[actingPlayer]
-  if (player.resources[payWith] < 2) return state
+  if (availableResources(player)[payWith] < 2) return state
   if (!player.hand.includes(discardCardId)) return state
 
   const search = state.decks[searchDeck]
@@ -853,9 +924,7 @@ function applyPaidSwap(
   const newSearchDeck = [...search]
   newSearchDeck.splice(searchIdx, 1)
 
-  const newHand = [...player.hand]
-  newHand.splice(newHand.indexOf(discardCardId), 1)
-  newHand.push(searchCardId)
+  const newHand = [...removeFirst(player.hand, discardCardId), searchCardId]
 
   // Apply the search-deck change first, then bury the discarded card under fromDeck.
   const decks = { ...state.decks, [searchDeck]: newSearchDeck }
@@ -866,8 +935,7 @@ function applyPaidSwap(
     players: {
       ...state.players,
       [actingPlayer]: {
-        ...player,
-        resources: subtractResources(player.resources, { [payWith]: 2 }),
+        ...spendFromRegions(player, { [payWith]: 2 }),
         hand: newHand,
       },
     },
@@ -889,8 +957,10 @@ function applySkipSwap(state: GameState, actingPlayer: PlayerId): GameState {
 // ─── Main Reducer ─────────────────────────────────────────────────────────────
 
 export function applyAction(state: GameState, actingPlayer: PlayerId, action: GameAction): GameState {
-  // Only active player can act (except in hand-check phase where both may need to discard)
-  if (action.type !== 'DISCARD_TO_LIMIT' && state.activePlayer !== actingPlayer) return state
+  // Only the active player may act, except where the opponent must respond:
+  // discarding to the hand limit, and accepting/declining a pending trade offer.
+  const opponentAllowed: GameAction['type'][] = ['DISCARD_TO_LIMIT', 'ACCEPT_TRADE', 'DECLINE_TRADE']
+  if (!opponentAllowed.includes(action.type) && state.activePlayer !== actingPlayer) return state
 
   let next: GameState
   switch (action.type) {
@@ -902,6 +972,9 @@ export function applyAction(state: GameState, actingPlayer: PlayerId, action: Ga
     case 'PLACE_REGION_EXPANSION': next = applyPlaceRegionExpansion(state, actingPlayer, action.cardId, action.regionIndex, action.position); break
     case 'PLAY_ACTION_CARD':   next = applyPlayActionCard(state, actingPlayer, action.cardId); break
     case 'TRADE_WITH_BANK':    next = applyTradeWithBank(state, actingPlayer, action.give, action.receive); break
+    case 'PROPOSE_TRADE':      next = applyProposeTrade(state, actingPlayer, action.give, action.receive); break
+    case 'ACCEPT_TRADE':       next = applyRespondTrade(state, actingPlayer, true); break
+    case 'DECLINE_TRADE':      next = applyRespondTrade(state, actingPlayer, false); break
     case 'DEMOLISH':           next = applyDemolish(state, actingPlayer, action.slotIndex, action.expansionSlotIndex); break
     case 'DEMOLISH_REGION_EXPANSION': next = applyDemolishRegionExpansion(state, actingPlayer, action.regionIndex, action.position); break
     case 'END_ACTION_PHASE':   next = applyEndActionPhase(state, actingPlayer); break

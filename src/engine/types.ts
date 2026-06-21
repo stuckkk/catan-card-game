@@ -81,7 +81,6 @@ export interface CentralSlot {
 
 export interface PlayerState {
   id: PlayerId
-  resources: Resources
   hand: string[]          // CardDefinition ids
   /** Central Axis slots, always odd-length: [settlement, road, settlement, road, settlement, ...] */
   principality: CentralSlot[]
@@ -133,8 +132,17 @@ export interface GameState {
   winner: PlayerId | null
   decks: Record<DeckId, string[]>   // stacks of CardDefinition ids, top = last element
   discardPile: string[]
+  /** A resource trade offered by the active player, awaiting the opponent's response. */
+  pendingTrade: PendingTrade | null
   /** Log of human-readable event keys for the action log UI */
   eventLog: GameEvent[]
+}
+
+/** A proposed player-to-player resource trade, from the proposer's perspective. */
+export interface PendingTrade {
+  from: PlayerId
+  give: Partial<Resources>     // resources the proposer gives away
+  receive: Partial<Resources>  // resources the proposer wants in return
 }
 
 export interface GameEvent {
@@ -170,6 +178,12 @@ export type GameAction =
   | { type: 'PLACE_REGION_EXPANSION'; cardId: string; regionIndex: number; position: RegionExpansionPosition }
   | { type: 'PLAY_ACTION_CARD'; cardId: string }
   | { type: 'TRADE_WITH_BANK'; give: ResourceType; receive: ResourceType }
+  /** Active player offers a resource trade to the opponent. */
+  | { type: 'PROPOSE_TRADE'; give: Partial<Resources>; receive: Partial<Resources> }
+  /** Opponent accepts the pending trade offer. */
+  | { type: 'ACCEPT_TRADE' }
+  /** Opponent (or proposer) declines/cancels the pending trade offer. */
+  | { type: 'DECLINE_TRADE' }
   /** Demolish own Green/Red Expansion (free, to discard). */
   | { type: 'DEMOLISH'; slotIndex: number; expansionSlotIndex: number }
   /** Demolish own Brown Expansion (free, to discard). */

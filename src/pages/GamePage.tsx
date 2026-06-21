@@ -1,15 +1,17 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { applyAction, computeVP, projectForGuest } from '../engine/engine'
-import type { GameState, GameAction, ProjectedState, PlayerId } from '../engine/types'
+import { applyAction, computeVP, projectForGuest, availableResources } from '../engine/engine'
+import type { GameState, GameAction, ProjectedState, PlayerId, DeckId } from '../engine/types'
 import { createHostSession, joinHostSession } from '../network/trysteroSession'
 import type { HostSession, GuestSession } from '../network/trysteroSession'
 import { sessionStore } from '../network/sessionStore'
 import { savePersisted, clearPersisted, loadPersisted } from '../network/persistence'
 import Principality from '../components/Principality'
 import PhaseTracker from '../components/PhaseTracker'
-import TradePanel from '../components/TradePanel'
+import TradeMenu from '../components/TradeMenu'
+import TradeOfferBanner from '../components/TradeOfferBanner'
+import SwapPanel from '../components/SwapPanel'
 import Hand from '../components/Hand'
 import ResourceBar from '../components/ResourceBar'
 import DiceDisplay from '../components/DiceDisplay'
@@ -132,7 +134,7 @@ export default function GamePage() {
 
   const state = role === 'host' ? gameState : null
   const myState = role === 'host' ? gameState?.players.host : projected?.players.guest
-  const myResources = myState?.resources
+  const myResources = myState ? availableResources(myState) : undefined
   const myHand = role === 'host'
     ? gameState?.players.host.hand ?? []
     : projected?.players.guest.hand ?? []
@@ -142,6 +144,8 @@ export default function GamePage() {
   const phase = role === 'host' ? gameState?.phase : projected?.phase
   const lastRoll = role === 'host' ? gameState?.lastRoll : projected?.lastRoll
   const winner = role === 'host' ? gameState?.winner : projected?.winner
+  const pendingTrade = role === 'host' ? gameState?.pendingTrade : projected?.pendingTrade
+  const decks = (role === 'host' ? gameState?.decks : projected?.decks) as Record<DeckId, string[]> | undefined
 
   // VP for the local player, including Hero/Trade advantage tokens. Both
   // computations depend only on played cards (never hidden hands), so the Guest
@@ -221,10 +225,24 @@ export default function GamePage() {
           onAction={dispatchAction}
         />
 
+        {pendingTrade && (
+          <TradeOfferBanner offer={pendingTrade} myId={myId} onAction={dispatchAction} />
+        )}
+
         {phase === 'action' && isMyTurn && myResources && myState && (
-          <TradePanel
+          <TradeMenu
             resources={myResources}
             playedCards={myState.playedCards}
+            offerPending={!!pendingTrade}
+            onAction={dispatchAction}
+          />
+        )}
+
+        {phase === 'swap' && isMyTurn && myResources && decks && (
+          <SwapPanel
+            hand={myHand as string[]}
+            decks={decks}
+            resources={myResources}
             onAction={dispatchAction}
           />
         )}
