@@ -45,6 +45,13 @@
   margin: 0 auto;
 }
 
+/* Keep children at their natural height so the panel actually overflows and its
+   overflow-y:auto scrollbar engages, instead of compressing content (which would
+   clip e.g. the Trade menu's resource pickers behind .menu's overflow:hidden). */
+.bottomPanel > * {
+  flex-shrink: 0;
+}
+
 .statusBar {
   display: flex;
   align-items: center;
