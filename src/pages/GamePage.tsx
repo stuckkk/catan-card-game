@@ -16,6 +16,7 @@ import Hand from '../components/Hand'
 import ResourceBar from '../components/ResourceBar'
 import DiceDisplay from '../components/DiceDisplay'
 import OpponentSummary from '../components/OpponentSummary'
+import ResourceChoiceModal from '../components/ResourceChoiceModal'
 import styles from './GamePage.module.css'
 
 export default function GamePage() {
@@ -55,7 +56,13 @@ export default function GamePage() {
     if (role === 'host') {
       setGameState(prev => {
         if (!prev) return prev
-        const next = applyAction(prev, 'host', action)
+        // A resource choice is applied as its owner, not always the host: this lets the
+        // host answer its own pending choice and lets Practice/hot-seat resolve the
+        // guest's choice locally. Networked guest choices still arrive via host.onAction.
+        const actor: PlayerId = action.type === 'CHOOSE_RESOURCE'
+          ? prev.pendingChoices[0]?.player ?? 'host'
+          : 'host'
+        const next = applyAction(prev, actor, action)
         hostSessionRef.current?.sendState(projectForGuest(next))
         return next
       })
@@ -145,7 +152,14 @@ export default function GamePage() {
   const lastRoll = role === 'host' ? gameState?.lastRoll : projected?.lastRoll
   const winner = role === 'host' ? gameState?.winner : projected?.winner
   const pendingTrade = role === 'host' ? gameState?.pendingTrade : projected?.pendingTrade
+  const pendingChoices = role === 'host' ? gameState?.pendingChoices : projected?.pendingChoices
   const decks = (role === 'host' ? gameState?.decks : projected?.decks) as Record<DeckId, string[]> | undefined
+
+  // Practice/hot-seat: launched as host with no live network session. The single client
+  // resolves whichever player owns the active choice.
+  const isPractice = role === 'host' && !hostSessionRef.current
+  const activeChoice = pendingChoices?.[0] ?? null
+  const myChoice = activeChoice && (activeChoice.player === myId || isPractice) ? activeChoice : null
 
   // VP for the local player, including Hero/Trade advantage tokens. Both
   // computations depend only on played cards (never hidden hands), so the Guest
@@ -227,6 +241,12 @@ export default function GamePage() {
 
         {pendingTrade && (
           <TradeOfferBanner offer={pendingTrade} myId={myId} onAction={dispatchAction} />
+        )}
+
+        {myChoice && <ResourceChoiceModal choice={myChoice} onAction={dispatchAction} />}
+
+        {activeChoice && !myChoice && (
+          <div className={styles.choiceWaiting}>{t('game.chooseResource.waiting')}</div>
         )}
 
         {phase === 'action' && isMyTurn && myResources && myState && (

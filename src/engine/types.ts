@@ -10,9 +10,9 @@ export const EMPTY_RESOURCES: Resources = {
 }
 
 export type ProductionNumber = 1 | 2 | 3 | 4 | 5 | 6
-export type EventSymbol = 'bandit' | 'trade' | 'festival' | 'harvest' | 'event'
+export type EventSymbol = 'bandit' | 'trade' | 'tournament' | 'harvest' | 'event'
 
-export type SymbolType = 'strength' | 'commerce' | 'progress'
+export type SymbolType = 'strength' | 'commerce' | 'progress' | 'tournament'
 
 export type DeckId = 'green' | 'red' | 'brown' | 'yellow' | 'event'
 
@@ -96,6 +96,7 @@ export interface PlayerStats {
   strengthPoints: number
   commercePoints: number
   progressPoints: number
+  tournamentPoints: number
   handLimit: number
   hasHeroToken: boolean
   hasTradeToken: boolean
@@ -134,6 +135,9 @@ export interface GameState {
   discardPile: string[]
   /** A resource trade offered by the active player, awaiting the opponent's response. */
   pendingTrade: PendingTrade | null
+  /** Interactive resource picks awaiting input, FIFO. Index 0 is the active prompt; while
+   *  non-empty, event resolution is paused (phase stays 'event-resolution'). */
+  pendingChoices: PendingResourceChoice[]
   /** Log of human-readable event keys for the action log UI */
   eventLog: GameEvent[]
 }
@@ -143,6 +147,22 @@ export interface PendingTrade {
   from: PlayerId
   give: Partial<Resources>     // resources the proposer gives away
   receive: Partial<Resources>  // resources the proposer wants in return
+}
+
+/** Why a player is being asked to pick a resource — drives the picker's label. */
+export type ResourceChoiceReason = 'trade' | 'harvest' | 'tournament'
+
+/** A pending interactive "choose a resource" prompt owned by one player. The engine
+ *  pauses event resolution until the owner submits a CHOOSE_RESOURCE action. */
+export interface PendingResourceChoice {
+  /** The player who must pick. */
+  player: PlayerId
+  /** What triggered the choice. */
+  reason: ResourceChoiceReason
+  /** Resource types offered. Trade: only resources the opponent holds. Harvest: all six. */
+  options: ResourceType[]
+  /** Trade: the opponent the chosen resource is taken from. Harvest: null (gained from bank). */
+  takeFrom: PlayerId | null
 }
 
 export interface GameEvent {
@@ -178,6 +198,8 @@ export type GameAction =
   | { type: 'PLACE_REGION_EXPANSION'; cardId: string; regionIndex: number; position: RegionExpansionPosition }
   | { type: 'PLAY_ACTION_CARD'; cardId: string }
   | { type: 'TRADE_WITH_BANK'; give: ResourceType; receive: ResourceType }
+  /** Submit the resource pick for the active pending choice (Trade/Harvest events). */
+  | { type: 'CHOOSE_RESOURCE'; resource: ResourceType }
   /** Active player offers a resource trade to the opponent. */
   | { type: 'PROPOSE_TRADE'; give: Partial<Resources>; receive: Partial<Resources> }
   /** Opponent accepts the pending trade offer. */

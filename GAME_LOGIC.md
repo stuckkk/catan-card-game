@@ -76,9 +76,9 @@ The player may optionally swap exactly 1 card.
 Evaluated strictly based on the rolled symbol.
 * **Bandit (Red Club):** Triggers BEFORE the Production Die. Any player with strictly more than 7 total resources loses all Gold and Wool.
 * **Trade (Scales):** The player possessing the Trade Token takes 1 resource of their choice from the opponent.
-* **Tournament (Harp):** Each Knight carries a Tournament value in addition to its Strength value. The player with the strictly higher total Tournament Points (summed across their Knights) receives 1 free resource of their choice. (Tie handling is still to be specified — see `errors.txt`.) Note: not yet implemented — the engine currently treats this face as a generic "both receive gold" event keyed off Progress Points; see `errors.txt`.
+* **Tournament (Knights):** Each Knight carries a Tournament value in addition to its Strength value. The player with the strictly higher total Tournament Points (summed across their Knights) chooses 1 free resource from the bank. On a tie (including 0–0) nobody receives anything.
 * **Harvest (Sun):** Both players receive 1 free resource of their choice.
-* **Event (?):** The active player draws and resolves the top card of the Event Deck.
+* **Event (?):** The active player draws and resolves the top card of the Event Deck. This symbol occupies **two of the six event-die faces** (twice the chance of any other face).
 
 ### Production Die (Ertragswürfel) Evaluation
 Number 1 through 6. Both players receive 1 resource on all regions matching the rolled number. This is handled AFTER the Event Die, unless the Bandit was rolled.
@@ -110,6 +110,6 @@ Advantage tokens dynamically shift between players based on points displayed on 
 
 Each Knight (a Green Expansion) carries **two independent values** that must not be conflated:
 * **Strength Points (Axe):** Count toward the Strength Advantage / Hero Token (§6).
-* **Tournament Points:** Count **only** for the Tournament (Harp) event resolution (§4). These are distinct from Progress Points (Book), which increase the Hand Limit (§3) and have nothing to do with tournaments.
+* **Tournament Points:** Count **only** for the Tournament event resolution (§4). These are distinct from Progress Points (Book), which increase the Hand Limit (§3) and have nothing to do with tournaments.
 
-(Status: the Tournament value and the Tournament event are not yet implemented — see `errors.txt`. The per-Knight Tournament values still need to be supplied.)
+Per-Knight Tournament values equal their Strength values: **Militiaman 1, Swordsman 2, Knight 3**. (Note: the Fortress grants Strength but is not a Knight, so it contributes **no** Tournament Points.)

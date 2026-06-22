@@ -101,8 +101,8 @@ _Avoid_: Trade points, merchant points
 **Progress Points**: Points from the Book symbol on Expansion Cards, each increasing the Hand Limit by 1.
 _Avoid_: Science points, book points
 
-**Tournament Points**: The Tournament value carried by Knight cards (separate from their Strength value). At the Tournament (Harp) event, the player with the strictly higher total Tournament Points chooses 1 free resource. Distinct from Strength Points and Progress Points.
-_Avoid_: Skill points, festival points
+**Tournament Points**: The Tournament value carried by Knight cards (separate from their Strength value). At the Tournament event, the player with the strictly higher total Tournament Points chooses 1 free resource; a tie gives nobody anything. Distinct from Strength Points and Progress Points.
+_Avoid_: Skill points, festival points, harp event
 
 **Hero Token**: The Strength Advantage marker. Grants 1 VP to the player with ≥3 Strength Points and strictly more Strength Points than the opponent.
 _Avoid_: Strength token, strength advantage, knight token

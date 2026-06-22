@@ -45,6 +45,12 @@
     "cancelOffer": "Cancel Offer",
     "tradeWaiting": "Waiting for opponent to respond…",
     "tradeNothing": "—",
+    "chooseResource": {
+      "tradeTitle": "Choose a resource to take from your opponent",
+      "harvestTitle": "Choose your free resource",
+      "tournamentTitle": "You won the tournament — choose your free resource",
+      "waiting": "Opponent is choosing a resource…"
+    },
     "swapTitle": "End-of-turn Card Swap",
     "swapHint": "Discard one hand card and draw a new one from a stack.",
     "swapDiscardLabel": "Card to discard",
@@ -121,7 +127,7 @@
   "dice": {
     "bandit": "Bandit!",
     "trade": "Trade",
-    "festival": "Festival",
+    "tournament": "Tournament",
     "harvest": "Harvest",
     "event": "Event"
   },

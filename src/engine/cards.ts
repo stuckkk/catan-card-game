@@ -70,7 +70,10 @@ export const MILITIAMAN: CardDefinition = {
   category: 'expansion',
   expansionColor: 'green',
   cost: { ore: 1, wool: 1 },
-  effects: [{ type: 'GRANT_SYMBOL', symbol: 'strength', amount: 1 }],
+  effects: [
+    { type: 'GRANT_SYMBOL', symbol: 'strength', amount: 1 },
+    { type: 'GRANT_SYMBOL', symbol: 'tournament', amount: 1 },
+  ],
 }
 
 export const SWORDSMAN: CardDefinition = {
@@ -80,7 +83,10 @@ export const SWORDSMAN: CardDefinition = {
   category: 'expansion',
   expansionColor: 'green',
   cost: { ore: 2, wool: 1 },
-  effects: [{ type: 'GRANT_SYMBOL', symbol: 'strength', amount: 2 }],
+  effects: [
+    { type: 'GRANT_SYMBOL', symbol: 'strength', amount: 2 },
+    { type: 'GRANT_SYMBOL', symbol: 'tournament', amount: 2 },
+  ],
 }
 
 export const KNIGHT: CardDefinition = {
@@ -90,7 +96,10 @@ export const KNIGHT: CardDefinition = {
   category: 'expansion',
   expansionColor: 'green',
   cost: { ore: 3, wool: 1, grain: 1 },
-  effects: [{ type: 'GRANT_SYMBOL', symbol: 'strength', amount: 3 }],
+  effects: [
+    { type: 'GRANT_SYMBOL', symbol: 'strength', amount: 3 },
+    { type: 'GRANT_SYMBOL', symbol: 'tournament', amount: 3 },
+  ],
 }
 
 export const MERCHANT: CardDefinition = {

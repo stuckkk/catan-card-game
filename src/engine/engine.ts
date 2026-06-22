@@ -29,6 +29,9 @@ function canAfford(resources: Resources, cost: Partial<Resources>): boolean {
   return (Object.keys(cost) as ResourceType[]).every(r => resources[r] >= (cost[r] ?? 0))
 }
 
+/** All six resource types, derived from the canonical empty-resources shape. */
+const ALL_RESOURCE_TYPES = Object.keys(EMPTY_RESOURCES) as ResourceType[]
+
 // ─── Region-based Resources ────────────────────────────────────────────────────
 // Resources are stored directly on a player's Regions (0–3 pips each). These
 // helpers treat the Regions as the single source of truth for spendable resources.
@@ -102,12 +105,14 @@ export function computePlayerStats(player: PlayerState): {
   strengthPoints: number
   commercePoints: number
   progressPoints: number
+  tournamentPoints: number
   handLimit: number
 } {
   let vp = 0
   let strength = 0
   let commerce = 0
   let progress = 0
+  let tournament = 0
 
   for (const cardId of player.playedCards) {
     const def = getCard(cardId)
@@ -117,6 +122,7 @@ export function computePlayerStats(player: PlayerState): {
         if (effect.symbol === 'strength') strength += effect.amount
         if (effect.symbol === 'commerce') commerce += effect.amount
         if (effect.symbol === 'progress') progress += effect.amount
+        if (effect.symbol === 'tournament') tournament += effect.amount
       }
       if (effect.type === 'GRANT_VP') vp += effect.amount
     }
@@ -127,6 +133,7 @@ export function computePlayerStats(player: PlayerState): {
     strengthPoints: strength,
     commercePoints: commerce,
     progressPoints: progress,
+    tournamentPoints: tournament,
     handLimit: 3 + progress,
   }
 }
@@ -282,6 +289,7 @@ export function createInitialState(config: { vpTarget: number; language: 'en' | 
     },
     discardPile: [],
     pendingTrade: null,
+    pendingChoices: [],
     eventLog: [],
   }
 }
@@ -313,60 +321,58 @@ function resolveEventSymbol(state: GameState, symbol: EventSymbol): GameState {
     }
 
     case 'trade': {
-      // Player with Trade Token takes 1 Gold from opponent
-      // (simplified: takes most abundant resource)
+      // The Trade-Token holder takes 1 resource of their choice from the opponent.
       const hostStats = computePlayerStats(state.players.host)
       const guestStats = computePlayerStats(state.players.guest)
       const hostHasTrade = hostStats.commercePoints >= 3 && hostStats.commercePoints > guestStats.commercePoints
       const guestHasTrade = guestStats.commercePoints >= 3 && guestStats.commercePoints > hostStats.commercePoints
+      const holder: PlayerId | null = hostHasTrade ? 'host' : guestHasTrade ? 'guest' : null
 
-      let s = state
-      if (hostHasTrade && availableResources(s.players.guest).gold > 0) {
-        s = {
-          ...s,
-          players: {
-            host: addToRegions(s.players.host, { gold: 1 }),
-            guest: spendFromRegions(s.players.guest, { gold: 1 }),
-          },
-        }
-      } else if (guestHasTrade && availableResources(s.players.host).gold > 0) {
-        s = {
-          ...s,
-          players: {
-            guest: addToRegions(s.players.guest, { gold: 1 }),
-            host: spendFromRegions(s.players.host, { gold: 1 }),
-          },
-        }
+      // No holder, or the opponent has nothing to take: resolve as a no-op.
+      if (holder === null) return { ...state, phase: 'production' }
+      const from = opponent(holder)
+      const fromResources = availableResources(state.players[from])
+      const options = ALL_RESOURCE_TYPES.filter(r => fromResources[r] > 0)
+      if (options.length === 0) return { ...state, phase: 'production' }
+
+      // Pause and let the holder pick which resource to take.
+      return {
+        ...state,
+        pendingChoices: [{ player: holder, reason: 'trade', options, takeFrom: from }],
+        phase: 'event-resolution',
       }
-      return { ...s, phase: 'production' }
     }
 
-    case 'festival': {
-      // Both receive 1 resource unless one has strictly more Skill Points
+    case 'tournament': {
+      // The player with the strictly higher SUM of their Knights' Tournament Points
+      // chooses 1 free resource from the bank. A tie (including 0–0) is a no-op.
       const hostStats = computePlayerStats(state.players.host)
       const guestStats = computePlayerStats(state.players.guest)
-      const hostMajority = hostStats.progressPoints > guestStats.progressPoints
-      const guestMajority = guestStats.progressPoints > hostStats.progressPoints
+      const winner: PlayerId | null =
+        hostStats.tournamentPoints > guestStats.tournamentPoints ? 'host'
+        : guestStats.tournamentPoints > hostStats.tournamentPoints ? 'guest'
+        : null
 
-      let s = state
-      if (!guestMajority) {
-        s = { ...s, players: { ...s.players, host: addToRegions(s.players.host, { gold: 1 }) } }
+      if (winner === null) return { ...state, phase: 'production' }
+
+      // Pause and let the winner pick their free resource (overflow past the cap is lost).
+      return {
+        ...state,
+        pendingChoices: [{ player: winner, reason: 'tournament', options: ALL_RESOURCE_TYPES, takeFrom: null }],
+        phase: 'event-resolution',
       }
-      if (!hostMajority) {
-        s = { ...s, players: { ...s.players, guest: addToRegions(s.players.guest, { gold: 1 }) } }
-      }
-      return { ...s, phase: 'production' }
     }
 
     case 'harvest': {
-      // Both players receive 1 free resource (Gold is the generic choice)
+      // Each player gains 1 free resource of their choice (active player picks first).
+      const other = opponent(active)
       return {
         ...state,
-        players: {
-          host: addToRegions(state.players.host, { gold: 1 }),
-          guest: addToRegions(state.players.guest, { gold: 1 }),
-        },
-        phase: 'production',
+        pendingChoices: [
+          { player: active, reason: 'harvest', options: ALL_RESOURCE_TYPES, takeFrom: null },
+          { player: other, reason: 'harvest', options: ALL_RESOURCE_TYPES, takeFrom: null },
+        ],
+        phase: 'event-resolution',
       }
     }
 
@@ -414,7 +420,8 @@ function resolveEventSymbol(state: GameState, symbol: EventSymbol): GameState {
 
 /** Roll both dice. RNG is injectable so tests can pin the outcome. */
 export function rollDice(rng: () => number = Math.random): DiceRoll {
-  const eventSymbols: EventSymbol[] = ['bandit', 'trade', 'festival', 'harvest', 'event']
+  // 'event' occupies two of the six faces (twice the chance), as on the real event die.
+  const eventSymbols: EventSymbol[] = ['bandit', 'trade', 'tournament', 'harvest', 'event', 'event']
   const eventSymbol = eventSymbols[Math.floor(rng() * eventSymbols.length)]
   const productionNumber = (Math.floor(rng() * 6) + 1) as ProductionNumber
   return { eventSymbol, productionNumber }
@@ -445,6 +452,47 @@ function runProduction(state: GameState, roll: ProductionNumber): GameState {
     },
     phase: 'action',
   }
+}
+
+/** Once all pending resource choices are resolved, run the paused production step
+ *  (using the production number stored on the triggering roll) and enter the action
+ *  phase. While choices remain, stay paused in 'event-resolution'. */
+function resumeAfterChoices(state: GameState): GameState {
+  if (state.pendingChoices.length > 0) return state
+  const prod = state.lastRoll?.productionNumber
+  return prod == null ? { ...state, phase: 'action' } : runProduction(state, prod)
+}
+
+/** Submit the resource pick for the head pending choice. Only the choice owner may
+ *  answer it, and only with one of its offered options. */
+function applyChooseResource(state: GameState, actingPlayer: PlayerId, resource: ResourceType): GameState {
+  const choice = state.pendingChoices[0]
+  if (!choice) return state
+  if (choice.player !== actingPlayer) return state
+  if (!choice.options.includes(resource)) return state
+
+  // Trade: take 1 from the opponent and give it to the chooser (overflow past the
+  // region cap is lost — the steal still removes it from the opponent). Harvest:
+  // gain 1 from the bank.
+  let players = state.players
+  if (choice.takeFrom) {
+    players = {
+      ...players,
+      [choice.takeFrom]: spendFromRegions(players[choice.takeFrom], { [resource]: 1 }),
+      [choice.player]: addToRegions(players[choice.player], { [resource]: 1 }),
+    }
+  } else {
+    players = {
+      ...players,
+      [choice.player]: addToRegions(players[choice.player], { [resource]: 1 }),
+    }
+  }
+
+  return resumeAfterChoices({
+    ...state,
+    players,
+    pendingChoices: state.pendingChoices.slice(1),
+  })
 }
 
 function applyBuildRoad(state: GameState, actingPlayer: PlayerId, slotIndex: number): GameState {
@@ -958,8 +1006,10 @@ function applySkipSwap(state: GameState, actingPlayer: PlayerId): GameState {
 
 export function applyAction(state: GameState, actingPlayer: PlayerId, action: GameAction): GameState {
   // Only the active player may act, except where the opponent must respond:
-  // discarding to the hand limit, and accepting/declining a pending trade offer.
-  const opponentAllowed: GameAction['type'][] = ['DISCARD_TO_LIMIT', 'ACCEPT_TRADE', 'DECLINE_TRADE']
+  // discarding to the hand limit, accepting/declining a pending trade offer, and
+  // answering a pending resource choice they own (e.g. Harvest's opponent, or a guest
+  // holding the Trade Token). The choice owner is verified inside applyChooseResource.
+  const opponentAllowed: GameAction['type'][] = ['DISCARD_TO_LIMIT', 'ACCEPT_TRADE', 'DECLINE_TRADE', 'CHOOSE_RESOURCE']
   if (!opponentAllowed.includes(action.type) && state.activePlayer !== actingPlayer) return state
 
   let next: GameState
@@ -972,6 +1022,7 @@ export function applyAction(state: GameState, actingPlayer: PlayerId, action: Ga
     case 'PLACE_REGION_EXPANSION': next = applyPlaceRegionExpansion(state, actingPlayer, action.cardId, action.regionIndex, action.position); break
     case 'PLAY_ACTION_CARD':   next = applyPlayActionCard(state, actingPlayer, action.cardId); break
     case 'TRADE_WITH_BANK':    next = applyTradeWithBank(state, actingPlayer, action.give, action.receive); break
+    case 'CHOOSE_RESOURCE':    next = applyChooseResource(state, actingPlayer, action.resource); break
     case 'PROPOSE_TRADE':      next = applyProposeTrade(state, actingPlayer, action.give, action.receive); break
     case 'ACCEPT_TRADE':       next = applyRespondTrade(state, actingPlayer, true); break
     case 'DECLINE_TRADE':      next = applyRespondTrade(state, actingPlayer, false); break

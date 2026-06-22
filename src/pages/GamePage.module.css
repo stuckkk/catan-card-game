@@ -19,6 +19,14 @@
   z-index: 100;
 }
 
+.choiceWaiting {
+  text-align: center;
+  padding: 8px;
+  font-size: 13px;
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
 .myBoard {
   flex: 1;
   min-height: 0; /* allow this flex child to shrink/scroll instead of pushing the panel off-screen */

@@ -45,6 +45,12 @@
     "cancelOffer": "Angebot zurückziehen",
     "tradeWaiting": "Warte auf Antwort des Gegners…",
     "tradeNothing": "—",
+    "chooseResource": {
+      "tradeTitle": "Wähle einen Rohstoff, den du dem Gegner nimmst",
+      "harvestTitle": "Wähle deinen Gratis-Rohstoff",
+      "tournamentTitle": "Du hast das Turnier gewonnen – wähle deinen Gratis-Rohstoff",
+      "waiting": "Gegner wählt einen Rohstoff…"
+    },
     "swapTitle": "Kartentausch am Zugende",
     "swapHint": "Lege eine Handkarte ab und ziehe eine neue von einem Stapel.",
     "swapDiscardLabel": "Abzulegende Karte",
@@ -121,7 +127,7 @@
   "dice": {
     "bandit": "Räuber!",
     "trade": "Handel",
-    "festival": "Fest",
+    "tournament": "Turnier",
     "harvest": "Ernte",
     "event": "Ereignis"
   },

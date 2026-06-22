@@ -69,6 +69,7 @@ function makeState(over: Partial<GameState> = {}): GameState {
     decks: { green: [], red: [], brown: [], yellow: [], event: [] },
     discardPile: [],
     pendingTrade: null,
+    pendingChoices: [],
     eventLog: [],
     ...over,
   }
@@ -80,11 +81,12 @@ describe('computePlayerStats', () => {
   it('sums symbols, VP, and hand limit from played cards', () => {
     const p = makePlayer('host', { playedCards: ['settlement', 'knight', 'merchant', 'school'] })
     const s = computePlayerStats(p)
-    expect(s.victoryPoints).toBe(1)   // settlement
-    expect(s.strengthPoints).toBe(3)  // knight
-    expect(s.commercePoints).toBe(1)  // merchant
-    expect(s.progressPoints).toBe(1)  // school
-    expect(s.handLimit).toBe(4)       // 3 + 1 progress
+    expect(s.victoryPoints).toBe(1)     // settlement
+    expect(s.strengthPoints).toBe(3)    // knight
+    expect(s.tournamentPoints).toBe(3)  // knight (tournament value == strength)
+    expect(s.commercePoints).toBe(1)    // merchant
+    expect(s.progressPoints).toBe(1)    // school
+    expect(s.handLimit).toBe(4)         // 3 + 1 progress
   })
 })
 
@@ -179,22 +181,151 @@ describe('event die', () => {
     expect(next.phase).toBe('action') // bandit replaces production
   })
 
-  it('Harvest gives both players a resource, then production runs', () => {
-    const regions = (): RegionState[] => [
-      { regionId: 'forest-2', storedResources: 0, expansionAbove: null, expansionBelow: null },
-      { regionId: 'river-4', storedResources: 0, expansionAbove: null, expansionBelow: null }, // gold, number 4 (won't roll)
-    ]
+  it('Harvest queues a choice for each player, then resumes production once both pick', () => {
+    const state = makeState({ phase: 'roll', activePlayer: 'host' })
+    const rolled = applyRoll(state, { eventSymbol: 'harvest', productionNumber: 2 })
+
+    // Paused: both players owe a choice (active player first), production not yet run.
+    expect(rolled.phase).toBe('event-resolution')
+    expect(rolled.pendingChoices.map(c => c.player)).toEqual(['host', 'guest'])
+    expect(rolled.pendingChoices[0].reason).toBe('harvest')
+    expect(rolled.pendingChoices[0].options).toHaveLength(6)
+    expect(availableResources(rolled.players.host).wood).toBe(0) // production held back
+
+    // Host picks; guest's choice remains, still paused.
+    const afterHost = applyAction(rolled, 'host', { type: 'CHOOSE_RESOURCE', resource: 'grain' })
+    expect(afterHost.phase).toBe('event-resolution')
+    expect(afterHost.pendingChoices.map(c => c.player)).toEqual(['guest'])
+    expect(availableResources(afterHost.players.host).grain).toBe(1)
+
+    // Guest picks; no choices remain, so production runs and the action phase begins.
+    const done = applyAction(afterHost, 'guest', { type: 'CHOOSE_RESOURCE', resource: 'ore' })
+    expect(done.pendingChoices).toHaveLength(0)
+    expect(done.phase).toBe('action')
+    expect(availableResources(done.players.guest).ore).toBe(1)
+    expect(availableResources(done.players.host).wood).toBe(1)  // forest-2 produced on roll 2
+    expect(availableResources(done.players.guest).wood).toBe(1)
+  })
+})
+
+describe('trade event (B1 — choose a resource to take)', () => {
+  // Host holds the Trade Token (3 commerce, strictly more than guest).
+  const tradeHolder = (over: Partial<PlayerState> = {}) =>
+    makePlayer('host', { playedCards: ['settlement', 'market', 'merchant'], ...over })
+
+  it('offers only the resources the opponent holds, then moves the chosen one', () => {
     const state = makeState({
-      phase: 'roll',
+      phase: 'roll', activePlayer: 'host',
       players: {
-        host: makePlayer('host', { regions: regions() }),
-        guest: makePlayer('guest', { regions: regions() }),
+        host: tradeHolder({ regions: regionsWith() }),
+        guest: makePlayer('guest', { regions: regionsWith({ wood: 2, gold: 1 }) }),
       },
     })
-    const next = applyRoll(state, { eventSymbol: 'harvest', productionNumber: 2 })
-    expect(availableResources(next.players.host).gold).toBe(1)
-    expect(availableResources(next.players.guest).gold).toBe(1)
-    expect(availableResources(next.players.host).wood).toBe(1) // production still ran (forest-2)
+    const rolled = applyRoll(state, { eventSymbol: 'trade', productionNumber: 5 }) // no region on 5
+
+    expect(rolled.phase).toBe('event-resolution')
+    expect(rolled.pendingChoices).toHaveLength(1)
+    const choice = rolled.pendingChoices[0]
+    expect(choice).toMatchObject({ player: 'host', reason: 'trade', takeFrom: 'guest' })
+    expect(choice.options).toEqual(['wood', 'gold']) // only what the guest holds
+
+    const done = applyAction(rolled, 'host', { type: 'CHOOSE_RESOURCE', resource: 'gold' })
+    expect(done.pendingChoices).toHaveLength(0)
+    expect(done.phase).toBe('action')
+    expect(availableResources(done.players.host).gold).toBe(1)
+    expect(availableResources(done.players.guest).gold).toBe(0)
+    expect(availableResources(done.players.guest).wood).toBe(2) // untouched
+  })
+
+  it('still removes the resource from the opponent even when the taker has no room', () => {
+    const state = makeState({
+      phase: 'roll', activePlayer: 'host',
+      players: {
+        host: tradeHolder({ regions: regionsWith({ gold: 3 }) }), // gold region already full
+        guest: makePlayer('guest', { regions: regionsWith({ gold: 1 }) }),
+      },
+    })
+    const rolled = applyRoll(state, { eventSymbol: 'trade', productionNumber: 5 })
+    const done = applyAction(rolled, 'host', { type: 'CHOOSE_RESOURCE', resource: 'gold' })
+    expect(availableResources(done.players.guest).gold).toBe(0) // opponent still loses it
+    expect(availableResources(done.players.host).gold).toBe(3)  // overflow lost, capped at 3
+  })
+
+  it('creates no choice and resumes immediately when the opponent has nothing', () => {
+    const state = makeState({
+      phase: 'roll', activePlayer: 'host',
+      players: {
+        host: tradeHolder({ regions: regionsWith() }),
+        guest: makePlayer('guest', { regions: regionsWith() }), // empty
+      },
+    })
+    const rolled = applyRoll(state, { eventSymbol: 'trade', productionNumber: 5 })
+    expect(rolled.pendingChoices).toHaveLength(0)
+    expect(rolled.phase).toBe('action')
+  })
+
+  it('ignores a CHOOSE_RESOURCE from a player who does not own the choice', () => {
+    const state = makeState({
+      phase: 'roll', activePlayer: 'host',
+      players: {
+        host: tradeHolder({ regions: regionsWith() }),
+        guest: makePlayer('guest', { regions: regionsWith({ gold: 1 }) }),
+      },
+    })
+    const rolled = applyRoll(state, { eventSymbol: 'trade', productionNumber: 5 })
+    const unchanged = applyAction(rolled, 'guest', { type: 'CHOOSE_RESOURCE', resource: 'gold' })
+    expect(unchanged.pendingChoices).toHaveLength(1) // choice still pending
+    expect(availableResources(unchanged.players.guest).gold).toBe(1) // nothing moved
+  })
+})
+
+describe('tournament event (B3 — Knights’ tournament)', () => {
+  it('lets the player with the higher Knights’ tournament sum choose 1 free resource, then resumes production', () => {
+    const state = makeState({
+      phase: 'roll', activePlayer: 'host',
+      players: {
+        host: makePlayer('host', { playedCards: ['settlement', 'knight'] }),       // tournament 3
+        guest: makePlayer('guest', { playedCards: ['settlement', 'militiaman'] }),  // tournament 1
+      },
+    })
+    const rolled = applyRoll(state, { eventSymbol: 'tournament', productionNumber: 5 }) // no region on 5
+
+    expect(rolled.phase).toBe('event-resolution')
+    expect(rolled.pendingChoices).toHaveLength(1)
+    expect(rolled.pendingChoices[0]).toMatchObject({ player: 'host', reason: 'tournament', takeFrom: null })
+    expect(rolled.pendingChoices[0].options).toHaveLength(6) // free choice from the bank
+
+    const done = applyAction(rolled, 'host', { type: 'CHOOSE_RESOURCE', resource: 'ore' })
+    expect(done.pendingChoices).toHaveLength(0)
+    expect(done.phase).toBe('action')
+    expect(availableResources(done.players.host).ore).toBe(1)
+    expect(availableResources(done.players.guest).ore).toBe(0) // from the bank; opponent untouched
+  })
+
+  it('does nothing on a tie (equal tournament sums), going straight to production', () => {
+    const state = makeState({
+      phase: 'roll', activePlayer: 'host',
+      players: {
+        host: makePlayer('host', { playedCards: ['settlement', 'swordsman'] }),   // tournament 2
+        guest: makePlayer('guest', { playedCards: ['settlement', 'swordsman'] }),  // tournament 2
+      },
+    })
+    const rolled = applyRoll(state, { eventSymbol: 'tournament', productionNumber: 5 })
+    expect(rolled.pendingChoices).toHaveLength(0)
+    expect(rolled.phase).toBe('action')
+  })
+
+  it('counts only Knights — a Fortress grants strength but no tournament points', () => {
+    const state = makeState({
+      phase: 'roll', activePlayer: 'host',
+      players: {
+        host: makePlayer('host', { playedCards: ['settlement', 'fortress'] }),      // strength 3, tournament 0
+        guest: makePlayer('guest', { playedCards: ['settlement', 'militiaman'] }),  // tournament 1
+      },
+    })
+    const rolled = applyRoll(state, { eventSymbol: 'tournament', productionNumber: 5 })
+    expect(rolled.pendingChoices).toHaveLength(1)
+    expect(rolled.pendingChoices[0].player).toBe('guest') // wins on tournament points despite host's higher strength
   })
 })
 
@@ -203,6 +334,13 @@ describe('rollDice', () => {
     const roll = rollDice(() => 0)
     expect(roll.eventSymbol).toBe('bandit')
     expect(roll.productionNumber).toBe(1)
+  })
+
+  it('weights the event-card face at 2 of the 6 faces', () => {
+    // Faces: [bandit, trade, tournament, harvest, event, event] — indices 4 & 5 are both 'event'.
+    expect(rollDice(() => 0.75).eventSymbol).toBe('event')      // floor(4.5) = 4
+    expect(rollDice(() => 0.95).eventSymbol).toBe('event')      // floor(5.7) = 5
+    expect(rollDice(() => 0.4).eventSymbol).toBe('tournament')  // floor(2.4) = 2
   })
 })
 
