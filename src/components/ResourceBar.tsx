@@ -24,11 +24,11 @@ const ALL_RESOURCES: ResourceType[] = ['wood', 'wool', 'gold', 'brick', 'ore', '
 export default function ResourceBar({ resources }: Props) {
   const { t } = useTranslation()
   return (
-    <div className={styles.bar}>
+    <div className={styles.bar} data-testid="resource-bar">
       {ALL_RESOURCES.map(r => (
-        <div key={r} className={styles.resource} style={{ '--rc': RESOURCE_COLORS[r] } as React.CSSProperties}>
+        <div key={r} className={styles.resource} data-resource={r} style={{ '--rc': RESOURCE_COLORS[r] } as React.CSSProperties}>
           <span className={styles.icon}>{RESOURCE_ICONS[r]}</span>
-          <span className={styles.count}>{resources[r]}</span>
+          <span className={styles.count} data-testid={`res-${r}`}>{resources[r]}</span>
           <span className={styles.name}>{t(`resources.${r}`)}</span>
         </div>
       ))}

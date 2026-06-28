@@ -12,6 +12,8 @@ interface Props {
   phase: TurnPhase | undefined
   resources: Resources | undefined
   onAction: (a: GameAction) => void
+  /** Begin placing an expansion card on the board (card-first placement flow). */
+  onBeginPlacement: (cardId: string) => void
 }
 
 function canAffordCard(resources: Resources, cardId: string): boolean {
@@ -22,7 +24,7 @@ function canAffordCard(resources: Resources, cardId: string): boolean {
   )
 }
 
-export default function Hand({ cardIds, isMyTurn, phase, resources, onAction }: Props) {
+export default function Hand({ cardIds, isMyTurn, phase, resources, onAction, onBeginPlacement }: Props) {
   const { t } = useTranslation()
   // Index (not id) so duplicate cards open the one actually tapped.
   const [openIndex, setOpenIndex] = useState<number | null>(null)
@@ -37,13 +39,19 @@ export default function Hand({ cardIds, isMyTurn, phase, resources, onAction }: 
     setOpenIndex(null)
   }
 
+  function handleBuild(id: string) {
+    onBeginPlacement(id)
+    setOpenIndex(null)
+  }
+
   if (cardIds.length === 0) {
     return <p className={styles.empty}>{t('game.handSize', { count: 0 })}</p>
   }
 
   return (
     <div className={styles.hand}>
-      <div className={styles.cards}>
+      <div className={styles.cards} data-testid="hand-cards">
+        {/* one CardView per hand card */}
         {cardIds.map((id, idx) => {
           const affordable = resources ? canAffordCard(resources, id) : false
           return (
@@ -61,8 +69,10 @@ export default function Hand({ cardIds, isMyTurn, phase, resources, onAction }: 
         <CardDetail
           cardId={openId}
           canPlay={canAct && openDef.category === 'action'}
+          canBuild={canAct && openDef.category === 'expansion'}
           affordable={openAffordable}
           onPlay={() => handlePlay(openId)}
+          onBuild={() => handleBuild(openId)}
           onClose={() => setOpenIndex(null)}
         />
       )}

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   applyAction, applyRoll, rollDice, computePlayerStats, computeVP, projectForGuest,
-  availableResources,
+  availableResources, getTradeRate,
 } from './engine'
 import type {
   GameState, PlayerState, PlayerId, Resources, ResourceType, RegionState, DiceRoll,
@@ -315,17 +315,19 @@ describe('tournament event (B3 — Knights’ tournament)', () => {
     expect(rolled.phase).toBe('action')
   })
 
-  it('counts only Knights — a Fortress grants strength but no tournament points', () => {
+  it('counts only Knights — other expansions contribute no tournament points', () => {
     const state = makeState({
       phase: 'roll', activePlayer: 'host',
       players: {
-        host: makePlayer('host', { playedCards: ['settlement', 'fortress'] }),      // strength 3, tournament 0
-        guest: makePlayer('guest', { playedCards: ['settlement', 'militiaman'] }),  // tournament 1
+        // Non-Knight expansions (commerce + progress) grant 0 tournament points.
+        host: makePlayer('host', { playedCards: ['settlement', 'market', 'library'] }),
+        guest: makePlayer('guest', { playedCards: ['settlement', 'militiaman'] }), // tournament 1
       },
     })
+    expect(computePlayerStats(state.players.host).tournamentPoints).toBe(0)
     const rolled = applyRoll(state, { eventSymbol: 'tournament', productionNumber: 5 })
     expect(rolled.pendingChoices).toHaveLength(1)
-    expect(rolled.pendingChoices[0].player).toBe('guest') // wins on tournament points despite host's higher strength
+    expect(rolled.pendingChoices[0].player).toBe('guest') // a single Knight beats non-Knight cards
   })
 })
 
@@ -412,7 +414,7 @@ describe('player trade', () => {
   }
 
   it('moves resources both ways when the opponent accepts', () => {
-    let state = applyAction(setup(), 'host', { type: 'PROPOSE_TRADE', give: { wood: 2 }, receive: { grain: 1 } })
+    const state = applyAction(setup(), 'host', { type: 'PROPOSE_TRADE', give: { wood: 2 }, receive: { grain: 1 } })
     expect(state.pendingTrade).not.toBeNull()
     const next = applyAction(state, 'guest', { type: 'ACCEPT_TRADE' })
     expect(availableResources(next.players.host).wood).toBe(0)
@@ -423,7 +425,7 @@ describe('player trade', () => {
   })
 
   it('moves nothing and clears the offer on decline', () => {
-    let state = applyAction(setup(), 'host', { type: 'PROPOSE_TRADE', give: { wood: 1 }, receive: { grain: 1 } })
+    const state = applyAction(setup(), 'host', { type: 'PROPOSE_TRADE', give: { wood: 1 }, receive: { grain: 1 } })
     const next = applyAction(state, 'guest', { type: 'DECLINE_TRADE' })
     expect(next.pendingTrade).toBeNull()
     expect(availableResources(next.players.host).wood).toBe(2)
@@ -431,7 +433,7 @@ describe('player trade', () => {
   })
 
   it('ignores an accept from the proposer themselves', () => {
-    let state = applyAction(setup(), 'host', { type: 'PROPOSE_TRADE', give: { wood: 1 }, receive: { grain: 1 } })
+    const state = applyAction(setup(), 'host', { type: 'PROPOSE_TRADE', give: { wood: 1 }, receive: { grain: 1 } })
     const next = applyAction(state, 'host', { type: 'ACCEPT_TRADE' })
     expect(next.pendingTrade).not.toBeNull() // still awaiting the opponent
     expect(availableResources(next.players.host).wood).toBe(2)
@@ -494,6 +496,86 @@ describe('region (brown) expansions', () => {
     const next = applyAction(state, 'host', { type: 'DEMOLISH_REGION_EXPANSION', regionIndex: 0, position: 'above' })
     expect(next.players.host.regions[0].expansionAbove).toBeNull()
     expect(next.discardPile).toContain('sawmill')
+  })
+})
+
+// ─── Settlement / City (green & red) expansions ──────────────────────────────
+
+describe('expansion placement', () => {
+  it('places a green card in a settlement slot, paying its cost, and its effect counts', () => {
+    const host = makePlayer('host', {
+      hand: ['knight'],
+      regions: regionsWith({ ore: 3, wool: 1, grain: 1 }), // knight cost
+    })
+    const state = makeState({ players: { host, guest: makePlayer('guest') } })
+    const next = applyAction(state, 'host', {
+      type: 'PLACE_EXPANSION', cardId: 'knight', slotIndex: 0, expansionSlotIndex: 0,
+    })
+    expect(next.players.host.principality[0].expansionSlots[0]).toBe('knight')
+    expect(next.players.host.hand).not.toContain('knight')
+    expect(next.players.host.playedCards).toContain('knight')
+    expect(availableResources(next.players.host)).toEqual(res()) // fully paid
+    // Effect is live: strength & tournament both rise to 3.
+    const stats = computePlayerStats(next.players.host)
+    expect(stats.strengthPoints).toBe(3)
+    expect(stats.tournamentPoints).toBe(3)
+  })
+
+  it('makes a placed trade ship grant its 2:1 improved trade rate', () => {
+    const host = makePlayer('host', {
+      hand: ['trade-ship-wood'],
+      regions: regionsWith({ wood: 1, wool: 1, gold: 1 }),
+    })
+    const state = makeState({ players: { host, guest: makePlayer('guest') } })
+    const next = applyAction(state, 'host', {
+      type: 'PLACE_EXPANSION', cardId: 'trade-ship-wood', slotIndex: 0, expansionSlotIndex: 0,
+    })
+    expect(next.players.host.playedCards).toContain('trade-ship-wood')
+    expect(getTradeRate(next.players.host, 'wood')).toBe(2)
+    expect(getTradeRate(next.players.host, 'ore')).toBe(3) // others unaffected
+  })
+
+  it('places a red card on a city slot and counts its progress symbol and VP', () => {
+    const host = makePlayer('host', {
+      hand: ['cathedral'],
+      principality: [
+        { kind: 'city', cardId: 'city', regionIndices: [0], expansionSlots: [null, null, null, null] },
+      ],
+      playedCards: ['city'],
+      regions: regionsWith({ brick: 3, grain: 2 }), // cathedral cost
+    })
+    const state = makeState({ players: { host, guest: makePlayer('guest') } })
+    const next = applyAction(state, 'host', {
+      type: 'PLACE_EXPANSION', cardId: 'cathedral', slotIndex: 0, expansionSlotIndex: 0,
+    })
+    expect(next.players.host.principality[0].expansionSlots[0]).toBe('cathedral')
+    expect(next.players.host.playedCards).toContain('cathedral')
+    const stats = computePlayerStats(next.players.host)
+    expect(stats.progressPoints).toBe(2)
+    expect(stats.victoryPoints).toBe(3) // city 2 + cathedral directVP 1
+  })
+
+  it('rejects a red card on a (non-city) settlement slot', () => {
+    const host = makePlayer('host', {
+      hand: ['cathedral'],
+      regions: regionsWith({ brick: 3, grain: 2 }),
+    })
+    const state = makeState({ players: { host, guest: makePlayer('guest') } })
+    const next = applyAction(state, 'host', {
+      type: 'PLACE_EXPANSION', cardId: 'cathedral', slotIndex: 0, expansionSlotIndex: 0,
+    })
+    expect(next.players.host.principality[0].expansionSlots[0]).toBeNull()
+    expect(next.players.host.hand).toContain('cathedral') // not consumed
+  })
+
+  it('rejects placing an expansion the player cannot afford', () => {
+    const host = makePlayer('host', { hand: ['knight'] }) // no resources
+    const state = makeState({ players: { host, guest: makePlayer('guest') } })
+    const next = applyAction(state, 'host', {
+      type: 'PLACE_EXPANSION', cardId: 'knight', slotIndex: 0, expansionSlotIndex: 0,
+    })
+    expect(next.players.host.principality[0].expansionSlots[0]).toBeNull()
+    expect(next.players.host.hand).toContain('knight')
   })
 })
 

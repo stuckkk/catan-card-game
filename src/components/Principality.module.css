@@ -61,6 +61,42 @@
   opacity: 0.4;
 }
 
+/* A valid target highlighted while the player is placing an expansion card. */
+.placeable {
+  opacity: 1;
+  cursor: pointer;
+  background: color-mix(in srgb, var(--color-accent) 18%, transparent);
+  border: 2px dashed var(--color-accent);
+  color: var(--color-accent);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-accent) 30%, transparent);
+  animation: placeablePulse 1.2s ease-in-out infinite;
+}
+
+@keyframes placeablePulse {
+  50% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--color-accent) 18%, transparent); }
+}
+
+/* Region card flanked by its brown above/below expansion slots. */
+.regionStack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--gap);
+}
+
+.regionExp {
+  display: flex;
+  justify-content: center;
+  min-height: 0;
+}
+
+.regionExp:empty {
+  display: none;
+}
+
 .core {
   width: var(--card-w);
   min-height: var(--card-h);

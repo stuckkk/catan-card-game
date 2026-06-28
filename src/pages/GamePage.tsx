@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { applyAction, computeVP, projectForGuest, availableResources } from '../engine/engine'
+import { getCard } from '../engine/cards'
 import type { GameState, GameAction, ProjectedState, PlayerId, DeckId } from '../engine/types'
 import { createHostSession, joinHostSession } from '../network/trysteroSession'
 import type { HostSession, GuestSession } from '../network/trysteroSession'
@@ -42,6 +43,8 @@ export default function GamePage() {
   )
   const [disconnected, setDisconnected] = useState(false)
   const [opponentExpanded, setOpponentExpanded] = useState(false)
+  // Card-first placement: the expansion card the player is currently placing on the board.
+  const [placingCardId, setPlacingCardId] = useState<string | null>(null)
 
   const hostSessionRef = useRef<HostSession | null>(sessionStore.getHost())
   const guestSessionRef = useRef<GuestSession | null>(sessionStore.getGuest())
@@ -70,6 +73,14 @@ export default function GamePage() {
       guestSessionRef.current?.sendAction(action)
     }
   }, [role])
+
+  // Board actions clear placement mode once a card has been placed on a slot.
+  const handleBoardAction = useCallback((action: GameAction) => {
+    dispatchAction(action)
+    if (action.type === 'PLACE_EXPANSION' || action.type === 'PLACE_REGION_EXPANSION') {
+      setPlacingCardId(null)
+    }
+  }, [dispatchAction])
 
   // Wire up (or rebuild, after a reload) the network session and its handlers.
   // Intentionally returns no cleanup that closes the room: React StrictMode
@@ -170,6 +181,11 @@ export default function GamePage() {
       ? computeVP(projected as unknown as GameState, 'guest')
       : 0
 
+  // Placement is only valid during my own action phase; abandon it otherwise.
+  useEffect(() => {
+    if (placingCardId && !(isMyTurn && phase === 'action')) setPlacingCardId(null)
+  }, [placingCardId, isMyTurn, phase])
+
   if (!role || (!gameState && !projected)) {
     return (
       <div className={styles.page}>
@@ -203,18 +219,30 @@ export default function GamePage() {
         projected={projected}
       />
 
+      {placingCardId && (
+        <div className={styles.placingBanner}>
+          <span>{t('game.placing', { card: t(getCard(placingCardId).nameKey) })}</span>
+          <button className="secondary" onClick={() => setPlacingCardId(null)}>
+            {t('game.cancelPlacement')}
+          </button>
+        </div>
+      )}
+
       {/* My board */}
       <div className={styles.myBoard}>
-        {myState && (
-          <Principality
-            principality={myState.principality}
-            regions={myState.regions}
-            isMyBoard
-            phase={phase}
-            isMyTurn={isMyTurn}
-            onAction={dispatchAction}
-          />
-        )}
+        <div className={styles.boardInner}>
+          {myState && (
+            <Principality
+              principality={myState.principality}
+              regions={myState.regions}
+              isMyBoard
+              phase={phase}
+              isMyTurn={isMyTurn}
+              placingCardId={placingCardId}
+              onAction={handleBoardAction}
+            />
+          )}
+        </div>
       </div>
 
       {/* Bottom panel: hand + controls */}
@@ -237,6 +265,7 @@ export default function GamePage() {
           phase={phase}
           resources={myResources}
           onAction={dispatchAction}
+          onBeginPlacement={setPlacingCardId}
         />
 
         {pendingTrade && (

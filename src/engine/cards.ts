@@ -216,16 +216,6 @@ export const TRADE_SHIP_GRAIN: CardDefinition = {
 
 // ─── Red Expansion Cards (City slots only) ────────────────────────────────────
 
-export const FORTRESS: CardDefinition = {
-  id: 'fortress',
-  nameKey: 'cards.fortress.name',
-  descriptionKey: 'cards.fortress.description',
-  category: 'expansion',
-  expansionColor: 'red',
-  cost: { ore: 3, brick: 2 },
-  effects: [{ type: 'GRANT_SYMBOL', symbol: 'strength', amount: 3 }],
-}
-
 export const CATHEDRAL: CardDefinition = {
   id: 'cathedral',
   nameKey: 'cards.cathedral.name',
@@ -400,7 +390,6 @@ export const CARD_REGISTRY: Record<string, CardDefinition> = {
   [TRADE_SHIP_BRICK.id]: TRADE_SHIP_BRICK,
   [TRADE_SHIP_ORE.id]: TRADE_SHIP_ORE,
   [TRADE_SHIP_GRAIN.id]: TRADE_SHIP_GRAIN,
-  [FORTRESS.id]: FORTRESS,
   [CATHEDRAL.id]: CATHEDRAL,
   [GUILD_HALL.id]: GUILD_HALL,
   [UNIVERSITY.id]: UNIVERSITY,
@@ -485,7 +474,6 @@ export const DEFAULT_GREEN_DECK: string[] = [
 ]
 
 export const DEFAULT_RED_DECK: string[] = [
-  FORTRESS.id,
   CATHEDRAL.id,
   GUILD_HALL.id,
   UNIVERSITY.id,

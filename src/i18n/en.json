@@ -81,6 +81,8 @@
     "handSize": "Hand: {{count}} cards",
     "resources": "Resources",
     "disconnected": "Opponent disconnected. Waiting for reconnect...",
+    "placing": "Placing {{card}} — tap a highlighted slot",
+    "cancelPlacement": "Cancel",
     "youWin": "You win!",
     "opponentWins": "Opponent wins!",
     "playAgain": "Play Again",
@@ -92,6 +94,7 @@
     "victoryPoints": "Victory Points",
     "improvedTrade": "2:1 Trade",
     "play": "Play",
+    "build": "Build",
     "close": "Close"
   },
   "cardType": {
@@ -192,10 +195,6 @@
     "tradeShipGrain": { "name": "Grain Trade Ship" },
     "tradeShip": {
       "description": "Enables 2:1 trade for the matching resource type."
-    },
-    "fortress": {
-      "name": "Fortress",
-      "description": "Grants 3 Strength Points. City slot only."
     },
     "cathedral": {
       "name": "Cathedral",

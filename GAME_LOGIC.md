@@ -112,4 +112,4 @@ Each Knight (a Green Expansion) carries **two independent values** that must not
 * **Strength Points (Axe):** Count toward the Strength Advantage / Hero Token (§6).
 * **Tournament Points:** Count **only** for the Tournament event resolution (§4). These are distinct from Progress Points (Book), which increase the Hand Limit (§3) and have nothing to do with tournaments.
 
-Per-Knight Tournament values equal their Strength values: **Militiaman 1, Swordsman 2, Knight 3**. (Note: the Fortress grants Strength but is not a Knight, so it contributes **no** Tournament Points.)
+Per-Knight Tournament values equal their Strength values: **Militiaman 1, Swordsman 2, Knight 3**. Only Knights carry Strength and Tournament values — no building grants either; buildings contribute neither to the Hero Token nor to the Tournament event.

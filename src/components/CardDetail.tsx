@@ -9,8 +9,11 @@ interface Props {
   cardId: string
   /** Whether the local player can currently act on this card. */
   canPlay?: boolean
+  /** Whether the local player can begin placing this expansion card on the board. */
+  canBuild?: boolean
   affordable?: boolean
   onPlay?: () => void
+  onBuild?: () => void
   onClose: () => void
 }
 
@@ -20,7 +23,7 @@ const SYMBOL_LABEL: Record<string, string> = {
   progress: 'symbols.progress',
 }
 
-export default function CardDetail({ cardId, canPlay, affordable = true, onPlay, onClose }: Props) {
+export default function CardDetail({ cardId, canPlay, canBuild, affordable = true, onPlay, onBuild, onClose }: Props) {
   const { t } = useTranslation()
   const def = getCard(cardId)
 
@@ -68,6 +71,11 @@ export default function CardDetail({ cardId, canPlay, affordable = true, onPlay,
           {canPlay && onPlay && (
             <button className="primary" disabled={!affordable} onClick={onPlay}>
               {t('card.play')}
+            </button>
+          )}
+          {canBuild && onBuild && (
+            <button className="primary" disabled={!affordable} onClick={onBuild}>
+              {t('card.build')}
             </button>
           )}
           <button className="secondary" onClick={onClose}>{t('card.close')}</button>

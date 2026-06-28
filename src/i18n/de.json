@@ -81,6 +81,8 @@
     "handSize": "Hand: {{count}} Karten",
     "resources": "Rohstoffe",
     "disconnected": "Gegner getrennt. Warte auf Wiederverbindung...",
+    "placing": "{{card}} platzieren — tippe auf ein hervorgehobenes Feld",
+    "cancelPlacement": "Abbrechen",
     "youWin": "Du hast gewonnen!",
     "opponentWins": "Dein Gegner hat gewonnen!",
     "playAgain": "Nochmal spielen",
@@ -92,6 +94,7 @@
     "victoryPoints": "Siegpunkte",
     "improvedTrade": "2:1 Handel",
     "play": "Ausspielen",
+    "build": "Bauen",
     "close": "Schließen"
   },
   "cardType": {
@@ -192,10 +195,6 @@
     "tradeShipGrain": { "name": "Getreide-Handelsschiff" },
     "tradeShip": {
       "description": "Ermöglicht 2:1-Handel für den entsprechenden Rohstofftyp."
-    },
-    "fortress": {
-      "name": "Festung",
-      "description": "Gewährt 3 Stärkepunkte. Nur auf Stadtplätzen."
     },
     "cathedral": {
       "name": "Dom",
