@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type {
   CentralSlot, RegionState, GameAction, TurnPhase, ExpansionColor, RegionExpansionPosition,
@@ -5,6 +6,7 @@ import type {
 import { getCard } from '../engine/cards'
 import RegionCard from './RegionCard'
 import CardView from './CardView'
+import CardDetail from './CardDetail'
 import styles from './Principality.module.css'
 
 /** The expansion card currently being placed (card-first flow), with its resolved colour. */
@@ -32,12 +34,13 @@ function slotAcceptsPlacing(slotKind: CentralSlot['kind'], placing: Placing): bo
 }
 
 /** The settlement/city core plus its expansion slots, stacked vertically in the axis row. */
-function SettlementCell({ slot, idx, canBuild, placing, onAction }: {
+function SettlementCell({ slot, idx, canBuild, placing, onAction, onInspect }: {
   slot: CentralSlot
   idx: number
   canBuild: boolean
   placing: Placing
   onAction: (a: GameAction) => void
+  onInspect: (cardId: string) => void
 }) {
   const { t } = useTranslation()
 
@@ -59,7 +62,7 @@ function SettlementCell({ slot, idx, canBuild, placing, onAction }: {
   // Render one expansion slot: a placed card, a clickable target while placing, or an empty cell.
   // `expansionSlotIndex` is the card's real index in slot.expansionSlots.
   const renderExp = (cardId: string | null, expansionSlotIndex: number) => {
-    if (cardId) return <CardView key={expansionSlotIndex} cardId={cardId} compact />
+    if (cardId) return <CardView key={expansionSlotIndex} cardId={cardId} compact onClick={() => onInspect(cardId)} />
     if (placeableHere && placing) {
       return (
         <button
@@ -111,17 +114,18 @@ function SettlementCell({ slot, idx, canBuild, placing, onAction }: {
 }
 
 /** A region card with its brown above/below expansion slots, supporting brown placement. */
-function RegionWithExpansions({ region, regionIndex, placing, onAction }: {
+function RegionWithExpansions({ region, regionIndex, placing, onAction, onInspect }: {
   region: RegionState
   regionIndex: number
   placing: Placing
   onAction: (a: GameAction) => void
+  onInspect: (cardId: string) => void
 }) {
   const { t } = useTranslation()
   const placeable = placing?.color === 'brown'
 
   const renderRegionExp = (cardId: string | null, position: RegionExpansionPosition) => {
-    if (cardId) return <CardView cardId={cardId} compact />
+    if (cardId) return <CardView cardId={cardId} compact onClick={() => onInspect(cardId)} />
     if (placeable && placing) {
       return (
         <button
@@ -152,6 +156,9 @@ export default function Principality({
 }: Props) {
   const { t } = useTranslation()
   const canBuild = isMyBoard && isMyTurn && phase === 'action'
+
+  // Card tapped on the board to inspect its effects/perks (view-only sheet).
+  const [inspectCardId, setInspectCardId] = useState<string | null>(null)
 
   // Resolve the card being placed (card-first flow) to its colour for valid-slot highlighting.
   const placingCard = placingCardId ? getCard(placingCardId) : null
@@ -213,14 +220,14 @@ export default function Principality({
         {/* Top regions */}
         {topRow.map((cell, j) => cell && (
           <div key={`t${j}`} className={styles.regionCell} style={{ gridColumn: 2 * j + 1, gridRow: 1 }}>
-            <RegionWithExpansions region={cell.region} regionIndex={cell.regionIndex} placing={placing} onAction={onAction} />
+            <RegionWithExpansions region={cell.region} regionIndex={cell.regionIndex} placing={placing} onAction={onAction} onInspect={setInspectCardId} />
           </div>
         ))}
 
         {/* Central axis: settlements/cities */}
         {settlementSlots.map(({ slot, idx }, i) => (
           <div key={`s${i}`} className={styles.axisCell} style={{ gridColumn: 2 * i + 2, gridRow: 2 }}>
-            <SettlementCell slot={slot} idx={idx} canBuild={canBuild} placing={placing} onAction={onAction} />
+            <SettlementCell slot={slot} idx={idx} canBuild={canBuild} placing={placing} onAction={onAction} onInspect={setInspectCardId} />
           </div>
         ))}
 
@@ -248,7 +255,7 @@ export default function Principality({
         {/* Bottom regions */}
         {bottomRow.map((cell, j) => cell && (
           <div key={`b${j}`} className={styles.regionCell} style={{ gridColumn: 2 * j + 1, gridRow: 3 }}>
-            <RegionWithExpansions region={cell.region} regionIndex={cell.regionIndex} placing={placing} onAction={onAction} />
+            <RegionWithExpansions region={cell.region} regionIndex={cell.regionIndex} placing={placing} onAction={onAction} onInspect={setInspectCardId} />
           </div>
         ))}
 
@@ -265,6 +272,10 @@ export default function Principality({
           </div>
         )}
       </div>
+
+      {inspectCardId && (
+        <CardDetail cardId={inspectCardId} onClose={() => setInspectCardId(null)} />
+      )}
     </div>
   )
 }
