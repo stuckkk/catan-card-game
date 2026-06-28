@@ -5,8 +5,9 @@
 
 .cards {
   display: flex;
-  gap: 6px;
+  gap: 8px;
   min-width: min-content;
+  justify-content: center;
 }
 
 .cardWrap {

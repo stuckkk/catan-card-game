@@ -1,4 +1,4 @@
-import type { CardDefinition, RegionDefinition } from './types'
+import type { CardDefinition, RegionDefinition, PlayerState, ResourceType, Resources } from './types'
 
 // ─── Central Axis Cards ───────────────────────────────────────────────────────
 
@@ -70,7 +70,10 @@ export const MILITIAMAN: CardDefinition = {
   category: 'expansion',
   expansionColor: 'green',
   cost: { ore: 1, wool: 1 },
-  effects: [{ type: 'GRANT_SYMBOL', symbol: 'strength', amount: 1 }],
+  effects: [
+    { type: 'GRANT_SYMBOL', symbol: 'strength', amount: 1 },
+    { type: 'GRANT_SYMBOL', symbol: 'tournament', amount: 1 },
+  ],
 }
 
 export const SWORDSMAN: CardDefinition = {
@@ -80,7 +83,10 @@ export const SWORDSMAN: CardDefinition = {
   category: 'expansion',
   expansionColor: 'green',
   cost: { ore: 2, wool: 1 },
-  effects: [{ type: 'GRANT_SYMBOL', symbol: 'strength', amount: 2 }],
+  effects: [
+    { type: 'GRANT_SYMBOL', symbol: 'strength', amount: 2 },
+    { type: 'GRANT_SYMBOL', symbol: 'tournament', amount: 2 },
+  ],
 }
 
 export const KNIGHT: CardDefinition = {
@@ -90,7 +96,10 @@ export const KNIGHT: CardDefinition = {
   category: 'expansion',
   expansionColor: 'green',
   cost: { ore: 3, wool: 1, grain: 1 },
-  effects: [{ type: 'GRANT_SYMBOL', symbol: 'strength', amount: 3 }],
+  effects: [
+    { type: 'GRANT_SYMBOL', symbol: 'strength', amount: 3 },
+    { type: 'GRANT_SYMBOL', symbol: 'tournament', amount: 3 },
+  ],
 }
 
 export const MERCHANT: CardDefinition = {
@@ -207,16 +216,6 @@ export const TRADE_SHIP_GRAIN: CardDefinition = {
 
 // ─── Red Expansion Cards (City slots only) ────────────────────────────────────
 
-export const FORTRESS: CardDefinition = {
-  id: 'fortress',
-  nameKey: 'cards.fortress.name',
-  descriptionKey: 'cards.fortress.description',
-  category: 'expansion',
-  expansionColor: 'red',
-  cost: { ore: 3, brick: 2 },
-  effects: [{ type: 'GRANT_SYMBOL', symbol: 'strength', amount: 3 }],
-}
-
 export const CATHEDRAL: CardDefinition = {
   id: 'cathedral',
   nameKey: 'cards.cathedral.name',
@@ -299,27 +298,18 @@ export const AMBUSH: CardDefinition = {
   category: 'action',
   effects: [],
   customEffect: (state, actingPlayer) => {
-    const opponent: 'host' | 'guest' = actingPlayer === 'host' ? 'guest' : 'host'
-    const opponentResources = state.players[opponent].resources
+    const opp: 'host' | 'guest' = actingPlayer === 'host' ? 'guest' : 'host'
+    const oppResources = regionResources(state.players[opp])
     // Steal 1 resource of choice — for now steal the most abundant one
-    const richestResource = (Object.keys(opponentResources) as (keyof typeof opponentResources)[])
-      .reduce((best, r) => opponentResources[r] > opponentResources[best] ? r : best, 'wood' as keyof typeof opponentResources)
-    if (opponentResources[richestResource] === 0) return state
+    const richestResource = (Object.keys(oppResources) as ResourceType[])
+      .reduce((best, r) => oppResources[r] > oppResources[best] ? r : best, 'wood' as ResourceType)
+    if (oppResources[richestResource] === 0) return state
     return {
       ...state,
       players: {
         ...state.players,
-        [opponent]: {
-          ...state.players[opponent],
-          resources: { ...opponentResources, [richestResource]: opponentResources[richestResource] - 1 },
-        },
-        [actingPlayer]: {
-          ...state.players[actingPlayer],
-          resources: {
-            ...state.players[actingPlayer].resources,
-            [richestResource]: state.players[actingPlayer].resources[richestResource] + 1,
-          },
-        },
+        [opp]: adjustRegions(state.players[opp], richestResource, -1),
+        [actingPlayer]: adjustRegions(state.players[actingPlayer], richestResource, +1),
       },
     }
   },
@@ -350,15 +340,14 @@ export const EVENT_PLAGUE: CardDefinition = {
   category: 'event',
   effects: [],
   customEffect: (state, actingPlayer) => {
-    const opponent: 'host' | 'guest' = actingPlayer === 'host' ? 'guest' : 'host'
-    const opponentResources = { ...state.players[opponent].resources }
+    const opp: 'host' | 'guest' = actingPlayer === 'host' ? 'guest' : 'host'
     // Remove 1 wool from opponent
-    if (opponentResources.wool > 0) opponentResources.wool -= 1
+    if (regionResources(state.players[opp]).wool <= 0) return state
     return {
       ...state,
       players: {
         ...state.players,
-        [opponent]: { ...state.players[opponent], resources: opponentResources },
+        [opp]: adjustRegions(state.players[opp], 'wool', -1),
       },
     }
   },
@@ -401,7 +390,6 @@ export const CARD_REGISTRY: Record<string, CardDefinition> = {
   [TRADE_SHIP_BRICK.id]: TRADE_SHIP_BRICK,
   [TRADE_SHIP_ORE.id]: TRADE_SHIP_ORE,
   [TRADE_SHIP_GRAIN.id]: TRADE_SHIP_GRAIN,
-  [FORTRESS.id]: FORTRESS,
   [CATHEDRAL.id]: CATHEDRAL,
   [GUILD_HALL.id]: GUILD_HALL,
   [UNIVERSITY.id]: UNIVERSITY,
@@ -433,6 +421,39 @@ export function getRegion(id: string): RegionDefinition {
   return region
 }
 
+// ─── Region resource helpers (for custom card effects) ─────────────────────────
+// Resources live on Region cards (0–3 pips). These mirror the engine helpers so
+// custom card effects can move resources without importing the engine (avoids a cycle).
+
+function regionResources(player: PlayerState): Resources {
+  const r: Resources = { wood: 0, wool: 0, gold: 0, brick: 0, ore: 0, grain: 0 }
+  for (const region of player.regions) {
+    r[getRegion(region.regionId).resourceType] += region.storedResources
+  }
+  return r
+}
+
+/** Move `amount` of `type` into (positive) or out of (negative) a player's regions, capped 0–3 each. */
+function adjustRegions(player: PlayerState, type: ResourceType, amount: number): PlayerState {
+  const regions = player.regions.map(r => ({ ...r }))
+  let remaining = Math.abs(amount)
+  const sign = Math.sign(amount)
+  for (const region of regions) {
+    if (remaining <= 0) break
+    if (getRegion(region.regionId).resourceType !== type) continue
+    if (sign > 0) {
+      const add = Math.min(3 - region.storedResources, remaining)
+      region.storedResources += add
+      remaining -= add
+    } else {
+      const take = Math.min(region.storedResources, remaining)
+      region.storedResources -= take
+      remaining -= take
+    }
+  }
+  return { ...player, regions }
+}
+
 // ─── Default Deck Compositions ────────────────────────────────────────────────
 
 export const DEFAULT_GREEN_DECK: string[] = [
@@ -453,7 +474,6 @@ export const DEFAULT_GREEN_DECK: string[] = [
 ]
 
 export const DEFAULT_RED_DECK: string[] = [
-  FORTRESS.id,
   CATHEDRAL.id,
   GUILD_HALL.id,
   UNIVERSITY.id,

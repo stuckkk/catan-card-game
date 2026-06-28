@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import CardView from './CardView'
+import CardDetail from './CardDetail'
 import type { GameAction, TurnPhase, Resources } from '../engine/types'
 import { getCard } from '../engine/cards'
 import styles from './Hand.module.css'
@@ -11,6 +12,8 @@ interface Props {
   phase: TurnPhase | undefined
   resources: Resources | undefined
   onAction: (a: GameAction) => void
+  /** Begin placing an expansion card on the board (card-first placement flow). */
+  onBeginPlacement: (cardId: string) => void
 }
 
 function canAffordCard(resources: Resources, cardId: string): boolean {
@@ -21,20 +24,24 @@ function canAffordCard(resources: Resources, cardId: string): boolean {
   )
 }
 
-export default function Hand({ cardIds, isMyTurn, phase, resources, onAction }: Props) {
+export default function Hand({ cardIds, isMyTurn, phase, resources, onAction, onBeginPlacement }: Props) {
   const { t } = useTranslation()
-  const [selected, setSelected] = useState<string | null>(null)
+  // Index (not id) so duplicate cards open the one actually tapped.
+  const [openIndex, setOpenIndex] = useState<number | null>(null)
 
-  const canPlay = isMyTurn && phase === 'action'
+  const canAct = isMyTurn && phase === 'action'
+  const openId = openIndex != null ? cardIds[openIndex] : null
+  const openDef = openId ? getCard(openId) : null
+  const openAffordable = openId && resources ? canAffordCard(resources, openId) : false
 
-  function handleCardClick(id: string) {
-    if (!canPlay) return
-    setSelected(prev => prev === id ? null : id)
+  function handlePlay(id: string) {
+    onAction({ type: 'PLAY_ACTION_CARD', cardId: id })
+    setOpenIndex(null)
   }
 
-  function handlePlayAction(id: string) {
-    onAction({ type: 'PLAY_ACTION_CARD', cardId: id })
-    setSelected(null)
+  function handleBuild(id: string) {
+    onBeginPlacement(id)
+    setOpenIndex(null)
   }
 
   if (cardIds.length === 0) {
@@ -43,27 +50,32 @@ export default function Hand({ cardIds, isMyTurn, phase, resources, onAction }: 
 
   return (
     <div className={styles.hand}>
-      <div className={styles.cards}>
+      <div className={styles.cards} data-testid="hand-cards">
+        {/* one CardView per hand card */}
         {cardIds.map((id, idx) => {
-          const def = getCard(id)
           const affordable = resources ? canAffordCard(resources, id) : false
           return (
-            <div key={`${id}-${idx}`} className={styles.cardWrap}>
-              <CardView
-                cardId={id}
-                selected={selected === id}
-                affordable={canPlay ? affordable : true}
-                onClick={() => handleCardClick(id)}
-              />
-              {selected === id && def.category === 'action' && (
-                <button className="primary" onClick={() => handlePlayAction(id)}>
-                  {t('game.rollDice').replace('Roll', 'Play')}
-                </button>
-              )}
-            </div>
+            <CardView
+              key={`${id}-${idx}`}
+              cardId={id}
+              affordable={canAct ? affordable : true}
+              onClick={() => setOpenIndex(idx)}
+            />
           )
         })}
       </div>
+
+      {openId && openDef && (
+        <CardDetail
+          cardId={openId}
+          canPlay={canAct && openDef.category === 'action'}
+          canBuild={canAct && openDef.category === 'expansion'}
+          affordable={openAffordable}
+          onPlay={() => handlePlay(openId)}
+          onBuild={() => handleBuild(openId)}
+          onClose={() => setOpenIndex(null)}
+        />
+      )}
     </div>
   )
 }

@@ -1,15 +1,23 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { applyAction, computePlayerStats, computeVP, projectForGuest } from '../engine/engine'
-import type { GameState, GameAction, ProjectedState, PlayerId } from '../engine/types'
+import { applyAction, computeVP, projectForGuest, availableResources } from '../engine/engine'
+import { getCard } from '../engine/cards'
+import type { GameState, GameAction, ProjectedState, PlayerId, DeckId } from '../engine/types'
+import { createHostSession, joinHostSession } from '../network/trysteroSession'
 import type { HostSession, GuestSession } from '../network/trysteroSession'
 import { sessionStore } from '../network/sessionStore'
+import { savePersisted, clearPersisted, loadPersisted } from '../network/persistence'
 import Principality from '../components/Principality'
+import PhaseTracker from '../components/PhaseTracker'
+import TradeMenu from '../components/TradeMenu'
+import TradeOfferBanner from '../components/TradeOfferBanner'
+import SwapPanel from '../components/SwapPanel'
 import Hand from '../components/Hand'
 import ResourceBar from '../components/ResourceBar'
 import DiceDisplay from '../components/DiceDisplay'
 import OpponentSummary from '../components/OpponentSummary'
+import ResourceChoiceModal from '../components/ResourceChoiceModal'
 import styles from './GamePage.module.css'
 
 export default function GamePage() {
@@ -17,28 +25,47 @@ export default function GamePage() {
   const location = useLocation()
   const navigate = useNavigate()
 
-  const { role, initialGameState, projectedState: initialProjected } =
-    (location.state ?? {}) as {
-      role?: 'host' | 'guest'
-      initialGameState?: GameState
-      projectedState?: ProjectedState
-    }
+  // Source of truth on first mount is the navigation state from the lobby. On a
+  // page reload that state is gone, so we fall back to the persisted session.
+  const nav = (location.state ?? {}) as {
+    role?: 'host' | 'guest'
+    initialGameState?: GameState
+    projectedState?: ProjectedState
+  }
+  const persisted = nav.role ? null : loadPersisted()
+  const role: 'host' | 'guest' | undefined = nav.role ?? persisted?.role
 
-  const [gameState, setGameState] = useState<GameState | null>(initialGameState ?? null)
-  const [projected, setProjected] = useState<ProjectedState | null>(initialProjected ?? null)
+  const [gameState, setGameState] = useState<GameState | null>(
+    nav.initialGameState ?? persisted?.hostState ?? null
+  )
+  const [projected, setProjected] = useState<ProjectedState | null>(
+    nav.projectedState ?? persisted?.guestProjected ?? null
+  )
   const [disconnected, setDisconnected] = useState(false)
   const [opponentExpanded, setOpponentExpanded] = useState(false)
+  // Card-first placement: the expansion card the player is currently placing on the board.
+  const [placingCardId, setPlacingCardId] = useState<string | null>(null)
 
   const hostSessionRef = useRef<HostSession | null>(sessionStore.getHost())
   const guestSessionRef = useRef<GuestSession | null>(sessionStore.getGuest())
 
   const myId: PlayerId = role === 'host' ? 'host' : 'guest'
 
+  // Latest authoritative state, read when re-sending to a reconnecting guest.
+  const gameStateRef = useRef(gameState)
+  gameStateRef.current = gameState
+
   const dispatchAction = useCallback((action: GameAction) => {
     if (role === 'host') {
       setGameState(prev => {
         if (!prev) return prev
-        const next = applyAction(prev, 'host', action)
+        // A resource choice is applied as its owner, not always the host: this lets the
+        // host answer its own pending choice and lets Practice/hot-seat resolve the
+        // guest's choice locally. Networked guest choices still arrive via host.onAction.
+        const actor: PlayerId = action.type === 'CHOOSE_RESOURCE'
+          ? prev.pendingChoices[0]?.player ?? 'host'
+          : 'host'
+        const next = applyAction(prev, actor, action)
         hostSessionRef.current?.sendState(projectForGuest(next))
         return next
       })
@@ -47,41 +74,85 @@ export default function GamePage() {
     }
   }, [role])
 
+  // Board actions clear placement mode once a card has been placed on a slot.
+  const handleBoardAction = useCallback((action: GameAction) => {
+    dispatchAction(action)
+    if (action.type === 'PLACE_EXPANSION' || action.type === 'PLACE_REGION_EXPANSION') {
+      setPlacingCardId(null)
+    }
+  }, [dispatchAction])
+
+  // Wire up (or rebuild, after a reload) the network session and its handlers.
+  // Intentionally returns no cleanup that closes the room: React StrictMode
+  // double-invokes effect cleanups in dev, which would tear down the live
+  // connection the instant it opens. The room is closed only in leaveGame().
   useEffect(() => {
-    const guestSession = guestSessionRef.current
-    if (!guestSession) return
+    if (!role) return
 
-    guestSession.onStateUpdate(state => {
-      setProjected(state)
-      setDisconnected(false)
-    })
-    guestSession.onDisconnect(() => setDisconnected(true))
-    guestSession.onConnect(() => setDisconnected(false))
+    if (role === 'host') {
+      let host = sessionStore.getHost()
+      if (!host && persisted?.roomId) {
+        host = createHostSession(persisted.roomId)
+        sessionStore.setHost(host)
+      }
+      if (!host) return
+      hostSessionRef.current = host
 
-    return () => guestSession.close()
-  }, [])
-
-  useEffect(() => {
-    const hostSession = hostSessionRef.current
-    if (!hostSession) return
-
-    hostSession.onAction(action => {
-      setGameState(prev => {
-        if (!prev) return prev
-        const next = applyAction(prev, 'guest', action)
-        hostSession.sendState(projectForGuest(next))
-        return next
+      host.onAction(action => {
+        setGameState(prev => {
+          if (!prev) return prev
+          const next = applyAction(prev, 'guest', action)
+          host!.sendState(projectForGuest(next))
+          return next
+        })
       })
-    })
-    hostSession.onDisconnect(() => setDisconnected(true))
-    hostSession.onConnect(() => setDisconnected(false))
+      host.onConnect(() => {
+        setDisconnected(false)
+        // Re-send current authoritative state to a (re)connecting guest.
+        const current = gameStateRef.current
+        if (current) host!.sendState(projectForGuest(current))
+      })
+      host.onDisconnect(() => setDisconnected(true))
+    } else {
+      let guest = sessionStore.getGuest()
+      if (!guest && persisted?.roomId) {
+        guest = joinHostSession(persisted.roomId)
+        sessionStore.setGuest(guest)
+      }
+      if (!guest) return
+      guestSessionRef.current = guest
 
-    return () => hostSession.close()
-  }, [])
+      guest.onStateUpdate(state => {
+        setProjected(state)
+        setDisconnected(false)
+        savePersisted({ role: 'guest', roomId: guest!.roomId, guestProjected: state })
+      })
+      guest.onConnect(() => setDisconnected(false))
+      guest.onDisconnect(() => setDisconnected(true))
+    }
+  // persisted is derived from loadPersisted()/nav and stable for this mount.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [role])
+
+  // Persist the Host's authoritative state on every change so a reload recovers.
+  useEffect(() => {
+    if (role !== 'host' || !gameState) return
+    const roomId = hostSessionRef.current?.roomId
+    if (roomId) savePersisted({ role: 'host', roomId, hostState: gameState })
+  }, [gameState, role])
+
+  function leaveGame() {
+    sessionStore.getHost()?.close()
+    sessionStore.getGuest()?.close()
+    sessionStore.setHost(null)
+    sessionStore.setGuest(null)
+    clearPersisted()
+    navigate('/')
+  }
 
   const state = role === 'host' ? gameState : null
   const myState = role === 'host' ? gameState?.players.host : projected?.players.guest
-  const myResources = myState?.resources
+  const myResources = myState ? availableResources(myState) : undefined
   const myHand = role === 'host'
     ? gameState?.players.host.hand ?? []
     : projected?.players.guest.hand ?? []
@@ -91,22 +162,35 @@ export default function GamePage() {
   const phase = role === 'host' ? gameState?.phase : projected?.phase
   const lastRoll = role === 'host' ? gameState?.lastRoll : projected?.lastRoll
   const winner = role === 'host' ? gameState?.winner : projected?.winner
+  const pendingTrade = role === 'host' ? gameState?.pendingTrade : projected?.pendingTrade
+  const pendingChoices = role === 'host' ? gameState?.pendingChoices : projected?.pendingChoices
+  const decks = (role === 'host' ? gameState?.decks : projected?.decks) as Record<DeckId, string[]> | undefined
 
+  // Practice/hot-seat: launched as host with no live network session. The single client
+  // resolves whichever player owns the active choice.
+  const isPractice = role === 'host' && !hostSessionRef.current
+  const activeChoice = pendingChoices?.[0] ?? null
+  const myChoice = activeChoice && (activeChoice.player === myId || isPractice) ? activeChoice : null
+
+  // VP for the local player, including Hero/Trade advantage tokens. Both
+  // computations depend only on played cards (never hidden hands), so the Guest
+  // can derive the full value from its Projected State.
   const myVP = role === 'host' && gameState
     ? computeVP(gameState, 'host')
-    : projected?.players.guest
-      ? (() => {
-          // Guest computes VP from their own stats, advantages tracked by host
-          const stats = computePlayerStats(projected.players.guest)
-          return stats.victoryPoints
-        })()
+    : projected
+      ? computeVP(projected as unknown as GameState, 'guest')
       : 0
 
-  if (!gameState && !projected) {
+  // Placement is only valid during my own action phase; abandon it otherwise.
+  useEffect(() => {
+    if (placingCardId && !(isMyTurn && phase === 'action')) setPlacingCardId(null)
+  }, [placingCardId, isMyTurn, phase])
+
+  if (!role || (!gameState && !projected)) {
     return (
       <div className={styles.page}>
         <p>{t('lobby.connecting')}</p>
-        <button className="secondary" onClick={() => navigate('/')}>{t('game.backToLobby')}</button>
+        <button className="secondary" onClick={leaveGame}>{t('game.backToLobby')}</button>
       </div>
     )
   }
@@ -121,7 +205,7 @@ export default function GamePage() {
         <div className={styles.winOverlay}>
           <div className={styles.winCard}>
             <h2>{winner === myId ? t('game.youWin') : t('game.opponentWins')}</h2>
-            <button className="primary" onClick={() => navigate('/')}>{t('game.backToLobby')}</button>
+            <button className="primary" onClick={leaveGame}>{t('game.backToLobby')}</button>
           </div>
         </div>
       )}
@@ -135,18 +219,30 @@ export default function GamePage() {
         projected={projected}
       />
 
+      {placingCardId && (
+        <div className={styles.placingBanner}>
+          <span>{t('game.placing', { card: t(getCard(placingCardId).nameKey) })}</span>
+          <button className="secondary" onClick={() => setPlacingCardId(null)}>
+            {t('game.cancelPlacement')}
+          </button>
+        </div>
+      )}
+
       {/* My board */}
       <div className={styles.myBoard}>
-        {myState && (
-          <Principality
-            principality={myState.principality}
-            regions={myState.regions}
-            isMyBoard
-            phase={phase}
-            isMyTurn={isMyTurn}
-            onAction={dispatchAction}
-          />
-        )}
+        <div className={styles.boardInner}>
+          {myState && (
+            <Principality
+              principality={myState.principality}
+              regions={myState.regions}
+              isMyBoard
+              phase={phase}
+              isMyTurn={isMyTurn}
+              placingCardId={placingCardId}
+              onAction={handleBoardAction}
+            />
+          )}
+        </div>
       </div>
 
       {/* Bottom panel: hand + controls */}
@@ -155,9 +251,9 @@ export default function GamePage() {
           <span className={isMyTurn ? styles.myTurn : styles.theirTurn}>
             {isMyTurn ? t('game.yourTurn') : t('game.opponentTurn')}
           </span>
-          <span className={styles.phase}>{t(`game.phase.${phase}`)}</span>
           <span className={styles.vp}>{t('game.currentVP', { count: myVP })}</span>
         </div>
+        <PhaseTracker phase={phase} isMyTurn={isMyTurn} />
 
         {myResources && <ResourceBar resources={myResources} />}
 
@@ -169,7 +265,36 @@ export default function GamePage() {
           phase={phase}
           resources={myResources}
           onAction={dispatchAction}
+          onBeginPlacement={setPlacingCardId}
         />
+
+        {pendingTrade && (
+          <TradeOfferBanner offer={pendingTrade} myId={myId} onAction={dispatchAction} />
+        )}
+
+        {myChoice && <ResourceChoiceModal choice={myChoice} onAction={dispatchAction} />}
+
+        {activeChoice && !myChoice && (
+          <div className={styles.choiceWaiting}>{t('game.chooseResource.waiting')}</div>
+        )}
+
+        {phase === 'action' && isMyTurn && myResources && myState && (
+          <TradeMenu
+            resources={myResources}
+            playedCards={myState.playedCards}
+            offerPending={!!pendingTrade}
+            onAction={dispatchAction}
+          />
+        )}
+
+        {phase === 'swap' && isMyTurn && myResources && decks && (
+          <SwapPanel
+            hand={myHand as string[]}
+            decks={decks}
+            resources={myResources}
+            onAction={dispatchAction}
+          />
+        )}
 
         <div className={styles.controls}>
           {phase === 'roll' && isMyTurn && (

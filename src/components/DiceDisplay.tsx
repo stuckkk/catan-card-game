@@ -3,7 +3,7 @@ import type { DiceRoll } from '../engine/types'
 import styles from './DiceDisplay.module.css'
 
 const EVENT_ICONS: Record<string, string> = {
-  bandit: '🗡️', trade: '⚖️', festival: '🎵', harvest: '☀️', event: '?',
+  bandit: '🗡️', trade: '⚖️', tournament: '🛡️', harvest: '☀️', event: '?',
 }
 
 interface Props { roll: DiceRoll }

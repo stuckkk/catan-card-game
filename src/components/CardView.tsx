@@ -44,7 +44,7 @@ export default function CardView({ cardId, compact, selected, affordable = true,
 
   return (
     <button
-      className={[styles.card, colorClass, selected && styles.selected, !affordable && styles.unaffordable].filter(Boolean).join(' ')}
+      className={[styles.card, colorClass, compact && styles.compact, selected && styles.selected, !affordable && styles.unaffordable].filter(Boolean).join(' ')}
       onClick={onClick}
       title={t(def.descriptionKey)}
     >

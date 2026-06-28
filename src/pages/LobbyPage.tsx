@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { createHostSession, joinHostSession } from '../network/trysteroSession'
 import { sessionStore } from '../network/sessionStore'
+import { savePersisted } from '../network/persistence'
 import { createInitialState, projectForGuest } from '../engine/engine'
 import styles from './LobbyPage.module.css'
 
@@ -36,11 +37,16 @@ export default function LobbyPage() {
     sessionStore.setHost(session)
     sessionStore.setGuest(null)
     setInviteUrl(session.inviteUrl)
+    savePersisted({ role: 'host', roomId: session.roomId })
 
+    let started = false
     session.onConnect(() => {
+      if (started) return  // ignore reconnects while still in the lobby
+      started = true
       const lang = i18n.language.startsWith('de') ? 'de' : 'en'
       const initialState = createInitialState({ vpTarget, language: lang })
       session.sendState(projectForGuest(initialState))
+      savePersisted({ role: 'host', roomId: session.roomId, hostState: initialState })
       navigate('/game', { state: { role: 'host', initialGameState: initialState } })
     })
 
@@ -54,10 +60,24 @@ export default function LobbyPage() {
     const session = joinHostSession(roomId.trim())
     sessionStore.setGuest(session)
     sessionStore.setHost(null)
+    savePersisted({ role: 'guest', roomId: session.roomId })
 
+    let entered = false
     session.onStateUpdate(projectedState => {
+      savePersisted({ role: 'guest', roomId: session.roomId, guestProjected: projectedState })
+      if (entered) return  // GamePage takes over state updates once mounted
+      entered = true
       navigate('/game', { state: { role: 'guest', projectedState } })
     })
+  }
+
+  function handlePractice() {
+    const lang = i18n.language.startsWith('de') ? 'de' : 'en'
+    const initialState = createInitialState({ vpTarget, language: lang })
+    sessionStore.setHost(null)
+    sessionStore.setGuest(null)
+    // No network session and no persistence — a solo hot-seat board to learn on.
+    navigate('/game', { state: { role: 'host', initialGameState: initialState } })
   }
 
   async function handleCopy() {
@@ -99,7 +119,7 @@ export default function LobbyPage() {
             <div className="card">
               <h2>{t('lobby.joinGame')}</h2>
               <div className={styles.field}>
-                <label>{t('lobby.orPasteOfferCode')}</label>
+                <label>{t('lobby.pasteRoomCode')}</label>
                 <input
                   type="text"
                   value={manualRoomId}
@@ -111,6 +131,8 @@ export default function LobbyPage() {
                 {t('lobby.connect')}
               </button>
             </div>
+
+            <button className="secondary" onClick={handlePractice}>{t('lobby.practice')}</button>
           </div>
         )}
 
