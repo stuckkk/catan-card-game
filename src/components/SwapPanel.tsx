@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { DeckId, ResourceType, Resources, GameAction } from '../engine/types'
 import { getCard } from '../engine/cards'
+import { canSwapAway } from '../engine/engine'
 import styles from './SwapPanel.module.css'
 
 const RESOURCE_ICONS: Record<ResourceType, string> = {
@@ -15,6 +16,8 @@ interface Props {
   hand: string[]
   decks: Record<DeckId, string[]>
   resources: Resources
+  /** Cards drawn this turn during refill; these may not be swapped away. */
+  drawnThisTurn: string[]
   onAction: (a: GameAction) => void
 }
 
@@ -22,7 +25,7 @@ interface Props {
  * End-of-turn card swap: discard one hand card and either draw the top of a
  * stack (free) or pay 2 of a resource to search a stack for a specific card.
  */
-export default function SwapPanel({ hand, decks, resources, onAction }: Props) {
+export default function SwapPanel({ hand, decks, resources, drawnThisTurn, onAction }: Props) {
   const { t } = useTranslation()
   const [discardIndex, setDiscardIndex] = useState<number | null>(null)
   const [deck, setDeck] = useState<DeckId | null>(null)
@@ -66,15 +69,20 @@ export default function SwapPanel({ hand, decks, resources, onAction }: Props) {
       <div className={styles.section}>
         <span className={styles.label}>{t('game.swapDiscardLabel')}</span>
         <div className={styles.cards}>
-          {hand.map((id, i) => (
-            <button
-              key={i}
-              className={`${styles.cardChip} ${discardIndex === i ? styles.selected : ''}`}
-              onClick={() => setDiscardIndex(d => (d === i ? null : i))}
-            >
-              {t(getCard(id).nameKey)}
-            </button>
-          ))}
+          {hand.map((id, i) => {
+            const locked = !canSwapAway(hand, drawnThisTurn, id)
+            return (
+              <button
+                key={i}
+                className={`${styles.cardChip} ${discardIndex === i ? styles.selected : ''}`}
+                disabled={locked}
+                title={locked ? t('game.swapDrawnLocked') : undefined}
+                onClick={() => setDiscardIndex(d => (d === i ? null : i))}
+              >
+                {t(getCard(id).nameKey)}
+              </button>
+            )
+          })}
         </div>
       </div>
 

@@ -300,17 +300,16 @@ export const AMBUSH: CardDefinition = {
   customEffect: (state, actingPlayer) => {
     const opp: 'host' | 'guest' = actingPlayer === 'host' ? 'guest' : 'host'
     const oppResources = regionResources(state.players[opp])
-    // Steal 1 resource of choice — for now steal the most abundant one
-    const richestResource = (Object.keys(oppResources) as ResourceType[])
-      .reduce((best, r) => oppResources[r] > oppResources[best] ? r : best, 'wood' as ResourceType)
-    if (oppResources[richestResource] === 0) return state
+    // Let the player choose which resource to steal. Offer only what the opponent
+    // actually holds; if they hold nothing, the card has no effect.
+    const options = (Object.keys(oppResources) as ResourceType[]).filter(r => oppResources[r] > 0)
+    if (options.length === 0) return state
     return {
       ...state,
-      players: {
-        ...state.players,
-        [opp]: adjustRegions(state.players[opp], richestResource, -1),
-        [actingPlayer]: adjustRegions(state.players[actingPlayer], richestResource, +1),
-      },
+      pendingChoices: [
+        ...state.pendingChoices,
+        { player: actingPlayer, reason: 'trade', options, takeFrom: opp },
+      ],
     }
   },
 }

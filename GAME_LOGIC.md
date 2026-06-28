@@ -67,6 +67,7 @@ The active player may perform the following actions infinitely and in any order:
 The player may optionally swap exactly 1 card.
 * Free Swap: Place 1 card under a deck, then draw the top card of any deck.
 * Paid Swap: Pay 2 identical resources (2 of a single resource type), place 1 card under a deck, then search any deck for a specific card.
+* A card drawn this turn during the Check Hand Limit step (Phase 3) may **not** be the card placed under a deck — in either a Free or Paid Swap. (With duplicate copies, you may still swap one away as long as you hold more copies than you drew this turn.) If every card in hand was just drawn, no swap is possible and the player can only skip.
 
 ---
 

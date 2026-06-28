@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { applyAction, computeVP, projectForGuest, availableResources } from '../engine/engine'
+import { applyAction, computeVP, projectForGuest, availableResources, computePlayerStats } from '../engine/engine'
 import { getCard } from '../engine/cards'
 import type { GameState, GameAction, ProjectedState, PlayerId, DeckId } from '../engine/types'
 import { createHostSession, joinHostSession } from '../network/trysteroSession'
@@ -18,6 +18,7 @@ import ResourceBar from '../components/ResourceBar'
 import DiceDisplay from '../components/DiceDisplay'
 import OpponentSummary from '../components/OpponentSummary'
 import ResourceChoiceModal from '../components/ResourceChoiceModal'
+import HandCheckPanel from '../components/HandCheckPanel'
 import styles from './GamePage.module.css'
 
 export default function GamePage() {
@@ -287,11 +288,21 @@ export default function GamePage() {
           />
         )}
 
-        {phase === 'swap' && isMyTurn && myResources && decks && (
+        {phase === 'hand-check' && isMyTurn && myState && decks && (
+          <HandCheckPanel
+            hand={myHand as string[]}
+            handLimit={computePlayerStats(myState).handLimit}
+            decks={decks}
+            onAction={dispatchAction}
+          />
+        )}
+
+        {phase === 'swap' && isMyTurn && myResources && decks && myState && (
           <SwapPanel
             hand={myHand as string[]}
             decks={decks}
             resources={myResources}
+            drawnThisTurn={myState.drawnThisTurn}
             onAction={dispatchAction}
           />
         )}

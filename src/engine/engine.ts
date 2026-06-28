@@ -1,7 +1,7 @@
 import {
   GameState, PlayerState, PlayerId, ResourceType, Resources, EMPTY_RESOURCES,
   GameAction, ProjectedState, DiceRoll, EventSymbol, ProductionNumber,
-  DeckId, CentralSlot, RegionState, RegionExpansionPosition,
+  DeckId, CentralSlot, RegionState, RegionExpansionPosition, CardDefinition,
 } from './types'
 import {
   getCard, getRegion, CARD_REGISTRY,
@@ -250,6 +250,7 @@ function makeInitialPlayer(id: PlayerId): PlayerState {
     principality,
     regions,
     playedCards: ['settlement', 'road', 'settlement'],
+    drawnThisTurn: [],
   }
 }
 
@@ -459,6 +460,10 @@ function runProduction(state: GameState, roll: ProductionNumber): GameState {
  *  phase. While choices remain, stay paused in 'event-resolution'. */
 function resumeAfterChoices(state: GameState): GameState {
   if (state.pendingChoices.length > 0) return state
+  // Only the event-resolution flow has a paused production step to resume. Choices
+  // raised during the action phase (e.g. Ambush) keep phase 'action' and must not
+  // trigger production a second time.
+  if (state.phase !== 'event-resolution') return state
   const prod = state.lastRoll?.productionNumber
   return prod == null ? { ...state, phase: 'action' } : runProduction(state, prod)
 }
@@ -759,22 +764,42 @@ function applyDemolishRegionExpansion(
   }
 }
 
+/** Whether a card grants a benefit that stays active while the card is "in play"
+ *  (vs. a one-shot gain). Such action cards are kept in playedCards so their effect
+ *  persists, since computePlayerStats only counts playedCards. */
+function hasPersistentEffect(card: CardDefinition): boolean {
+  return card.effects.some(e =>
+    e.type === 'GRANT_SYMBOL' || e.type === 'GRANT_VP' || e.type === 'IMPROVED_TRADE'
+  )
+}
+
 function applyPlayActionCard(state: GameState, actingPlayer: PlayerId, cardId: string): GameState {
+  if (state.phase !== 'action') return state
   const player = state.players[actingPlayer]
   const card = CARD_REGISTRY[cardId]
   if (!card || card.category !== 'action') return state
   if (!player.hand.includes(cardId)) return state
 
-  let newState: GameState = {
-    ...state,
-    players: {
-      ...state.players,
-      [actingPlayer]: { ...player, hand: removeFirst(player.hand, cardId) },
-    },
-    discardPile: [...state.discardPile, cardId],
-  }
+  // Persistent cards (e.g. Invention's progress) stay in playedCards so the engine
+  // keeps counting them; one-shot cards (e.g. Celebration) go to the discard pile.
+  const persistent = hasPersistentEffect(card)
+  const handAfter = { ...player, hand: removeFirst(player.hand, cardId) }
+  let newState: GameState = persistent
+    ? {
+        ...state,
+        players: {
+          ...state.players,
+          [actingPlayer]: { ...handAfter, playedCards: [...player.playedCards, cardId] },
+        },
+      }
+    : {
+        ...state,
+        players: { ...state.players, [actingPlayer]: handAfter },
+        discardPile: [...state.discardPile, cardId],
+      }
 
-  // Apply declarative effects
+  // Apply one-shot declarative effects. (Persistent effects are read from playedCards
+  // by computePlayerStats and must NOT be applied here, to avoid double-counting.)
   for (const effect of card.effects) {
     if (effect.type === 'GRANT_RESOURCE') {
       newState = {
@@ -868,21 +893,33 @@ function applyEndActionPhase(state: GameState, actingPlayer: PlayerId): GameStat
   if (state.phase !== 'action') return state
   if (state.activePlayer !== actingPlayer) return state
 
-  const stats = computePlayerStats(state.players[actingPlayer])
-  const handSize = state.players[actingPlayer].hand.length
+  const player = state.players[actingPlayer]
+  const stats = computePlayerStats(player)
+  const handSize = player.hand.length
+
+  // Start the end-of-turn flow with a clean refill record (drives the Phase 4 swap lock).
+  const cleared = {
+    ...state,
+    players: { ...state.players, [actingPlayer]: { ...player, drawnThisTurn: [] } },
+  }
 
   if (handSize === stats.handLimit) {
-    return { ...state, phase: 'swap' }
+    return { ...cleared, phase: 'swap' }
   }
-  return { ...state, phase: 'hand-check' }
+  return { ...cleared, phase: 'hand-check' }
 }
 
+/** Decks the player may draw refill cards from (the Event deck is never a hand source). */
+const DRAW_DECKS: DeckId[] = ['green', 'red', 'brown', 'yellow']
+
+/** Discard the chosen cards (when over the hand limit). Drawing back up to the limit
+ *  is a separate, player-driven step (DRAW_TO_LIMIT). */
 function applyDiscardToLimit(state: GameState, actingPlayer: PlayerId, cardIds: string[]): GameState {
   if (state.phase !== 'hand-check') return state
   const player = state.players[actingPlayer]
   const stats = computePlayerStats(player)
 
-  let hand = [...player.hand]
+  const hand = [...player.hand]
   const discarded: string[] = []
 
   for (const id of cardIds) {
@@ -894,34 +931,58 @@ function applyDiscardToLimit(state: GameState, actingPlayer: PlayerId, cardIds: 
 
   if (hand.length > stats.handLimit) return state  // still over limit
 
-  // Draw up to limit if below
-  const decks = { ...state.decks }
-  while (hand.length < stats.handLimit) {
-    // Draw from green deck by default; if empty, skip
-    const deckIds: DeckId[] = ['green', 'yellow', 'brown', 'red']
-    let drawn = false
-    for (const deckId of deckIds) {
-      if (decks[deckId].length > 0) {
-        const drawn_card = decks[deckId][decks[deckId].length - 1]
-        decks[deckId] = decks[deckId].slice(0, -1)
-        hand = [...hand, drawn_card]
-        drawn = true
-        break
-      }
-    }
-    if (!drawn) break
-  }
-
   return {
     ...state,
     players: {
       ...state.players,
       [actingPlayer]: { ...player, hand },
     },
-    decks,
     discardPile: [...state.discardPile, ...discarded],
-    phase: 'swap',
+    // Exactly at the limit → swap; below → stay in hand-check to draw.
+    phase: hand.length === stats.handLimit ? 'swap' : 'hand-check',
   }
+}
+
+/** Draw one card from the chosen deck to refill toward the hand limit. Advances to the
+ *  swap phase once at the limit, or if no draw deck has cards left (avoids a soft-lock). */
+function applyDrawToLimit(state: GameState, actingPlayer: PlayerId, fromDeck: DeckId): GameState {
+  if (state.phase !== 'hand-check') return state
+  const player = state.players[actingPlayer]
+  const stats = computePlayerStats(player)
+
+  let hand = player.hand
+  let decks = state.decks
+  let drawnThisTurn = player.drawnThisTurn
+  if (hand.length < stats.handLimit) {
+    const deck = state.decks[fromDeck]
+    if (deck.length > 0) {
+      const drawn = deck[deck.length - 1]
+      hand = [...hand, drawn]
+      decks = { ...state.decks, [fromDeck]: deck.slice(0, -1) }
+      // Record the draw so Phase 4 can forbid swapping it away.
+      drawnThisTurn = [...drawnThisTurn, drawn]
+    }
+  }
+
+  const exhausted = DRAW_DECKS.every(d => decks[d].length === 0)
+  return {
+    ...state,
+    players: {
+      ...state.players,
+      [actingPlayer]: { ...player, hand, drawnThisTurn },
+    },
+    decks,
+    phase: hand.length >= stats.handLimit || exhausted ? 'swap' : 'hand-check',
+  }
+}
+
+/** A card may be swapped away only if the hand holds more copies of it than were drawn
+ *  this turn during the refill — a card drawn this turn can never be the one placed under
+ *  a deck (GAME_LOGIC.md §3 Phase 4). */
+export function canSwapAway(hand: string[], drawnThisTurn: string[], cardId: string): boolean {
+  const held = hand.filter(c => c === cardId).length
+  const drawn = drawnThisTurn.filter(c => c === cardId).length
+  return held > drawn
 }
 
 function applyFreeSwap(state: GameState, actingPlayer: PlayerId, discardCardId: string, fromDeck: DeckId): GameState {
@@ -930,6 +991,7 @@ function applyFreeSwap(state: GameState, actingPlayer: PlayerId, discardCardId: 
   const deck = state.decks[fromDeck]
   if (deck.length === 0) return state
   if (!player.hand.includes(discardCardId)) return state
+  if (!canSwapAway(player.hand, player.drawnThisTurn, discardCardId)) return state
 
   const drawnCard = deck[deck.length - 1]
   const newHand = [...removeFirst(player.hand, discardCardId), drawnCard]
@@ -963,6 +1025,7 @@ function applyPaidSwap(
   const player = state.players[actingPlayer]
   if (availableResources(player)[payWith] < 2) return state
   if (!player.hand.includes(discardCardId)) return state
+  if (!canSwapAway(player.hand, player.drawnThisTurn, discardCardId)) return state
 
   const search = state.decks[searchDeck]
   const searchIdx = search.indexOf(searchCardId)
@@ -1030,6 +1093,7 @@ export function applyAction(state: GameState, actingPlayer: PlayerId, action: Ga
     case 'DEMOLISH_REGION_EXPANSION': next = applyDemolishRegionExpansion(state, actingPlayer, action.regionIndex, action.position); break
     case 'END_ACTION_PHASE':   next = applyEndActionPhase(state, actingPlayer); break
     case 'DISCARD_TO_LIMIT':   next = applyDiscardToLimit(state, actingPlayer, action.cardIds); break
+    case 'DRAW_TO_LIMIT':      next = applyDrawToLimit(state, actingPlayer, action.fromDeck); break
     case 'FREE_SWAP':          next = applyFreeSwap(state, actingPlayer, action.discardCardId, action.fromDeck); break
     case 'PAID_SWAP':          next = applyPaidSwap(state, actingPlayer, action.discardCardId, action.fromDeck, action.searchCardId, action.searchDeck, action.payWith); break
     case 'SKIP_SWAP':          next = applySkipSwap(state, actingPlayer); break

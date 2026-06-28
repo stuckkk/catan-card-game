@@ -53,6 +53,7 @@ function makePlayer(id: PlayerId, over: Partial<PlayerState> = {}): PlayerState 
     ],
     regions: regionsWith(),
     playedCards: ['settlement'],
+    drawnThisTurn: [],
     ...over,
   }
 }
@@ -640,6 +641,174 @@ describe('discard to hand limit', () => {
     const next = applyAction(state, 'host', { type: 'DISCARD_TO_LIMIT', cardIds: ['a'] })
     expect(next.players.host.hand).toHaveLength(3)
     expect(next.discardPile).toContain('a')
+    expect(next.phase).toBe('swap')
+  })
+
+  it('stays in hand-check (no auto-draw) when discarding leaves the hand below the limit', () => {
+    const host = makePlayer('host', { hand: ['a', 'b', 'c', 'd'] }) // limit 3
+    const state = makeState({
+      phase: 'hand-check',
+      players: { host, guest: makePlayer('guest') },
+      decks: { green: ['knight'], red: [], brown: [], yellow: [], event: [] },
+    })
+    const next = applyAction(state, 'host', { type: 'DISCARD_TO_LIMIT', cardIds: ['a', 'b', 'c'] })
+    expect(next.players.host.hand).toEqual(['d']) // 1 card, below limit
+    expect(next.phase).toBe('hand-check')         // waiting to draw
+    expect(next.decks.green).toEqual(['knight'])  // nothing auto-drawn
+  })
+})
+
+describe('playing action cards', () => {
+  it('plays Celebration: gains 1 gold and discards the card', () => {
+    const host = makePlayer('host', { hand: ['celebration'], regions: regionsWith({ gold: 1 }) })
+    const state = makeState({ players: { host, guest: makePlayer('guest') } })
+    const next = applyAction(state, 'host', { type: 'PLAY_ACTION_CARD', cardId: 'celebration' })
+    expect(availableResources(next.players.host).gold).toBe(2)
+    expect(next.players.host.hand).toEqual([])
+    expect(next.discardPile).toContain('celebration')
+    expect(next.players.host.playedCards).not.toContain('celebration')
+  })
+
+  it('plays Invention: grants a permanent +1 progress (kept in playedCards)', () => {
+    const host = makePlayer('host', { hand: ['invention'] })
+    const state = makeState({ players: { host, guest: makePlayer('guest') } })
+    const next = applyAction(state, 'host', { type: 'PLAY_ACTION_CARD', cardId: 'invention' })
+    expect(next.players.host.hand).toEqual([])
+    expect(next.players.host.playedCards).toContain('invention')
+    expect(next.discardPile).not.toContain('invention')
+    const stats = computePlayerStats(next.players.host)
+    expect(stats.progressPoints).toBe(1)
+    expect(stats.handLimit).toBe(4) // 3 + 1 progress, persists with the card
+  })
+
+  it('plays Ambush: opens a resource choice, then steals the chosen resource', () => {
+    const host = makePlayer('host', { hand: ['ambush'], regions: regionsWith() })
+    const guest = makePlayer('guest', { regions: regionsWith({ wood: 2 }) })
+    const state = makeState({ players: { host, guest } })
+
+    const played = applyAction(state, 'host', { type: 'PLAY_ACTION_CARD', cardId: 'ambush' })
+    expect(played.phase).toBe('action')
+    expect(played.pendingChoices).toHaveLength(1)
+    expect(played.pendingChoices[0]).toMatchObject({ player: 'host', reason: 'trade', takeFrom: 'guest' })
+    expect(played.pendingChoices[0].options).toContain('wood')
+
+    const done = applyAction(played, 'host', { type: 'CHOOSE_RESOURCE', resource: 'wood' })
+    expect(availableResources(done.players.host).wood).toBe(1)
+    expect(availableResources(done.players.guest).wood).toBe(1)
+    expect(done.pendingChoices).toHaveLength(0)
+  })
+
+  it('resolving an Ambush choice does not trigger production a second time', () => {
+    // host's wood region (forest-2) produces on a roll of 2; if production ran again
+    // after the steal, host would gain an extra wood beyond the single stolen one.
+    const host = makePlayer('host', { hand: ['ambush'], regions: regionsWith() })
+    const guest = makePlayer('guest', { regions: regionsWith({ wood: 2 }) })
+    const state = makeState({
+      players: { host, guest },
+      lastRoll: { eventSymbol: 'event', productionNumber: 2 } as DiceRoll,
+    })
+    const played = applyAction(state, 'host', { type: 'PLAY_ACTION_CARD', cardId: 'ambush' })
+    const done = applyAction(played, 'host', { type: 'CHOOSE_RESOURCE', resource: 'wood' })
+    expect(availableResources(done.players.host).wood).toBe(1) // only the stolen wood
+    expect(done.phase).toBe('action')
+  })
+
+  it('ignores PLAY_ACTION_CARD outside the action phase', () => {
+    const host = makePlayer('host', { hand: ['celebration'], regions: regionsWith({ gold: 1 }) })
+    const state = makeState({ phase: 'roll', players: { host, guest: makePlayer('guest') } })
+    const next = applyAction(state, 'host', { type: 'PLAY_ACTION_CARD', cardId: 'celebration' })
+    expect(next.players.host.hand).toEqual(['celebration'])
+    expect(availableResources(next.players.host).gold).toBe(1)
+  })
+})
+
+describe('player-chosen refill draw', () => {
+  it('draws from the chosen deck and advances to swap at the limit', () => {
+    const host = makePlayer('host', { hand: ['knight', 'knight'] }) // 2 cards, limit 3
+    const state = makeState({
+      phase: 'hand-check',
+      players: { host, guest: makePlayer('guest') },
+      decks: { green: [], red: [], brown: [], yellow: ['ambush'], event: [] },
+    })
+    const next = applyAction(state, 'host', { type: 'DRAW_TO_LIMIT', fromDeck: 'yellow' })
+    expect(next.players.host.hand).toContain('ambush')
+    expect(next.players.host.hand).toHaveLength(3)
+    expect(next.decks.yellow).toEqual([])
+    expect(next.phase).toBe('swap')
+  })
+
+  it('advances to swap when all draw decks are exhausted even if below the limit', () => {
+    const host = makePlayer('host', { hand: [] }) // 0 cards, limit 3, but no cards to draw
+    const state = makeState({
+      phase: 'hand-check',
+      players: { host, guest: makePlayer('guest') },
+      decks: { green: [], red: [], brown: [], yellow: [], event: [] },
+    })
+    const next = applyAction(state, 'host', { type: 'DRAW_TO_LIMIT', fromDeck: 'green' })
+    expect(next.players.host.hand).toEqual([])
+    expect(next.phase).toBe('swap')
+  })
+})
+
+describe('swap lock on cards drawn this turn', () => {
+  it('records the drawn card in drawnThisTurn', () => {
+    const host = makePlayer('host', { hand: ['knight', 'knight'] }) // 2 cards, limit 3
+    const state = makeState({
+      phase: 'hand-check',
+      players: { host, guest: makePlayer('guest') },
+      decks: { green: [], red: [], brown: [], yellow: ['ambush'], event: [] },
+    })
+    const next = applyAction(state, 'host', { type: 'DRAW_TO_LIMIT', fromDeck: 'yellow' })
+    expect(next.players.host.drawnThisTurn).toEqual(['ambush'])
+  })
+
+  it('rejects swapping away a card drawn this turn (free swap)', () => {
+    const host = makePlayer('host', { hand: ['knight'], drawnThisTurn: ['knight'] })
+    const state = makeState({
+      phase: 'swap',
+      players: { host, guest: makePlayer('guest') },
+      decks: { green: ['top'], red: [], brown: [], yellow: [], event: [] },
+    })
+    const next = applyAction(state, 'host', { type: 'FREE_SWAP', discardCardId: 'knight', fromDeck: 'green' })
+    expect(next.players.host.hand).toEqual(['knight']) // unchanged
+    expect(next.phase).toBe('swap')
+  })
+
+  it('rejects swapping away a card drawn this turn (paid swap)', () => {
+    const host = makePlayer('host', {
+      hand: ['knight'], drawnThisTurn: ['knight'], regions: regionsWith({ gold: 2 }),
+    })
+    const state = makeState({
+      phase: 'swap',
+      players: { host, guest: makePlayer('guest') },
+      decks: { green: ['merchant'], red: [], brown: [], yellow: [], event: [] },
+    })
+    const next = applyAction(state, 'host', {
+      type: 'PAID_SWAP', discardCardId: 'knight', fromDeck: 'green',
+      searchCardId: 'merchant', searchDeck: 'green', payWith: 'gold',
+    })
+    expect(next.players.host.hand).toEqual(['knight']) // unchanged
+    expect(availableResources(next.players.host).gold).toBe(2) // not charged
+    expect(next.phase).toBe('swap')
+  })
+
+  it('allows swapping a duplicate when more copies are held than were drawn', () => {
+    const host = makePlayer('host', { hand: ['knight', 'knight'], drawnThisTurn: ['knight'] })
+    const state = makeState({
+      phase: 'swap',
+      players: { host, guest: makePlayer('guest') },
+      decks: { green: ['top'], red: [], brown: [], yellow: [], event: [] },
+    })
+    const next = applyAction(state, 'host', { type: 'FREE_SWAP', discardCardId: 'knight', fromDeck: 'green' })
+    expect(next.players.host.hand).toEqual(['knight', 'top'])
+    expect(next.phase).toBe('roll')
+  })
+
+  it('clears drawnThisTurn when the end-of-turn check begins', () => {
+    const host = makePlayer('host', { hand: ['a', 'b', 'c'], drawnThisTurn: ['stale'] }) // at limit
+    const state = makeState({ phase: 'action', players: { host, guest: makePlayer('guest') } })
+    const next = applyAction(state, 'host', { type: 'END_ACTION_PHASE' })
+    expect(next.players.host.drawnThisTurn).toEqual([])
     expect(next.phase).toBe('swap')
   })
 })

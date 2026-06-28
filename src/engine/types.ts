@@ -87,6 +87,9 @@ export interface PlayerState {
   regions: RegionState[]  // indexed by regionIndices in CentralSlot
   /** Placed permanent card IDs (expansion + road + settlement + city, all played cards) */
   playedCards: string[]
+  /** Card IDs drawn this turn during the Check Hand Limit refill (Phase 3). These may not
+   *  be swapped away in Phase 4. Reset at the start of each end-of-turn hand check. */
+  drawnThisTurn: string[]
 }
 
 // ─── Derived / Computed ───────────────────────────────────────────────────────
@@ -212,6 +215,8 @@ export type GameAction =
   | { type: 'DEMOLISH_REGION_EXPANSION'; regionIndex: number; position: RegionExpansionPosition }
   | { type: 'END_ACTION_PHASE' }
   | { type: 'DISCARD_TO_LIMIT'; cardIds: string[] }
+  /** Draw one card from the chosen deck to refill toward the hand limit. */
+  | { type: 'DRAW_TO_LIMIT'; fromDeck: DeckId }
   | { type: 'FREE_SWAP'; discardCardId: string; fromDeck: DeckId }
   /** Pay 2 of one Resource, place a card under a deck, then take a named card from any deck. */
   | { type: 'PAID_SWAP'; discardCardId: string; fromDeck: DeckId; searchCardId: string; searchDeck: DeckId; payWith: ResourceType }
