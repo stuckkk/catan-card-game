@@ -14,7 +14,10 @@ export type EventSymbol = 'bandit' | 'trade' | 'tournament' | 'harvest' | 'event
 
 export type SymbolType = 'strength' | 'commerce' | 'progress' | 'tournament'
 
-export type DeckId = 'green' | 'red' | 'brown' | 'yellow' | 'event'
+/** The 5 face-down draw stacks. Hand-draw cards (green/red/brown/yellow) are
+ *  shuffled together and split across these; a draw is type-blind. */
+export type DrawStackId = 'stack-1' | 'stack-2' | 'stack-3' | 'stack-4' | 'stack-5'
+export type DeckId = DrawStackId | 'event'
 
 // ─── Card Definitions (static catalog) ───────────────────────────────────────
 

@@ -4,8 +4,13 @@ import {
   availableResources, getTradeRate,
 } from './engine'
 import type {
-  GameState, PlayerState, PlayerId, Resources, ResourceType, RegionState, DiceRoll,
+  GameState, PlayerState, PlayerId, Resources, ResourceType, RegionState, DiceRoll, DeckId,
 } from './types'
+
+/** All 5 draw stacks plus the event deck, empty. Tests override individual stacks. */
+const emptyDecks = (): Record<DeckId, string[]> => ({
+  'stack-1': [], 'stack-2': [], 'stack-3': [], 'stack-4': [], 'stack-5': [], event: [],
+})
 
 // ─── Test builders (deterministic, no RNG) ──────────────────────────────────
 
@@ -67,7 +72,7 @@ function makeState(over: Partial<GameState> = {}): GameState {
     phase: 'action',
     lastRoll: null,
     winner: null,
-    decks: { green: [], red: [], brown: [], yellow: [], event: [] },
+    decks: emptyDecks(),
     discardPile: [],
     pendingTrade: null,
     pendingChoices: [],
@@ -588,11 +593,11 @@ describe('free swap', () => {
     const state = makeState({
       phase: 'swap',
       players: { host, guest: makePlayer('guest') },
-      decks: { green: ['a', 'b', 'top'], red: [], brown: [], yellow: [], event: [] },
+      decks: { ...emptyDecks(), 'stack-1': ['a', 'b', 'top'] },
     })
-    const next = applyAction(state, 'host', { type: 'FREE_SWAP', discardCardId: 'knight', fromDeck: 'green' })
+    const next = applyAction(state, 'host', { type: 'FREE_SWAP', discardCardId: 'knight', fromDeck: 'stack-1' })
     expect(next.players.host.hand).toEqual(['top'])
-    expect(next.decks.green).toEqual(['knight', 'a', 'b']) // discard buried at the bottom
+    expect(next.decks['stack-1']).toEqual(['knight', 'a', 'b']) // discard buried at the bottom
     expect(next.phase).toBe('roll')
     expect(next.activePlayer).toBe('guest')
   })
@@ -604,17 +609,17 @@ describe('paid swap', () => {
     const state = makeState({
       phase: 'swap',
       players: { host, guest: makePlayer('guest') },
-      decks: { green: ['merchant', 'school'], red: [], brown: [], yellow: [], event: [] },
+      decks: { ...emptyDecks(), 'stack-1': ['merchant', 'school'] },
     })
     const next = applyAction(state, 'host', {
-      type: 'PAID_SWAP', discardCardId: 'knight', fromDeck: 'green',
-      searchCardId: 'merchant', searchDeck: 'green', payWith: 'gold',
+      type: 'PAID_SWAP', discardCardId: 'knight', fromDeck: 'stack-1',
+      searchCardId: 'merchant', searchDeck: 'stack-1', payWith: 'gold',
     })
     expect(next.players.host.hand).toContain('merchant')
     expect(next.players.host.hand).not.toContain('knight')
     expect(availableResources(next.players.host).gold).toBe(0)
-    expect(next.decks.green).not.toContain('merchant')
-    expect(next.decks.green).toContain('knight') // buried
+    expect(next.decks['stack-1']).not.toContain('merchant')
+    expect(next.decks['stack-1']).toContain('knight') // buried
     expect(next.activePlayer).toBe('guest')
   })
 
@@ -623,11 +628,11 @@ describe('paid swap', () => {
     const state = makeState({
       phase: 'swap',
       players: { host, guest: makePlayer('guest') },
-      decks: { green: ['merchant'], red: [], brown: [], yellow: [], event: [] },
+      decks: { ...emptyDecks(), 'stack-1': ['merchant'] },
     })
     const next = applyAction(state, 'host', {
-      type: 'PAID_SWAP', discardCardId: 'knight', fromDeck: 'green',
-      searchCardId: 'merchant', searchDeck: 'green', payWith: 'gold',
+      type: 'PAID_SWAP', discardCardId: 'knight', fromDeck: 'stack-1',
+      searchCardId: 'merchant', searchDeck: 'stack-1', payWith: 'gold',
     })
     expect(next.players.host.hand).toEqual(['knight']) // unchanged
     expect(next.activePlayer).toBe('host')
@@ -649,12 +654,12 @@ describe('discard to hand limit', () => {
     const state = makeState({
       phase: 'hand-check',
       players: { host, guest: makePlayer('guest') },
-      decks: { green: ['knight'], red: [], brown: [], yellow: [], event: [] },
+      decks: { ...emptyDecks(), 'stack-1': ['knight'] },
     })
     const next = applyAction(state, 'host', { type: 'DISCARD_TO_LIMIT', cardIds: ['a', 'b', 'c'] })
     expect(next.players.host.hand).toEqual(['d']) // 1 card, below limit
     expect(next.phase).toBe('hand-check')         // waiting to draw
-    expect(next.decks.green).toEqual(['knight'])  // nothing auto-drawn
+    expect(next.decks['stack-1']).toEqual(['knight'])  // nothing auto-drawn
   })
 })
 
@@ -728,12 +733,12 @@ describe('player-chosen refill draw', () => {
     const state = makeState({
       phase: 'hand-check',
       players: { host, guest: makePlayer('guest') },
-      decks: { green: [], red: [], brown: [], yellow: ['ambush'], event: [] },
+      decks: { ...emptyDecks(), 'stack-4': ['ambush'] },
     })
-    const next = applyAction(state, 'host', { type: 'DRAW_TO_LIMIT', fromDeck: 'yellow' })
+    const next = applyAction(state, 'host', { type: 'DRAW_TO_LIMIT', fromDeck: 'stack-4' })
     expect(next.players.host.hand).toContain('ambush')
     expect(next.players.host.hand).toHaveLength(3)
-    expect(next.decks.yellow).toEqual([])
+    expect(next.decks['stack-4']).toEqual([])
     expect(next.phase).toBe('swap')
   })
 
@@ -742,9 +747,9 @@ describe('player-chosen refill draw', () => {
     const state = makeState({
       phase: 'hand-check',
       players: { host, guest: makePlayer('guest') },
-      decks: { green: [], red: [], brown: [], yellow: [], event: [] },
+      decks: emptyDecks(),
     })
-    const next = applyAction(state, 'host', { type: 'DRAW_TO_LIMIT', fromDeck: 'green' })
+    const next = applyAction(state, 'host', { type: 'DRAW_TO_LIMIT', fromDeck: 'stack-1' })
     expect(next.players.host.hand).toEqual([])
     expect(next.phase).toBe('swap')
   })
@@ -756,9 +761,9 @@ describe('swap lock on cards drawn this turn', () => {
     const state = makeState({
       phase: 'hand-check',
       players: { host, guest: makePlayer('guest') },
-      decks: { green: [], red: [], brown: [], yellow: ['ambush'], event: [] },
+      decks: { ...emptyDecks(), 'stack-4': ['ambush'] },
     })
-    const next = applyAction(state, 'host', { type: 'DRAW_TO_LIMIT', fromDeck: 'yellow' })
+    const next = applyAction(state, 'host', { type: 'DRAW_TO_LIMIT', fromDeck: 'stack-4' })
     expect(next.players.host.drawnThisTurn).toEqual(['ambush'])
   })
 
@@ -767,9 +772,9 @@ describe('swap lock on cards drawn this turn', () => {
     const state = makeState({
       phase: 'swap',
       players: { host, guest: makePlayer('guest') },
-      decks: { green: ['top'], red: [], brown: [], yellow: [], event: [] },
+      decks: { ...emptyDecks(), 'stack-1': ['top'] },
     })
-    const next = applyAction(state, 'host', { type: 'FREE_SWAP', discardCardId: 'knight', fromDeck: 'green' })
+    const next = applyAction(state, 'host', { type: 'FREE_SWAP', discardCardId: 'knight', fromDeck: 'stack-1' })
     expect(next.players.host.hand).toEqual(['knight']) // unchanged
     expect(next.phase).toBe('swap')
   })
@@ -781,11 +786,11 @@ describe('swap lock on cards drawn this turn', () => {
     const state = makeState({
       phase: 'swap',
       players: { host, guest: makePlayer('guest') },
-      decks: { green: ['merchant'], red: [], brown: [], yellow: [], event: [] },
+      decks: { ...emptyDecks(), 'stack-1': ['merchant'] },
     })
     const next = applyAction(state, 'host', {
-      type: 'PAID_SWAP', discardCardId: 'knight', fromDeck: 'green',
-      searchCardId: 'merchant', searchDeck: 'green', payWith: 'gold',
+      type: 'PAID_SWAP', discardCardId: 'knight', fromDeck: 'stack-1',
+      searchCardId: 'merchant', searchDeck: 'stack-1', payWith: 'gold',
     })
     expect(next.players.host.hand).toEqual(['knight']) // unchanged
     expect(availableResources(next.players.host).gold).toBe(2) // not charged
@@ -797,9 +802,9 @@ describe('swap lock on cards drawn this turn', () => {
     const state = makeState({
       phase: 'swap',
       players: { host, guest: makePlayer('guest') },
-      decks: { green: ['top'], red: [], brown: [], yellow: [], event: [] },
+      decks: { ...emptyDecks(), 'stack-1': ['top'] },
     })
-    const next = applyAction(state, 'host', { type: 'FREE_SWAP', discardCardId: 'knight', fromDeck: 'green' })
+    const next = applyAction(state, 'host', { type: 'FREE_SWAP', discardCardId: 'knight', fromDeck: 'stack-1' })
     expect(next.players.host.hand).toEqual(['knight', 'top'])
     expect(next.phase).toBe('roll')
   })

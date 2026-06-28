@@ -1,4 +1,4 @@
-import type { CardDefinition, RegionDefinition, PlayerState, ResourceType, Resources } from './types'
+import type { CardDefinition, RegionDefinition, PlayerState, ResourceType, Resources, DrawStackId } from './types'
 
 // ─── Central Axis Cards ───────────────────────────────────────────────────────
 
@@ -495,4 +495,18 @@ export const DEFAULT_EVENT_DECK: string[] = [
   EVENT_PLAGUE.id, EVENT_PLAGUE.id,
   EVENT_GOOD_HARVEST.id, EVENT_GOOD_HARVEST.id,
   EVENT_TRADE_PROFIT.id, EVENT_TRADE_PROFIT.id,
+]
+
+// ─── Draw Stacks ──────────────────────────────────────────────────────────────
+// The hand-draw cards above are not separated by type at draw time. They are
+// shuffled together (ALL_DRAW_CARDS) and split into the 5 face-down stacks below.
+// The Event deck is not a draw stack — it is resolved on the '?' event-die face.
+
+export const DRAW_STACK_IDS: DrawStackId[] = ['stack-1', 'stack-2', 'stack-3', 'stack-4', 'stack-5']
+
+export const ALL_DRAW_CARDS: string[] = [
+  ...DEFAULT_GREEN_DECK,
+  ...DEFAULT_RED_DECK,
+  ...DEFAULT_BROWN_DECK,
+  ...DEFAULT_YELLOW_DECK,
 ]

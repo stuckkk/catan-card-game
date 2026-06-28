@@ -69,11 +69,11 @@
     "handCheckContinue": "Continue",
     "deckCount": "{{count}}",
     "deckName": {
-      "green": "Green",
-      "red": "Red",
-      "brown": "Brown",
-      "yellow": "Action",
-      "event": "Event"
+      "stack-1": "Stack 1",
+      "stack-2": "Stack 2",
+      "stack-3": "Stack 3",
+      "stack-4": "Stack 4",
+      "stack-5": "Stack 5"
     },
     "phase": {
       "roll": "Roll Phase",

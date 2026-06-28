@@ -69,11 +69,11 @@
     "handCheckContinue": "Weiter",
     "deckCount": "{{count}}",
     "deckName": {
-      "green": "Grün",
-      "red": "Rot",
-      "brown": "Braun",
-      "yellow": "Aktion",
-      "event": "Ereignis"
+      "stack-1": "Stapel 1",
+      "stack-2": "Stapel 2",
+      "stack-3": "Stapel 3",
+      "stack-4": "Stapel 4",
+      "stack-5": "Stapel 5"
     },
     "phase": {
       "roll": "Würfelphase",

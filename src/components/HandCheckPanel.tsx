@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { DeckId, GameAction } from '../engine/types'
-import { getCard } from '../engine/cards'
+import { getCard, DRAW_STACK_IDS } from '../engine/cards'
 import styles from './HandCheckPanel.module.css'
 
-const DRAW_DECKS: DeckId[] = ['green', 'red', 'brown', 'yellow']
+const DRAW_DECKS = DRAW_STACK_IDS
 
 interface Props {
   hand: string[]
@@ -73,7 +73,7 @@ export default function HandCheckPanel({ hand, handLimit, decks, onAction }: Pro
         ))}
       </div>
       {exhausted && (
-        <button className="primary" onClick={() => onAction({ type: 'DRAW_TO_LIMIT', fromDeck: 'green' })}>
+        <button className="primary" onClick={() => onAction({ type: 'DRAW_TO_LIMIT', fromDeck: 'stack-1' })}>
           {t('game.handCheckContinue')}
         </button>
       )}

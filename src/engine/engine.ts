@@ -1,12 +1,11 @@
 import {
   GameState, PlayerState, PlayerId, ResourceType, Resources, EMPTY_RESOURCES,
   GameAction, ProjectedState, DiceRoll, EventSymbol, ProductionNumber,
-  DeckId, CentralSlot, RegionState, RegionExpansionPosition, CardDefinition,
+  DeckId, DrawStackId, CentralSlot, RegionState, RegionExpansionPosition, CardDefinition,
 } from './types'
 import {
   getCard, getRegion, CARD_REGISTRY,
-  DEFAULT_GREEN_DECK, DEFAULT_RED_DECK, DEFAULT_BROWN_DECK,
-  DEFAULT_YELLOW_DECK, DEFAULT_EVENT_DECK,
+  ALL_DRAW_CARDS, DRAW_STACK_IDS, DEFAULT_EVENT_DECK,
   REGION_DEFINITIONS,
 } from './cards'
 
@@ -255,23 +254,20 @@ function makeInitialPlayer(id: PlayerId): PlayerState {
 }
 
 export function createInitialState(config: { vpTarget: number; language: 'en' | 'de' }): GameState {
-  const greenDeck = shuffle(DEFAULT_GREEN_DECK)
-  const redDeck = shuffle(DEFAULT_RED_DECK)
-  const brownDeck = shuffle(DEFAULT_BROWN_DECK)
-  const yellowDeck = shuffle(DEFAULT_YELLOW_DECK)
   const eventDeck = shuffle(DEFAULT_EVENT_DECK)
 
-  const hostPlayer = makeInitialPlayer('host')
-  const guestPlayer = makeInitialPlayer('guest')
+  // All hand-draw cards form a single shuffled pile, type-blind.
+  const drawPile = shuffle(ALL_DRAW_CARDS)
 
-  // Deal starting hand (3 cards each from the appropriate decks)
-  const dealCards = (player: PlayerState, deck: string[]): { player: PlayerState; deck: string[] } => {
-    const hand = deck.slice(-3)
-    return { player: { ...player, hand }, deck: deck.slice(0, -3) }
+  // Deal 3 starting cards to each player off the top (host first, then guest).
+  const hostWithHand = { ...makeInitialPlayer('host'), hand: drawPile.slice(-3) }
+  const guestWithHand = { ...makeInitialPlayer('guest'), hand: drawPile.slice(-6, -3) }
+
+  // Split the rest into 5 roughly-equal face-down stacks (round-robin keeps sizes even).
+  const stacks: Record<DrawStackId, string[]> = {
+    'stack-1': [], 'stack-2': [], 'stack-3': [], 'stack-4': [], 'stack-5': [],
   }
-
-  const { player: hostWithHand, deck: greenAfterHost } = dealCards(hostPlayer, greenDeck)
-  const { player: guestWithHand, deck: greenAfterGuest } = dealCards(guestPlayer, greenAfterHost)
+  drawPile.slice(0, -6).forEach((id, i) => stacks[DRAW_STACK_IDS[i % 5]].push(id))
 
   return {
     sessionId: nanoid(),
@@ -281,13 +277,7 @@ export function createInitialState(config: { vpTarget: number; language: 'en' | 
     phase: 'roll',
     lastRoll: null,
     winner: null,
-    decks: {
-      green: greenAfterGuest,
-      red: redDeck,
-      brown: brownDeck,
-      yellow: yellowDeck,
-      event: eventDeck,
-    },
+    decks: { ...stacks, event: eventDeck },
     discardPile: [],
     pendingTrade: null,
     pendingChoices: [],
@@ -909,8 +899,8 @@ function applyEndActionPhase(state: GameState, actingPlayer: PlayerId): GameStat
   return { ...cleared, phase: 'hand-check' }
 }
 
-/** Decks the player may draw refill cards from (the Event deck is never a hand source). */
-const DRAW_DECKS: DeckId[] = ['green', 'red', 'brown', 'yellow']
+/** Stacks the player may draw refill cards from (the Event deck is never a hand source). */
+const DRAW_DECKS: DeckId[] = DRAW_STACK_IDS
 
 /** Discard the chosen cards (when over the hand limit). Drawing back up to the limit
  *  is a separate, player-driven step (DRAW_TO_LIMIT). */

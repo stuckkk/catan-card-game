@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { DeckId, ResourceType, Resources, GameAction } from '../engine/types'
-import { getCard } from '../engine/cards'
+import type { DeckId, DrawStackId, ResourceType, Resources, GameAction } from '../engine/types'
+import { getCard, DRAW_STACK_IDS } from '../engine/cards'
 import { canSwapAway } from '../engine/engine'
 import styles from './SwapPanel.module.css'
 
@@ -10,7 +10,6 @@ const RESOURCE_ICONS: Record<ResourceType, string> = {
 }
 
 const ALL_RESOURCES: ResourceType[] = ['wood', 'wool', 'gold', 'brick', 'ore', 'grain']
-const DECK_IDS: DeckId[] = ['green', 'red', 'brown', 'yellow', 'event']
 
 interface Props {
   hand: string[]
@@ -28,7 +27,7 @@ interface Props {
 export default function SwapPanel({ hand, decks, resources, drawnThisTurn, onAction }: Props) {
   const { t } = useTranslation()
   const [discardIndex, setDiscardIndex] = useState<number | null>(null)
-  const [deck, setDeck] = useState<DeckId | null>(null)
+  const [deck, setDeck] = useState<DrawStackId | null>(null)
   const [paid, setPaid] = useState(false)
   const [payWith, setPayWith] = useState<ResourceType | null>(null)
   const [searchCardId, setSearchCardId] = useState<string | null>(null)
@@ -89,7 +88,7 @@ export default function SwapPanel({ hand, decks, resources, drawnThisTurn, onAct
       <div className={styles.section}>
         <span className={styles.label}>{t('game.swapDrawLabel')}</span>
         <div className={styles.cards}>
-          {DECK_IDS.map(d => (
+          {DRAW_STACK_IDS.map(d => (
             <button
               key={d}
               className={`${styles.deckChip} ${deck === d ? styles.selected : ''}`}

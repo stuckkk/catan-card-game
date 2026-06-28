@@ -47,6 +47,13 @@ Regions do not use external tokens. The card itself acts as an integer counter (
 | **Expansion** | Red | Varies | City Expansions. Must be placed on City slots exclusively. |
 | **Expansion** | Brown | Varies | Region Expansions. Placed above or below Region cards. |
 
+### Draw Stacks
+All hand-draw cards (Green, Red, Brown, and Yellow) are shuffled together into a single pile and dealt into **5 face-down draw stacks of roughly equal size**. The stacks are **not** separated by card type or color — a draw is type-blind. Players draw from, bury under, and search these 5 stacks during the turn sequence (Phases 3 and 4).
+
+The **Event Deck** is a separate pile and is **not** one of the 5 draw stacks. Event cards are never held in hand: they are drawn and resolved immediately on the `?` event-die face (§4).
+
+**Setup:** After shuffling the combined pile, each player draws 3 cards off the top (active player first); the remaining cards are split into the 5 stacks.
+
 ---
 
 ## 3. The Game Loop (Turn Sequence)
@@ -61,13 +68,13 @@ The active player may perform the following actions infinitely and in any order:
 **Phase 3: Check Hand Limit**
 * Default hand limit is 3 cards.
 * Limit increases by 1 for every Progress Point (Book symbol) owned.
-* If the hand is below the limit, the player draws cards to match the limit. If the hand is above the limit, the player must discard cards under a draw deck to match the limit.
+* If the hand is below the limit, the player draws cards (one at a time, from any of the 5 draw stacks of their choice) to match the limit. If the hand is above the limit, the player must bury cards under a draw stack to match the limit.
 
 **Phase 4: Swap Card**
 The player may optionally swap exactly 1 card.
-* Free Swap: Place 1 card under a deck, then draw the top card of any deck.
-* Paid Swap: Pay 2 identical resources (2 of a single resource type), place 1 card under a deck, then search any deck for a specific card.
-* A card drawn this turn during the Check Hand Limit step (Phase 3) may **not** be the card placed under a deck — in either a Free or Paid Swap. (With duplicate copies, you may still swap one away as long as you hold more copies than you drew this turn.) If every card in hand was just drawn, no swap is possible and the player can only skip.
+* Free Swap: Place 1 card under any of the 5 draw stacks, then draw the top card of any of the 5 stacks.
+* Paid Swap: Pay 2 identical resources (2 of a single resource type), place 1 card under any of the 5 draw stacks, then search **one chosen** stack for a specific card. If the named card is not in that stack, the search comes up empty.
+* A card drawn this turn during the Check Hand Limit step (Phase 3) may **not** be the card placed under a stack — in either a Free or Paid Swap. (With duplicate copies, you may still swap one away as long as you hold more copies than you drew this turn.) If every card in hand was just drawn, no swap is possible and the player can only skip.
 
 ---
 
