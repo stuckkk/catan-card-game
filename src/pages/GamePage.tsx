@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { applyAction, computeVP, availableResources, computePlayerStats } from '../engine/engine'
 import { getCard } from '../engine/cards'
-import type { GameState, GameAction, ProjectedState, PlayerId, DeckId } from '../engine/types'
+import type { GameState, GameAction, ProjectedState, PlayerId } from '../engine/types'
 import { reconnectSession } from '../network/wsSession'
 import type { NetworkSession } from '../network/wsSession'
 import { sessionStore } from '../network/sessionStore'
@@ -132,7 +132,10 @@ export default function GamePage() {
   const myState = isPractice ? gameState?.players.host : projected?.players[myId]
   const myHandRaw = myState?.hand
   const myHand: string[] = Array.isArray(myHandRaw) ? myHandRaw : []
-  const myResources = myState ? availableResources(myState as GameState['players']['host']) : undefined
+  // The viewer's own hand is never redacted (only the opponent's is), so it's safe to
+  // treat as a full PlayerState here regardless of the ProjectedState | GameState union.
+  const myFullState = myState as GameState['players']['host'] | undefined
+  const myResources = myFullState ? availableResources(myFullState) : undefined
 
   const activePlayer = view?.activePlayer
   const isMyTurn = activePlayer === myId
@@ -141,7 +144,7 @@ export default function GamePage() {
   const winner = view?.winner
   const pendingTrade = view?.pendingTrade
   const pendingChoices = view?.pendingChoices
-  const decks = view?.decks as Record<DeckId, string[]> | undefined
+  const decks = view?.decks
 
   const activeChoice = pendingChoices?.[0] ?? null
   const myChoice = activeChoice && (activeChoice.player === myId || isPractice) ? activeChoice : null
@@ -270,10 +273,10 @@ export default function GamePage() {
           />
         )}
 
-        {phase === 'hand-check' && isMyTurn && myState && decks && (
+        {phase === 'hand-check' && isMyTurn && myFullState && decks && (
           <HandCheckPanel
             hand={myHand}
-            handLimit={computePlayerStats(myState as GameState['players']['host']).handLimit}
+            handLimit={computePlayerStats(myFullState).handLimit}
             decks={decks}
             onAction={dispatchAction}
           />

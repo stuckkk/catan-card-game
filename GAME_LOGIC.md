@@ -20,7 +20,7 @@
 ## 2. Core Entities & Data Models
 
 ### Resource Types
-Wood, Wool, Gold, Brick, Ore, Grain. 
+Wood, Gold, Brick, Ore, Grain. 
 
 ### The Game Grid (The Principality)
 The board consists of interconnected slots for each player.
