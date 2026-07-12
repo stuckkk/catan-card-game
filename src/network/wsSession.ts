@@ -70,10 +70,12 @@ class WsSession {
 
   private wireSocket(socket: WebSocket): void {
     socket.onmessage = event => this.handleMessage(JSON.parse(event.data))
-    socket.onclose = () => {
-      if (this.closedByUser) return
-      setTimeout(() => this.attemptReconnect(), RECONNECT_DELAY_MS)
-    }
+    socket.onclose = () => this.scheduleReconnect()
+  }
+
+  private scheduleReconnect(): void {
+    if (this.closedByUser) return
+    setTimeout(() => this.attemptReconnect(), RECONNECT_DELAY_MS)
   }
 
   private attemptReconnect(): void {
@@ -82,10 +84,7 @@ class WsSession {
       const message: ClientMessage = { type: 'reconnect', roomId: this.roomId, token: this.token }
       socket.send(JSON.stringify(message))
     }
-    socket.onclose = () => {
-      if (this.closedByUser) return
-      setTimeout(() => this.attemptReconnect(), RECONNECT_DELAY_MS)
-    }
+    socket.onclose = () => this.scheduleReconnect()
     socket.onmessage = event => {
       const message: ServerMessage = JSON.parse(event.data)
       if (message.type === 'reconnected') {

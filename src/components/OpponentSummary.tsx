@@ -13,6 +13,10 @@ interface Props {
   projected: ProjectedState | null
 }
 
+function handSize(hand: string[] | number): number {
+  return typeof hand === 'number' ? hand : hand.length
+}
+
 export default function OpponentSummary({ expanded, onToggle, myId, gameState, projected }: Props) {
   const { t } = useTranslation()
 
@@ -30,7 +34,7 @@ export default function OpponentSummary({ expanded, onToggle, myId, gameState, p
     const source = (gameState ?? projected) as GameState | null
     if (!source) return null
     const oppState = source.players.guest
-    oppHandSize = typeof oppState.hand === 'number' ? oppState.hand : oppState.hand.length
+    oppHandSize = handSize(oppState.hand)
     oppVP = computeVP(source, 'guest')
     const stats = computePlayerStats(oppState)
     oppStrength = stats.strengthPoints
@@ -41,7 +45,7 @@ export default function OpponentSummary({ expanded, onToggle, myId, gameState, p
     hasTradeToken = oppCommerce >= 3 && oppCommerce > hostStats.commercePoints
   } else if (myId === 'guest' && projected) {
     const oppState = projected.players.host
-    oppHandSize = typeof oppState.hand === 'number' ? oppState.hand : 0
+    oppHandSize = handSize(oppState.hand)
     // Guest doesn't have full host stats — show what we can derive
     const guestStats = computePlayerStats(projected.players.guest as unknown as GameState['players']['guest'])
     oppVP = 0  // host VP not visible to guest

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  applyAction, applyRoll, rollDice, computePlayerStats, computeVP, projectForGuest, projectStateFor,
+  applyAction, applyRoll, rollDice, computePlayerStats, computeVP, projectStateFor,
   availableResources, getTradeRate,
 } from './engine'
 import type {
@@ -819,16 +819,6 @@ describe('swap lock on cards drawn this turn', () => {
 })
 
 // ─── Projection ──────────────────────────────────────────────────────────────
-
-describe('projectForGuest', () => {
-  it('redacts the host hand to a count and leaves the guest hand intact', () => {
-    const host = makePlayer('host', { hand: ['knight', 'merchant'] })
-    const guest = makePlayer('guest', { hand: ['school'] })
-    const projected = projectForGuest(makeState({ players: { host, guest } }))
-    expect(projected.players.host.hand).toBe(2)
-    expect(projected.players.guest.hand).toEqual(['school'])
-  })
-})
 
 describe('projectStateFor', () => {
   it("redacts the opponent's hand to a count and keeps the viewer's hand intact, for the host viewer", () => {

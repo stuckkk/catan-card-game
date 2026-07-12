@@ -1107,8 +1107,3 @@ export function projectStateFor(state: GameState, viewer: PlayerId): ProjectedSt
       : { host: redactedOpponent, guest: state.players.guest },
   }
 }
-
-/** @deprecated Use `projectStateFor(state, 'guest')` — kept for existing call sites/tests. */
-export function projectForGuest(state: GameState): ProjectedState {
-  return projectStateFor(state, 'guest')
-}

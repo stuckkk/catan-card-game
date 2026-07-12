@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { createSession, joinSession, SessionFailure } from '../network/wsSession'
+import type { NetworkSession } from '../network/wsSession'
 import { sessionStore } from '../network/sessionStore'
 import { savePersisted } from '../network/persistence'
 import { createInitialState } from '../engine/engine'
@@ -43,24 +44,32 @@ export default function LobbyPage() {
     return i18n.language.startsWith('de') ? 'de' : 'en'
   }
 
+  function adoptSession(session: NetworkSession) {
+    sessionStore.set(session)
+    savePersisted({ role: session.playerId, roomId: session.roomId, token: session.token })
+    session.onSessionExpired(() => setMode('error'))
+  }
+
+  function failWith(err: unknown) {
+    setErrorKey(err instanceof SessionFailure ? errorKeyForCode(err.code) : 'serverUnreachable')
+    setMode('error')
+  }
+
   async function handleCreateGame() {
     setMode('hosting')
 
     try {
       const session = await createSession({ vpTarget, language: currentLanguage() })
-      sessionStore.set(session)
+      adoptSession(session)
       setInviteUrl(session.inviteUrl ?? '')
-      savePersisted({ role: session.playerId, roomId: session.roomId, token: session.token })
 
       // Wait for the guest to actually join, not just for the server round-trip -
       // matches the "waiting for opponent" UX.
       session.onPeerConnect(() => {
         navigate('/game', { state: { role: session.playerId } })
       })
-      session.onSessionExpired(() => setMode('error'))
     } catch (err) {
-      setErrorKey(err instanceof SessionFailure ? errorKeyForCode(err.code) : 'serverUnreachable')
-      setMode('error')
+      failWith(err)
     }
   }
 
@@ -69,16 +78,13 @@ export default function LobbyPage() {
 
     try {
       const session = await joinSession(roomId.trim())
-      sessionStore.set(session)
-      savePersisted({ role: session.playerId, roomId: session.roomId, token: session.token })
+      adoptSession(session)
 
       session.onStateUpdate(() => {
         navigate('/game', { state: { role: session.playerId } })
       })
-      session.onSessionExpired(() => setMode('error'))
     } catch (err) {
-      setErrorKey(err instanceof SessionFailure ? errorKeyForCode(err.code) : 'serverUnreachable')
-      setMode('error')
+      failWith(err)
     }
   }
 
