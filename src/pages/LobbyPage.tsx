@@ -1,13 +1,24 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
-import { createHostSession, joinHostSession } from '../network/trysteroSession'
+import { createSession, joinSession, SessionFailure } from '../network/wsSession'
+import type { NetworkSession } from '../network/wsSession'
 import { sessionStore } from '../network/sessionStore'
 import { savePersisted } from '../network/persistence'
-import { createInitialState, projectForGuest } from '../engine/engine'
+import { createInitialState } from '../engine/engine'
 import styles from './LobbyPage.module.css'
 
 type LobbyMode = 'idle' | 'hosting' | 'joining' | 'error'
+type ErrorKey = 'connectionLost' | 'roomNotFound' | 'sessionExpired' | 'serverUnreachable'
+
+function errorKeyForCode(code: string): ErrorKey {
+  switch (code) {
+    case 'ROOM_NOT_FOUND': return 'roomNotFound'
+    case 'SESSION_EXPIRED': return 'sessionExpired'
+    case 'UNREACHABLE': return 'serverUnreachable'
+    default: return 'connectionLost'
+  }
+}
 
 export default function LobbyPage() {
   const { t, i18n } = useTranslation()
@@ -18,7 +29,7 @@ export default function LobbyPage() {
   const [inviteUrl, setInviteUrl] = useState('')
   const [manualRoomId, setManualRoomId] = useState('')
   const [copied, setCopied] = useState(false)
-  const [errorMsg, setErrorMsg] = useState('')
+  const [errorKey, setErrorKey] = useState<ErrorKey>('connectionLost')
 
   // Auto-join when arriving via invite link
   useEffect(() => {
@@ -29,55 +40,59 @@ export default function LobbyPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  function handleCreateGame() {
-    setMode('hosting')
-    setErrorMsg('')
-
-    const session = createHostSession()
-    sessionStore.setHost(session)
-    sessionStore.setGuest(null)
-    setInviteUrl(session.inviteUrl)
-    savePersisted({ role: 'host', roomId: session.roomId })
-
-    let started = false
-    session.onConnect(() => {
-      if (started) return  // ignore reconnects while still in the lobby
-      started = true
-      const lang = i18n.language.startsWith('de') ? 'de' : 'en'
-      const initialState = createInitialState({ vpTarget, language: lang })
-      session.sendState(projectForGuest(initialState))
-      savePersisted({ role: 'host', roomId: session.roomId, hostState: initialState })
-      navigate('/game', { state: { role: 'host', initialGameState: initialState } })
-    })
-
-    session.onDisconnect(() => setMode('error'))
+  function currentLanguage(): 'en' | 'de' {
+    return i18n.language.startsWith('de') ? 'de' : 'en'
   }
 
-  function handleJoin(roomId: string) {
+  function adoptSession(session: NetworkSession) {
+    sessionStore.set(session)
+    savePersisted({ role: session.playerId, roomId: session.roomId, token: session.token })
+    session.onSessionExpired(() => setMode('error'))
+  }
+
+  function failWith(err: unknown) {
+    setErrorKey(err instanceof SessionFailure ? errorKeyForCode(err.code) : 'serverUnreachable')
+    setMode('error')
+  }
+
+  async function handleCreateGame() {
+    setMode('hosting')
+
+    try {
+      const session = await createSession({ vpTarget, language: currentLanguage() })
+      adoptSession(session)
+      setInviteUrl(session.inviteUrl ?? '')
+
+      // Wait for the guest to actually join, not just for the server round-trip -
+      // matches the "waiting for opponent" UX.
+      session.onPeerConnect(() => {
+        navigate('/game', { state: { role: session.playerId } })
+      })
+    } catch (err) {
+      failWith(err)
+    }
+  }
+
+  async function handleJoin(roomId: string) {
     setMode('joining')
-    setErrorMsg('')
 
-    const session = joinHostSession(roomId.trim())
-    sessionStore.setGuest(session)
-    sessionStore.setHost(null)
-    savePersisted({ role: 'guest', roomId: session.roomId })
+    try {
+      const session = await joinSession(roomId.trim())
+      adoptSession(session)
 
-    let entered = false
-    session.onStateUpdate(projectedState => {
-      savePersisted({ role: 'guest', roomId: session.roomId, guestProjected: projectedState })
-      if (entered) return  // GamePage takes over state updates once mounted
-      entered = true
-      navigate('/game', { state: { role: 'guest', projectedState } })
-    })
+      session.onStateUpdate(() => {
+        navigate('/game', { state: { role: session.playerId } })
+      })
+    } catch (err) {
+      failWith(err)
+    }
   }
 
   function handlePractice() {
-    const lang = i18n.language.startsWith('de') ? 'de' : 'en'
-    const initialState = createInitialState({ vpTarget, language: lang })
-    sessionStore.setHost(null)
-    sessionStore.setGuest(null)
+    const initialState = createInitialState({ vpTarget, language: currentLanguage() })
+    sessionStore.set(null)
     // No network session and no persistence — a solo hot-seat board to learn on.
-    navigate('/game', { state: { role: 'host', initialGameState: initialState } })
+    navigate('/game', { state: { role: 'practice', initialGameState: initialState } })
   }
 
   async function handleCopy() {
@@ -158,14 +173,12 @@ export default function LobbyPage() {
 
         {mode === 'error' && (
           <div className="card">
-            <p className={styles.error}>{t('lobby.connectionLost')}</p>
-            <button className="primary" onClick={() => { setMode('idle'); setErrorMsg('') }}>
+            <p className={styles.error}>{t(`lobby.${errorKey}`)}</p>
+            <button className="primary" onClick={() => setMode('idle')}>
               {t('lobby.backToLobby')}
             </button>
           </div>
         )}
-
-        {errorMsg && <p className={styles.error}>{errorMsg}</p>}
       </div>
     </div>
   )

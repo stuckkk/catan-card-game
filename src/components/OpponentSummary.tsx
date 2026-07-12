@@ -6,12 +6,18 @@ import styles from './OpponentSummary.module.css'
 interface Props {
   expanded: boolean
   onToggle: () => void
-  role: PlayerId
+  myId: PlayerId
+  /** Practice mode only: raw full state, both hands visible. */
   gameState: GameState | null
+  /** Networked Host/Guest: own hand visible, opponent's hand redacted to a count. */
   projected: ProjectedState | null
 }
 
-export default function OpponentSummary({ expanded, onToggle, role, gameState, projected }: Props) {
+function handSize(hand: string[] | number): number {
+  return typeof hand === 'number' ? hand : hand.length
+}
+
+export default function OpponentSummary({ expanded, onToggle, myId, gameState, projected }: Props) {
   const { t } = useTranslation()
 
   let oppHandSize: number
@@ -22,22 +28,26 @@ export default function OpponentSummary({ expanded, onToggle, role, gameState, p
   let hasHeroToken: boolean
   let hasTradeToken: boolean
 
-  if (role === 'host' && gameState) {
-    const oppState = gameState.players.guest
+  if (myId === 'host') {
+    // Played cards (and the stats derived from them) are public board state, so the
+    // Host's own hand being redacted or not on the wire doesn't affect this branch.
+    const source = (gameState ?? projected) as GameState | null
+    if (!source) return null
+    const oppState = source.players.guest
+    oppHandSize = handSize(oppState.hand)
+    oppVP = computeVP(source, 'guest')
     const stats = computePlayerStats(oppState)
-    oppHandSize = oppState.hand.length
-    oppVP = computeVP(gameState, 'guest')
     oppStrength = stats.strengthPoints
     oppCommerce = stats.commercePoints
     oppProgress = stats.progressPoints
-    const hostStats = computePlayerStats(gameState.players.host)
+    const hostStats = computePlayerStats(source.players.host)
     hasHeroToken = oppStrength >= 3 && oppStrength > hostStats.strengthPoints
     hasTradeToken = oppCommerce >= 3 && oppCommerce > hostStats.commercePoints
-  } else if (role === 'guest' && projected) {
+  } else if (myId === 'guest' && projected) {
     const oppState = projected.players.host
-    oppHandSize = typeof oppState.hand === 'number' ? oppState.hand : 0
+    oppHandSize = handSize(oppState.hand)
     // Guest doesn't have full host stats — show what we can derive
-    const guestStats = computePlayerStats(projected.players.guest)
+    const guestStats = computePlayerStats(projected.players.guest as unknown as GameState['players']['guest'])
     oppVP = 0  // host VP not visible to guest
     oppStrength = 0
     oppCommerce = 0

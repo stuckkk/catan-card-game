@@ -1095,13 +1095,15 @@ export function applyAction(state: GameState, actingPlayer: PlayerId, action: Ga
 
 // ─── Projection ───────────────────────────────────────────────────────────────
 
-export function projectForGuest(state: GameState): ProjectedState {
-  const { hand: _hostHand, ...hostRest } = state.players.host
+/** Redacts every player's hand to a count except `viewer`'s, whose hand stays a full list. */
+export function projectStateFor(state: GameState, viewer: PlayerId): ProjectedState {
+  const opponent: PlayerId = viewer === 'host' ? 'guest' : 'host'
+  const { hand: _opponentHand, ...opponentRest } = state.players[opponent]
+  const redactedOpponent = { ...opponentRest, hand: _opponentHand.length }
   return {
     ...state,
-    players: {
-      host: { ...hostRest, hand: _hostHand.length },
-      guest: state.players.guest,
-    },
+    players: viewer === 'host'
+      ? { host: state.players.host, guest: redactedOpponent }
+      : { host: redactedOpponent, guest: state.players.guest },
   }
 }

@@ -1,27 +1,27 @@
 # Catan: The Duel
 
-A two-player digital adaptation of the Catan card game, playable online via WebRTC peer-to-peer in any modern browser.
+A two-player digital adaptation of the Catan card game, playable online by connecting to a server hosted on someone's own machine.
 
 ## Language
 
 ### Players & Session
 
-**Session**: A single playthrough of the game between two players, from lobby creation to victory. The two browsers connect by joining a shared Room ID via Trystero (WebRTC over public BitTorrent-tracker signaling).
+**Session**: A single playthrough of the game between two players, from lobby creation to victory. Both browsers connect to the server over a WebSocket, identified by a shared Room ID; the server runs the authoritative rules engine and is the sole source of truth for the Session's Game State.
 _Avoid_: Game, match, room
 
-**Host**: The player who created the Session and runs the authoritative rules engine locally in their browser. Owns the canonical Game State.
+**Host**: The player who created the Session, choosing its Victory Point target and receiving the Invite Link to share. Symmetric with the Guest for all in-game actions — the server runs the rules engine, not the Host's browser.
 _Avoid_: Server, player 1, creator
 
-**Guest**: The player who joined the Session via an Invite Link. Receives a Projected State from the Host and sends Actions to the Host for validation.
+**Guest**: The player who joined the Session via an Invite Link or Room ID. Symmetric with the Host for all in-game actions — receives a Projected State from the server and sends Actions to the server for validation.
 _Avoid_: Client, player 2, joiner
 
-**Invite Link**: A URL containing the Room ID in the URL hash (`#join=<roomId>`). Shared out-of-band (e.g. WhatsApp, text). Opening it auto-joins the Guest to the Session; no game state passes through a server.
+**Invite Link**: A URL containing the Room ID in the URL hash (`#join=<roomId>`), issued by the server at Session creation. Shared out-of-band (e.g. WhatsApp, text). Opening it auto-joins the Guest to the Session.
 _Avoid_: Game link, share link, join link
 
-**Room ID**: The randomly generated identifier both peers use to find each other through Trystero's BitTorrent trackers. Embedded in the Invite Link and also accepted as a manually pasted code in the lobby.
+**Room ID**: The short, server-generated identifier for a Session. Embedded in the Invite Link and also accepted as a manually pasted code in the lobby.
 _Avoid_: Offer code, answer code, room code, lobby id
 
-**Projected State**: The full Game State with the Host's Hand redacted (replaced by a count), sent to the Guest after each state change. The Guest's Hand is always visible to the Host.
+**Projected State**: The full Game State with the *other* player's Hand redacted (replaced by a count), sent by the server to each viewer after every state change. A player's own Hand is always visible to them.
 _Avoid_: Client state, guest state, masked state
 
 ### Board Structure

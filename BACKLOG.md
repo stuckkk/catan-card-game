@@ -1,0 +1,2 @@
+- Refactor: Remove as many lines code etc. as possible
+- Add a miniature version of the opponents game that can be expanded for inspection of the opponents building

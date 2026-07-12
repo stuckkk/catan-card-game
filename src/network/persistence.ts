@@ -1,19 +1,17 @@
-import type { GameState, ProjectedState } from '../engine/types'
+import type { PlayerId } from '../engine/types'
 
 /**
- * Survives a page reload (sessionStorage, per-tab). Lets the Host recover the
- * authoritative Game State and the Guest re-render instantly, then both rejoin
- * the same Trystero room and resume. Cleared when a player returns to the lobby.
+ * Survives a page reload (sessionStorage, per-tab). The server holds the authoritative
+ * Game State, so all the browser needs to recover is which session/seat it was in and
+ * the token to reconnect with — not a state snapshot. Cleared when a player returns to
+ * the lobby.
  */
 const KEY = 'catan-duel-session'
 
 export interface PersistedSession {
-  role: 'host' | 'guest'
+  role: PlayerId
   roomId: string
-  /** Host only: the full authoritative Game State. */
-  hostState?: GameState
-  /** Guest only: the last Projected State, for an instant re-render on reload. */
-  guestProjected?: ProjectedState
+  token: string
 }
 
 export function savePersisted(session: PersistedSession): void {

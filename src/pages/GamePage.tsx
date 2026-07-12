@@ -1,13 +1,13 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { applyAction, computeVP, projectForGuest, availableResources, computePlayerStats } from '../engine/engine'
+import { applyAction, computeVP, availableResources, computePlayerStats } from '../engine/engine'
 import { getCard } from '../engine/cards'
-import type { GameState, GameAction, ProjectedState, PlayerId, DeckId } from '../engine/types'
-import { createHostSession, joinHostSession } from '../network/trysteroSession'
-import type { HostSession, GuestSession } from '../network/trysteroSession'
+import type { GameState, GameAction, ProjectedState, PlayerId } from '../engine/types'
+import { reconnectSession } from '../network/wsSession'
+import type { NetworkSession } from '../network/wsSession'
 import { sessionStore } from '../network/sessionStore'
-import { savePersisted, clearPersisted, loadPersisted } from '../network/persistence'
+import { clearPersisted, loadPersisted } from '../network/persistence'
 import Principality from '../components/Principality'
 import PhaseTracker from '../components/PhaseTracker'
 import TradeMenu from '../components/TradeMenu'
@@ -21,57 +21,52 @@ import ResourceChoiceModal from '../components/ResourceChoiceModal'
 import HandCheckPanel from '../components/HandCheckPanel'
 import styles from './GamePage.module.css'
 
+type ClientRole = 'host' | 'guest' | 'practice'
+
 export default function GamePage() {
   const { t } = useTranslation()
   const location = useLocation()
   const navigate = useNavigate()
 
-  // Source of truth on first mount is the navigation state from the lobby. On a
-  // page reload that state is gone, so we fall back to the persisted session.
+  // Source of truth on first mount is the navigation state from the lobby. Note that
+  // browsers persist history.state (and so `location.state`) across a page reload of
+  // the same entry — it is NOT a reliable signal that this is a fresh SPA navigation.
+  // What *does* reset on reload is the in-memory sessionStore (see the effect below),
+  // so `persisted` is always loaded as a fallback for reconnecting after one.
   const nav = (location.state ?? {}) as {
-    role?: 'host' | 'guest'
+    role?: ClientRole
     initialGameState?: GameState
-    projectedState?: ProjectedState
   }
-  const persisted = nav.role ? null : loadPersisted()
-  const role: 'host' | 'guest' | undefined = nav.role ?? persisted?.role
+  const persisted = loadPersisted()
+  const role: ClientRole | undefined = nav.role ?? persisted?.role
 
-  const [gameState, setGameState] = useState<GameState | null>(
-    nav.initialGameState ?? persisted?.hostState ?? null
-  )
-  const [projected, setProjected] = useState<ProjectedState | null>(
-    nav.projectedState ?? persisted?.guestProjected ?? null
-  )
+  // Practice mode runs the engine locally; Host/Guest only ever hold what the
+  // server last projected to them.
+  const [gameState, setGameState] = useState<GameState | null>(nav.initialGameState ?? null)
+  const [projected, setProjected] = useState<ProjectedState | null>(null)
   const [disconnected, setDisconnected] = useState(false)
+  const [expired, setExpired] = useState(false)
   const [opponentExpanded, setOpponentExpanded] = useState(false)
   // Card-first placement: the expansion card the player is currently placing on the board.
   const [placingCardId, setPlacingCardId] = useState<string | null>(null)
 
-  const hostSessionRef = useRef<HostSession | null>(sessionStore.getHost())
-  const guestSessionRef = useRef<GuestSession | null>(sessionStore.getGuest())
+  const sessionRef = useRef<NetworkSession | null>(sessionStore.get())
 
-  const myId: PlayerId = role === 'host' ? 'host' : 'guest'
-
-  // Latest authoritative state, read when re-sending to a reconnecting guest.
-  const gameStateRef = useRef(gameState)
-  gameStateRef.current = gameState
+  const myId: PlayerId = role === 'guest' ? 'guest' : 'host'
 
   const dispatchAction = useCallback((action: GameAction) => {
-    if (role === 'host') {
+    if (role === 'practice') {
       setGameState(prev => {
         if (!prev) return prev
-        // A resource choice is applied as its owner, not always the host: this lets the
-        // host answer its own pending choice and lets Practice/hot-seat resolve the
-        // guest's choice locally. Networked guest choices still arrive via host.onAction.
+        // A resource choice is applied as its owner, not always 'host': this lets
+        // Practice/hot-seat resolve either seat's pending choice locally.
         const actor: PlayerId = action.type === 'CHOOSE_RESOURCE'
           ? prev.pendingChoices[0]?.player ?? 'host'
           : 'host'
-        const next = applyAction(prev, actor, action)
-        hostSessionRef.current?.sendState(projectForGuest(next))
-        return next
+        return applyAction(prev, actor, action)
       })
     } else {
-      guestSessionRef.current?.sendAction(action)
+      sessionRef.current?.sendAction(action)
     }
   }, [role])
 
@@ -83,111 +78,101 @@ export default function GamePage() {
     }
   }, [dispatchAction])
 
-  // Wire up (or rebuild, after a reload) the network session and its handlers.
-  // Intentionally returns no cleanup that closes the room: React StrictMode
+  // Wire up (or rebuild, after a reload) the network session and its handlers. Host
+  // and Guest are symmetric here — neither runs the engine locally.
+  // Intentionally returns no cleanup that closes the session: React StrictMode
   // double-invokes effect cleanups in dev, which would tear down the live
-  // connection the instant it opens. The room is closed only in leaveGame().
+  // connection the instant it opens. The session is closed only in leaveGame().
   useEffect(() => {
-    if (!role) return
+    if (role !== 'host' && role !== 'guest') return
 
-    if (role === 'host') {
-      let host = sessionStore.getHost()
-      if (!host && persisted?.roomId) {
-        host = createHostSession(persisted.roomId)
-        sessionStore.setHost(host)
-      }
-      if (!host) return
-      hostSessionRef.current = host
-
-      host.onAction(action => {
-        setGameState(prev => {
-          if (!prev) return prev
-          const next = applyAction(prev, 'guest', action)
-          host!.sendState(projectForGuest(next))
-          return next
-        })
-      })
-      host.onConnect(() => {
-        setDisconnected(false)
-        // Re-send current authoritative state to a (re)connecting guest.
-        const current = gameStateRef.current
-        if (current) host!.sendState(projectForGuest(current))
-      })
-      host.onDisconnect(() => setDisconnected(true))
-    } else {
-      let guest = sessionStore.getGuest()
-      if (!guest && persisted?.roomId) {
-        guest = joinHostSession(persisted.roomId)
-        sessionStore.setGuest(guest)
-      }
-      if (!guest) return
-      guestSessionRef.current = guest
-
-      guest.onStateUpdate(state => {
+    function wireSession(session: NetworkSession) {
+      sessionRef.current = session
+      session.onStateUpdate(state => {
         setProjected(state)
         setDisconnected(false)
-        savePersisted({ role: 'guest', roomId: guest!.roomId, guestProjected: state })
       })
-      guest.onConnect(() => setDisconnected(false))
-      guest.onDisconnect(() => setDisconnected(true))
+      session.onPeerConnect(() => setDisconnected(false))
+      session.onPeerDisconnect(() => setDisconnected(true))
+      session.onSessionExpired(() => setExpired(true))
+    }
+
+    const existing = sessionStore.get()
+    if (existing) {
+      wireSession(existing)
+      return
+    }
+
+    // No live session object (a full page reload reset it) — reconnect using the
+    // token persisted at creation/join time.
+    if (persisted?.roomId && persisted.token && persisted.role) {
+      reconnectSession(persisted.roomId, persisted.token, persisted.role)
+        .then(session => {
+          sessionStore.set(session)
+          wireSession(session)
+        })
+        .catch(() => setExpired(true))
     }
   // persisted is derived from loadPersisted()/nav and stable for this mount.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [role])
 
-  // Persist the Host's authoritative state on every change so a reload recovers.
-  useEffect(() => {
-    if (role !== 'host' || !gameState) return
-    const roomId = hostSessionRef.current?.roomId
-    if (roomId) savePersisted({ role: 'host', roomId, hostState: gameState })
-  }, [gameState, role])
-
   function leaveGame() {
-    sessionStore.getHost()?.close()
-    sessionStore.getGuest()?.close()
-    sessionStore.setHost(null)
-    sessionStore.setGuest(null)
+    sessionStore.get()?.close()
+    sessionStore.set(null)
     clearPersisted()
     navigate('/')
   }
 
-  const state = role === 'host' ? gameState : null
-  const myState = role === 'host' ? gameState?.players.host : projected?.players.guest
-  const myResources = myState ? availableResources(myState) : undefined
-  const myHand = role === 'host'
-    ? gameState?.players.host.hand ?? []
-    : projected?.players.guest.hand ?? []
+  const isPractice = role === 'practice'
+  // The shared top-level fields (phase, activePlayer, decks, etc.) are identical between
+  // GameState and ProjectedState — only `players` differs in shape (redacted hand or not).
+  const view = isPractice ? gameState : projected
 
-  const activePlayer = role === 'host' ? gameState?.activePlayer : projected?.activePlayer
+  const myState = isPractice ? gameState?.players.host : projected?.players[myId]
+  const myHandRaw = myState?.hand
+  const myHand: string[] = Array.isArray(myHandRaw) ? myHandRaw : []
+  // The viewer's own hand is never redacted (only the opponent's is), so it's safe to
+  // treat as a full PlayerState here regardless of the ProjectedState | GameState union.
+  const myFullState = myState as GameState['players']['host'] | undefined
+  const myResources = myFullState ? availableResources(myFullState) : undefined
+
+  const activePlayer = view?.activePlayer
   const isMyTurn = activePlayer === myId
-  const phase = role === 'host' ? gameState?.phase : projected?.phase
-  const lastRoll = role === 'host' ? gameState?.lastRoll : projected?.lastRoll
-  const winner = role === 'host' ? gameState?.winner : projected?.winner
-  const pendingTrade = role === 'host' ? gameState?.pendingTrade : projected?.pendingTrade
-  const pendingChoices = role === 'host' ? gameState?.pendingChoices : projected?.pendingChoices
-  const decks = (role === 'host' ? gameState?.decks : projected?.decks) as Record<DeckId, string[]> | undefined
+  const phase = view?.phase
+  const lastRoll = view?.lastRoll
+  const winner = view?.winner
+  const pendingTrade = view?.pendingTrade
+  const pendingChoices = view?.pendingChoices
+  const decks = view?.decks
 
-  // Practice/hot-seat: launched as host with no live network session. The single client
-  // resolves whichever player owns the active choice.
-  const isPractice = role === 'host' && !hostSessionRef.current
   const activeChoice = pendingChoices?.[0] ?? null
   const myChoice = activeChoice && (activeChoice.player === myId || isPractice) ? activeChoice : null
 
-  // VP for the local player, including Hero/Trade advantage tokens. Both
-  // computations depend only on played cards (never hidden hands), so the Guest
-  // can derive the full value from its Projected State.
-  const myVP = role === 'host' && gameState
-    ? computeVP(gameState, 'host')
-    : projected
-      ? computeVP(projected as unknown as GameState, 'guest')
-      : 0
+  // VP for the local player, including Hero/Trade advantage tokens. Both computations
+  // depend only on played cards (never hidden hands), so this works off either a raw
+  // GameState (Practice) or a ProjectedState (Host/Guest) alike.
+  const myVP = view ? computeVP(view as unknown as GameState, myId) : 0
 
   // Placement is only valid during my own action phase; abandon it otherwise.
   useEffect(() => {
     if (placingCardId && !(isMyTurn && phase === 'action')) setPlacingCardId(null)
   }, [placingCardId, isMyTurn, phase])
 
-  if (!role || (!gameState && !projected)) {
+  if (expired) {
+    return (
+      <div className={styles.page}>
+        <div className={styles.winOverlay}>
+          <div className={styles.winCard}>
+            <h2>{t('lobby.sessionExpired')}</h2>
+            <button className="primary" onClick={leaveGame}>{t('game.backToLobby')}</button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (!role || !view) {
     return (
       <div className={styles.page}>
         <p>{t('lobby.connecting')}</p>
@@ -215,9 +200,9 @@ export default function GamePage() {
       <OpponentSummary
         expanded={opponentExpanded}
         onToggle={() => setOpponentExpanded(v => !v)}
-        role={myId}
-        gameState={state}
-        projected={projected}
+        myId={myId}
+        gameState={isPractice ? gameState : null}
+        projected={isPractice ? null : projected}
       />
 
       {placingCardId && (
@@ -261,7 +246,7 @@ export default function GamePage() {
         {lastRoll && <DiceDisplay roll={lastRoll} />}
 
         <Hand
-          cardIds={myHand as string[]}
+          cardIds={myHand}
           isMyTurn={isMyTurn}
           phase={phase}
           resources={myResources}
@@ -288,10 +273,10 @@ export default function GamePage() {
           />
         )}
 
-        {phase === 'hand-check' && isMyTurn && myState && decks && (
+        {phase === 'hand-check' && isMyTurn && myFullState && decks && (
           <HandCheckPanel
-            hand={myHand as string[]}
-            handLimit={computePlayerStats(myState).handLimit}
+            hand={myHand}
+            handLimit={computePlayerStats(myFullState).handLimit}
             decks={decks}
             onAction={dispatchAction}
           />
@@ -299,7 +284,7 @@ export default function GamePage() {
 
         {phase === 'swap' && isMyTurn && myResources && decks && myState && (
           <SwapPanel
-            hand={myHand as string[]}
+            hand={myHand}
             decks={decks}
             resources={myResources}
             drawnThisTurn={myState.drawnThisTurn}

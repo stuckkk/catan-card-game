@@ -179,14 +179,11 @@ export interface GameEvent {
   payload?: Record<string, unknown>
 }
 
-// ─── Projected State (sent to Guest) ─────────────────────────────────────────
+// ─── Projected State (sent to a viewer) ──────────────────────────────────────
 
-/** Host's hand is replaced with just the count. Everything else is identical. */
+/** The opponent's hand is replaced with just a count; the viewer's own hand stays a full list. */
 export type ProjectedState = Omit<GameState, 'players'> & {
-  players: {
-    host: Omit<PlayerState, 'hand'> & { hand: number }
-    guest: PlayerState
-  }
+  players: Record<PlayerId, Omit<PlayerState, 'hand'> & { hand: string[] | number }>
 }
 
 // ─── Actions (Guest → Host) ───────────────────────────────────────────────────
@@ -225,14 +222,3 @@ export type GameAction =
   | { type: 'PAID_SWAP'; discardCardId: string; fromDeck: DeckId; searchCardId: string; searchDeck: DeckId; payWith: ResourceType }
   | { type: 'SKIP_SWAP' }
 
-// ─── Network Messages ─────────────────────────────────────────────────────────
-
-export type HostMessage =
-  | { type: 'STATE_UPDATE'; state: ProjectedState }
-  | { type: 'GAME_OVER'; winner: PlayerId }
-  | { type: 'PING' }
-
-export type GuestMessage =
-  | { type: 'ACTION'; action: GameAction }
-  | { type: 'PONG' }
-  | { type: 'RECONNECTED' }
