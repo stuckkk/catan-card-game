@@ -16,6 +16,9 @@
     "roomCode": "Room code",
     "shareLink": "Share this link with your friend. They just need to click it.",
     "connectionLost": "Connection lost.",
+    "roomNotFound": "No game found for that room code.",
+    "sessionExpired": "This game has ended.",
+    "serverUnreachable": "Could not reach the server.",
     "backToLobby": "Back to Lobby"
   },
   "game": {

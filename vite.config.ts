@@ -3,5 +3,9 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
-  base: '/catan-card-game/',
+  server: {
+    proxy: {
+      '/ws': { target: 'ws://localhost:8080', ws: true },
+    },
+  },
 })

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  applyAction, applyRoll, rollDice, computePlayerStats, computeVP, projectForGuest,
+  applyAction, applyRoll, rollDice, computePlayerStats, computeVP, projectForGuest, projectStateFor,
   availableResources, getTradeRate,
 } from './engine'
 import type {
@@ -825,6 +825,24 @@ describe('projectForGuest', () => {
     const host = makePlayer('host', { hand: ['knight', 'merchant'] })
     const guest = makePlayer('guest', { hand: ['school'] })
     const projected = projectForGuest(makeState({ players: { host, guest } }))
+    expect(projected.players.host.hand).toBe(2)
+    expect(projected.players.guest.hand).toEqual(['school'])
+  })
+})
+
+describe('projectStateFor', () => {
+  it("redacts the opponent's hand to a count and keeps the viewer's hand intact, for the host viewer", () => {
+    const host = makePlayer('host', { hand: ['knight', 'merchant'] })
+    const guest = makePlayer('guest', { hand: ['school'] })
+    const projected = projectStateFor(makeState({ players: { host, guest } }), 'host')
+    expect(projected.players.host.hand).toEqual(['knight', 'merchant'])
+    expect(projected.players.guest.hand).toBe(1)
+  })
+
+  it("redacts the opponent's hand to a count and keeps the viewer's hand intact, for the guest viewer", () => {
+    const host = makePlayer('host', { hand: ['knight', 'merchant'] })
+    const guest = makePlayer('guest', { hand: ['school'] })
+    const projected = projectStateFor(makeState({ players: { host, guest } }), 'guest')
     expect(projected.players.host.hand).toBe(2)
     expect(projected.players.guest.hand).toEqual(['school'])
   })

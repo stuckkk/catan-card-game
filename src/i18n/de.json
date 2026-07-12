@@ -16,6 +16,9 @@
     "roomCode": "Raum-Code",
     "shareLink": "Teile diesen Link mit deinem Freund. Er muss ihn nur anklicken.",
     "connectionLost": "Verbindung unterbrochen.",
+    "roomNotFound": "Kein Spiel mit diesem Raum-Code gefunden.",
+    "sessionExpired": "Dieses Spiel ist beendet.",
+    "serverUnreachable": "Server nicht erreichbar.",
     "backToLobby": "Zur Lobby"
   },
   "game": {

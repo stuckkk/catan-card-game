@@ -1,3 +1,7 @@
+---
+status: superseded by ADR-0004
+---
+
 # WebRTC peer-to-peer via Trystero (no game server)
 
 The game is played entirely in the browser with no game server of our own. The Host's browser runs the rules engine; the two browsers connect directly over a WebRTC data channel for all gameplay traffic. Connection setup (signaling) and NAT traversal are handled by [Trystero](https://github.com/dmotz/trystero) using its BitTorrent-tracker strategy (`@trystero-p2p/torrent`): both peers join a shared, randomly generated Room ID and are introduced to each other through public BitTorrent trackers. The Host shares an Invite Link containing the Room ID in the URL hash (`#join=<roomId>`); the Guest opens the link (or pastes the Room ID) and is connected automatically — there is no manual Offer/Answer code exchange.

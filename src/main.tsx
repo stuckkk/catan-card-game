@@ -7,7 +7,7 @@ import './index.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <BrowserRouter basename="/catan-card-game">
+    <BrowserRouter>
       <App />
     </BrowserRouter>
   </React.StrictMode>
