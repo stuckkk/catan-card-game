@@ -33,14 +33,84 @@ function slotAcceptsPlacing(slotKind: CentralSlot['kind'], placing: Placing): bo
   return false  // brown goes on regions, not central slots
 }
 
-/** The settlement/city core plus its expansion slots, stacked vertically in the axis row. */
-function SettlementCell({ slot, idx, canBuild, placing, onAction, onInspect }: {
-  slot: CentralSlot
-  idx: number
-  canBuild: boolean
+/** Split a settlement/city's expansion slots into the above/below halves. */
+function splitExpansions(slot: CentralSlot) {
+  const half = Math.ceil(slot.expansionSlots.length / 2)
+  return { aboveExp: slot.expansionSlots.slice(0, half), belowExp: slot.expansionSlots.slice(half) }
+}
+
+/** One expansion slot: a placed card, a clickable target while placing, or an empty cell. */
+function ExpansionSlot({ cardId, slotIndex, expansionSlotIndex, placeableHere, placing, onAction, onInspect }: {
+  cardId: string | null
+  slotIndex: number
+  expansionSlotIndex: number
+  placeableHere: boolean
   placing: Placing
   onAction: (a: GameAction) => void
   onInspect: (cardId: string) => void
+}) {
+  const { t } = useTranslation()
+  if (cardId) return <CardView cardId={cardId} compact onClick={() => onInspect(cardId)} />
+  if (placeableHere && placing) {
+    return (
+      <button
+        className={`${styles.emptyExp} ${styles.placeable}`}
+        title={t(getCard(placing.cardId).nameKey)}
+        onClick={() => onAction({
+          type: 'PLACE_EXPANSION', cardId: placing.cardId, slotIndex, expansionSlotIndex,
+        })}
+      >
+        +
+      </button>
+    )
+  }
+  return <div className={styles.emptyExp} />
+}
+
+/** The row of expansion slots above or below a settlement/city core. Rendered as its own
+ *  shared grid row (see `board`'s render) rather than stacked with the core, so a
+ *  settlement's core never shifts position when it's built or gains expansion cards —
+ *  it stays fixed on the central axis, with buildings appearing between it and the regions. */
+function SettlementExpansions({ slot, idx, side, placing, onAction, onInspect }: {
+  slot: CentralSlot
+  idx: number
+  side: 'above' | 'below'
+  placing: Placing
+  onAction: (a: GameAction) => void
+  onInspect: (cardId: string) => void
+}) {
+  if (slot.kind !== 'settlement' && slot.kind !== 'city') return null
+  const { aboveExp, belowExp } = splitExpansions(slot)
+  const cards = side === 'above' ? aboveExp : belowExp
+  if (cards.length === 0) return null
+  const offset = side === 'above' ? 0 : aboveExp.length
+  const placeableHere = slotAcceptsPlacing(slot.kind, placing)
+
+  return (
+    <div className={styles.expansions}>
+      {cards.map((cardId, i) => (
+        <ExpansionSlot
+          key={offset + i}
+          cardId={cardId}
+          slotIndex={idx}
+          expansionSlotIndex={offset + i}
+          placeableHere={placeableHere}
+          placing={placing}
+          onAction={onAction}
+          onInspect={onInspect}
+        />
+      ))}
+    </div>
+  )
+}
+
+/** The settlement/city core box, or the build-settlement button. Fixed size and grid
+ *  position regardless of how many expansion cards are built above/below it. */
+function SettlementCore({ slot, idx, canBuild, onAction }: {
+  slot: CentralSlot
+  idx: number
+  canBuild: boolean
+  onAction: (a: GameAction) => void
 }) {
   const { t } = useTranslation()
 
@@ -51,63 +121,22 @@ function SettlementCell({ slot, idx, canBuild, placing, onAction, onInspect }: {
         disabled={!canBuild}
         onClick={() => onAction({ type: 'BUILD_SETTLEMENT', slotIndex: idx })}
       >
-        + {t('cards.settlement.name')}
+        <span className={styles.buildIcon}>+</span> {t('cards.settlement.name')}
       </button>
     )
   }
 
-  const half = Math.ceil(slot.expansionSlots.length / 2)
-  const placeableHere = slotAcceptsPlacing(slot.kind, placing)
-
-  // Render one expansion slot: a placed card, a clickable target while placing, or an empty cell.
-  // `expansionSlotIndex` is the card's real index in slot.expansionSlots.
-  const renderExp = (cardId: string | null, expansionSlotIndex: number) => {
-    if (cardId) return <CardView key={expansionSlotIndex} cardId={cardId} compact onClick={() => onInspect(cardId)} />
-    if (placeableHere && placing) {
-      return (
-        <button
-          key={expansionSlotIndex}
-          className={`${styles.emptyExp} ${styles.placeable}`}
-          title={t(getCard(placing.cardId).nameKey)}
-          onClick={() => onAction({
-            type: 'PLACE_EXPANSION', cardId: placing.cardId, slotIndex: idx, expansionSlotIndex,
-          })}
-        >
-          +
-        </button>
-      )
-    }
-    return <div key={expansionSlotIndex} className={styles.emptyExp} />
-  }
-
-  const aboveExp = slot.expansionSlots.slice(0, half)
-  const belowExp = slot.expansionSlots.slice(half)
-
   return (
-    <div className={styles.settlementCell}>
-      {aboveExp.length > 0 && (
-        <div className={styles.expansions}>
-          {aboveExp.map((cardId, i) => renderExp(cardId, i))}
-        </div>
-      )}
-
-      <div className={`${styles.core} ${styles[slot.kind]}`}>
-        <span className={styles.coreLabel}>{t(`cards.${slot.kind}.name`)}</span>
-        {slot.kind === 'settlement' && canBuild && (
-          <button
-            className={styles.upgradeBtn}
-            title={t('cards.city.name')}
-            onClick={() => onAction({ type: 'BUILD_CITY', slotIndex: idx })}
-          >
-            ⬆ {t('cards.city.name')}
-          </button>
-        )}
-      </div>
-
-      {belowExp.length > 0 && (
-        <div className={styles.expansions}>
-          {belowExp.map((cardId, i) => renderExp(cardId, half + i))}
-        </div>
+    <div className={`${styles.core} ${styles[slot.kind]}`}>
+      <span className={styles.coreLabel}>{t(`cards.${slot.kind}.name`)}</span>
+      {slot.kind === 'settlement' && canBuild && (
+        <button
+          className={styles.upgradeBtn}
+          title={t('cards.city.name')}
+          onClick={() => onAction({ type: 'BUILD_CITY', slotIndex: idx })}
+        >
+          ⬆ {t('cards.city.name')}
+        </button>
       )}
     </div>
   )
@@ -224,18 +253,25 @@ export default function Principality({
           </div>
         ))}
 
-        {/* Central axis: settlements/cities */}
+        {/* Expansions built above a settlement/city — sits between the top regions and the core */}
         {settlementSlots.map(({ slot, idx }, i) => (
-          <div key={`s${i}`} className={styles.axisCell} style={{ gridColumn: 2 * i + 2, gridRow: 2 }}>
-            <SettlementCell slot={slot} idx={idx} canBuild={canBuild} placing={placing} onAction={onAction} onInspect={setInspectCardId} />
+          <div key={`ea${i}`} className={styles.expAboveCell} style={{ gridColumn: 2 * i + 2, gridRow: 2 }}>
+            <SettlementExpansions slot={slot} idx={idx} side="above" placing={placing} onAction={onAction} onInspect={setInspectCardId} />
           </div>
         ))}
 
-        {/* Roads sit in the shared column between two settlements */}
+        {/* Central axis: settlement/city cores, fixed here regardless of expansions built */}
+        {settlementSlots.map(({ slot, idx }, i) => (
+          <div key={`s${i}`} className={styles.axisCell} style={{ gridColumn: 2 * i + 2, gridRow: 3 }}>
+            <SettlementCore slot={slot} idx={idx} canBuild={canBuild} onAction={onAction} />
+          </div>
+        ))}
+
+        {/* Roads sit in the shared column between two settlements, on the same axis row */}
         {Object.entries(roadByCol).map(([colStr, { slot, idx }]) => {
           const col = Number(colStr)
           return (
-            <div key={`r${col}`} className={styles.axisCell} style={{ gridColumn: 2 * col + 1, gridRow: 2 }}>
+            <div key={`r${col}`} className={styles.axisCell} style={{ gridColumn: 2 * col + 1, gridRow: 3 }}>
               {slot.kind === 'empty-road' ? (
                 <button
                   className={styles.buildRoad}
@@ -252,16 +288,23 @@ export default function Principality({
           )
         })}
 
+        {/* Expansions built below a settlement/city — sits between the core and the bottom regions */}
+        {settlementSlots.map(({ slot, idx }, i) => (
+          <div key={`eb${i}`} className={styles.expBelowCell} style={{ gridColumn: 2 * i + 2, gridRow: 4 }}>
+            <SettlementExpansions slot={slot} idx={idx} side="below" placing={placing} onAction={onAction} onInspect={setInspectCardId} />
+          </div>
+        ))}
+
         {/* Bottom regions */}
         {bottomRow.map((cell, j) => cell && (
-          <div key={`b${j}`} className={styles.regionCell} style={{ gridColumn: 2 * j + 1, gridRow: 3 }}>
+          <div key={`b${j}`} className={styles.regionCell} style={{ gridColumn: 2 * j + 1, gridRow: 5 }}>
             <RegionWithExpansions region={cell.region} regionIndex={cell.regionIndex} placing={placing} onAction={onAction} onInspect={setInspectCardId} />
           </div>
         ))}
 
         {/* Extend the principality with a new road + settlement off the right flank */}
         {canBuild && (
-          <div className={styles.axisCell} style={{ gridColumn: totalCols, gridRow: 2 }}>
+          <div className={styles.axisCell} style={{ gridColumn: totalCols, gridRow: 3 }}>
             <button
               className={styles.buildRoad}
               title={t('cards.road.name')}

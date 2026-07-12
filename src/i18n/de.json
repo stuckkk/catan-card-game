@@ -91,6 +91,8 @@
     "handSize": "Hand: {{count}} Karten",
     "resources": "Rohstoffe",
     "disconnected": "Gegner getrennt. Warte auf Wiederverbindung...",
+    "opponentVillage": "Dorf des Gegners",
+    "viewOpponentVillage": "Dorf des Gegners ansehen",
     "placing": "{{card}} platzieren — tippe auf ein hervorgehobenes Feld",
     "cancelPlacement": "Abbrechen",
     "youWin": "Du hast gewonnen!",

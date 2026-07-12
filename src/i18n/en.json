@@ -91,6 +91,8 @@
     "handSize": "Hand: {{count}} cards",
     "resources": "Resources",
     "disconnected": "Opponent disconnected. Waiting for reconnect...",
+    "opponentVillage": "Opponent's Village",
+    "viewOpponentVillage": "View opponent's village",
     "placing": "Placing {{card}} — tap a highlighted slot",
     "cancelPlacement": "Cancel",
     "youWin": "You win!",

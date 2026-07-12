@@ -1,7 +1,11 @@
 .board {
   /* The single knob the whole board scales from. Grows with the viewport,
-     clamped so it stays tappable on phones and doesn't get huge on desktop. */
-  --card-w: clamp(46px, 8vw, 84px);
+     clamped so it stays tappable on phones and doesn't get huge on desktop.
+     An ancestor can shrink the board (e.g. the opponent-village thumbnail)
+     by setting --card-w-override; --card-w itself must never reference
+     itself in its own declaration — that's a cyclic custom property and
+     computes to invalid everywhere, not just where the override is unset. */
+  --card-w: var(--card-w-override, clamp(46px, 8vw, 84px));
   --card-h: calc(var(--card-w) * 1.28);
   --exp-h: calc(var(--card-h) * 0.62); /* expansion slots tuck in shorter */
   --gap: calc(var(--card-w) * 0.14);
@@ -14,7 +18,7 @@
 
 /* Wider screens: bigger cards to use the space (the board stays centred). */
 @media (min-width: 900px) {
-  .board { --card-w: clamp(84px, 8.5vw, 124px); }
+  .board { --card-w: var(--card-w-override, clamp(84px, 8.5vw, 124px)); }
 }
 
 /* Three-row grid: top regions / central axis / bottom regions. Region columns
@@ -41,11 +45,18 @@
   justify-content: center;
 }
 
-.settlementCell {
+/* Expansions built above a core hug its top edge; below, its bottom edge — so a taller
+   neighbouring stack pushes the gap toward the region row, never toward the core itself. */
+.expAboveCell {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--gap);
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.expBelowCell {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
 }
 
 .expansions {
@@ -68,7 +79,7 @@
   background: color-mix(in srgb, var(--color-accent) 18%, transparent);
   border: 2px dashed var(--color-accent);
   color: var(--color-accent);
-  font-size: 18px;
+  font-size: clamp(20px, 4vw, 26px);
   font-weight: 700;
   line-height: 1;
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-accent) 30%, transparent);
@@ -143,25 +154,37 @@
 
 .buildRoad {
   width: calc(var(--card-w) * 0.6);
-  height: calc(var(--card-w) * 0.34);
+  height: calc(var(--card-w) * 0.42);
   border-radius: var(--radius-sm);
-  border: 1px dashed var(--color-border);
+  border: 2px dashed var(--color-border);
   background: var(--color-surface);
   color: var(--color-text-muted);
-  font-size: 14px;
+  font-size: clamp(18px, 4vw, 24px);
+  font-weight: 700;
   line-height: 1;
   padding: 0;
 }
-.buildRoad:not(:disabled):hover { border-color: var(--color-accent); color: var(--color-accent); }
+.buildRoad:not(:disabled):hover { border-color: var(--color-accent); color: var(--color-accent); background: color-mix(in srgb, var(--color-accent) 12%, var(--color-surface)); }
 
 .buildSettlement {
   width: var(--card-w);
   min-height: var(--card-h);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
   border-radius: var(--radius-sm);
-  border: 1px dashed var(--color-border);
+  border: 2px dashed var(--color-border);
   background: var(--color-surface);
   color: var(--color-text-muted);
-  font-size: 11px;
+  font-size: clamp(9px, 2.4vw, 12px);
   padding: 4px;
 }
-.buildSettlement:not(:disabled):hover { border-color: var(--color-accent); color: var(--color-accent); }
+.buildSettlement:not(:disabled):hover { border-color: var(--color-accent); color: var(--color-accent); background: color-mix(in srgb, var(--color-accent) 12%, var(--color-surface)); }
+
+.buildIcon {
+  font-size: clamp(18px, 4vw, 24px);
+  font-weight: 700;
+  line-height: 1;
+}
