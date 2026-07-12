@@ -91,6 +91,8 @@
     "handSize": "Hand: {{count}} cards",
     "resources": "Resources",
     "disconnected": "Opponent disconnected. Waiting for reconnect...",
+    "opponentVillage": "Opponent's Village",
+    "viewOpponentVillage": "View opponent's village",
     "placing": "Placing {{card}} — tap a highlighted slot",
     "cancelPlacement": "Cancel",
     "youWin": "You win!",
@@ -110,7 +112,6 @@
   "cardType": {
     "green": "Green Expansion",
     "red": "Red Expansion (City only)",
-    "brown": "Brown Expansion (Region)",
     "central": "Central Axis",
     "road": "Road",
     "settlement": "Settlement",
@@ -217,22 +218,6 @@
     "university": {
       "name": "University",
       "description": "Grants 3 Progress Points. City slot only."
-    },
-    "goldMine": {
-      "name": "Gold Mine",
-      "description": "Produces 1 extra Gold when placed on a Region."
-    },
-    "irrigation": {
-      "name": "Irrigation",
-      "description": "Produces 1 extra Grain when placed on a Region."
-    },
-    "sawmill": {
-      "name": "Sawmill",
-      "description": "Produces 1 extra Wood when placed on a Region."
-    },
-    "forge": {
-      "name": "Forge",
-      "description": "Produces 1 extra Ore when placed on a Region."
     },
     "ambush": {
       "name": "Ambush",

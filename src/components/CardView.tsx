@@ -6,7 +6,6 @@ import styles from './CardView.module.css'
 const COLOR_CLASS: Record<string, string> = {
   green: styles.green,
   red: styles.red,
-  brown: styles.brown,
   yellow: styles.yellow,
 }
 

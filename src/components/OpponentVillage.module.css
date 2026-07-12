@@ -1,0 +1,87 @@
+/* Sits as a normal block row below OpponentSummary's toggle (see GamePage's .topBar)
+   rather than position:fixed — that way it can never overlap the summary's expandable
+   detail panel, which grows in normal flow above it. */
+.thumbnail {
+  position: relative;
+  margin: 8px 0 10px 12px;
+  width: clamp(90px, 20vw, 115px);
+  height: clamp(78px, 17vw, 118px);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+
+.thumbnailBoard {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* A real render of the board at a normal, legible card size, visually zoomed out with
+   a transform (rather than shrinking --card-w down to a few px) — that keeps card
+   shapes/colours/labels laid out exactly like the full board, just smaller, instead of
+   text hitting its minimum font-size and overlapping at extreme miniaturisation. The
+   container is sized larger than the scaled-down render (see .thumbnail), so there's
+   visible margin around the board instead of cropping flush against its edges. */
+.thumbnailScale {
+  --card-w-override: 56px;
+  flex-shrink: 0;
+  transform: scale(0.28);
+}
+
+.thumbnailButton {
+  position: absolute;
+  inset: 0;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.thumbnailButton:hover { background: rgba(255, 255, 255, 0.06); }
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 300;
+  padding: 16px;
+}
+
+.sheet {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: 16px;
+  width: 100%;
+  max-width: 900px;
+  max-height: 90dvh;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.title {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.boardWrap {
+  overflow: auto;
+}

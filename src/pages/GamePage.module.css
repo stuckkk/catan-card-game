@@ -6,6 +6,10 @@
   position: relative;
 }
 
+.topBar {
+  border-bottom: 1px solid var(--color-border);
+}
+
 .disconnectBanner {
   position: fixed;
   top: 0;

@@ -23,7 +23,7 @@ export type DeckId = DrawStackId | 'event'
 
 export type CardCategory = 'road' | 'settlement' | 'city' | 'action' | 'expansion' | 'event' | 'region'
 
-export type ExpansionColor = 'green' | 'red' | 'brown'
+export type ExpansionColor = 'green' | 'red'
 
 export type DeclarativeEffect =
   | { type: 'GRANT_SYMBOL'; symbol: SymbolType; amount: number }
@@ -64,8 +64,6 @@ export interface RegionDefinition {
 export interface RegionState {
   regionId: string
   storedResources: number  // 0–3
-  expansionAbove: string | null  // CardDefinition id
-  expansionBelow: string | null  // CardDefinition id
 }
 
 /** A slot on the Central Axis. Odd indices are road positions, even are settlement/city. */
@@ -188,8 +186,6 @@ export type ProjectedState = Omit<GameState, 'players'> & {
 
 // ─── Actions (Guest → Host) ───────────────────────────────────────────────────
 
-export type RegionExpansionPosition = 'above' | 'below'
-
 export type GameAction =
   | { type: 'ROLL_DICE' }
   | { type: 'BUILD_ROAD'; slotIndex: number }
@@ -197,8 +193,6 @@ export type GameAction =
   | { type: 'BUILD_CITY'; slotIndex: number }
   /** Place a Green or Red Expansion in a Settlement/City Expansion Slot. */
   | { type: 'PLACE_EXPANSION'; cardId: string; slotIndex: number; expansionSlotIndex: number }
-  /** Place a Brown Expansion above or below a Region. */
-  | { type: 'PLACE_REGION_EXPANSION'; cardId: string; regionIndex: number; position: RegionExpansionPosition }
   | { type: 'PLAY_ACTION_CARD'; cardId: string }
   | { type: 'TRADE_WITH_BANK'; give: ResourceType; receive: ResourceType }
   /** Submit the resource pick for the active pending choice (Trade/Harvest events). */
@@ -211,8 +205,6 @@ export type GameAction =
   | { type: 'DECLINE_TRADE' }
   /** Demolish own Green/Red Expansion (free, to discard). */
   | { type: 'DEMOLISH'; slotIndex: number; expansionSlotIndex: number }
-  /** Demolish own Brown Expansion (free, to discard). */
-  | { type: 'DEMOLISH_REGION_EXPANSION'; regionIndex: number; position: RegionExpansionPosition }
   | { type: 'END_ACTION_PHASE' }
   | { type: 'DISCARD_TO_LIMIT'; cardIds: string[] }
   /** Draw one card from the chosen deck to refill toward the hand limit. */

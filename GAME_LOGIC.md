@@ -20,7 +20,7 @@
 ## 2. Core Entities & Data Models
 
 ### Resource Types
-Wood, Gold, Brick, Ore, Grain. 
+Wood, Wool, Gold, Brick, Ore, Grain. 
 
 ### The Game Grid (The Principality)
 The board consists of interconnected slots for each player.
@@ -45,10 +45,9 @@ Regions do not use external tokens. The card itself acts as an integer counter (
 | **Action** | Yellow | N/A | Played from hand, triggers an immediate effect, and is discarded to the discard pile. |
 | **Expansion** | Green | Varies | Settlement/City Expansions. Permanent buildings or units. |
 | **Expansion** | Red | Varies | City Expansions. Must be placed on City slots exclusively. |
-| **Expansion** | Brown | Varies | Region Expansions. Placed above or below Region cards. |
 
 ### Draw Stacks
-All hand-draw cards (Green, Red, Brown, and Yellow) are shuffled together into a single pile and dealt into **5 face-down draw stacks of roughly equal size**. The stacks are **not** separated by card type or color — a draw is type-blind. Players draw from, bury under, and search these 5 stacks during the turn sequence (Phases 3 and 4).
+All hand-draw cards (Green, Red, and Yellow) are shuffled together into a single pile and dealt into **5 face-down draw stacks of roughly equal size**. The stacks are **not** separated by card type or color — a draw is type-blind. Players draw from, bury under, and search these 5 stacks during the turn sequence (Phases 3 and 4).
 
 The **Event Deck** is a separate pile and is **not** one of the 5 draw stacks. Event cards are never held in hand: they are drawn and resolved immediately on the `?` event-die face (§4).
 

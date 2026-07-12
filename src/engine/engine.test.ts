@@ -33,7 +33,7 @@ const RES_TYPES: ResourceType[] = ['wood', 'wool', 'gold', 'brick', 'ore', 'grai
  */
 function regionsWith(over: Partial<Resources> = {}): RegionState[] {
   const regions: RegionState[] = RES_TYPES.map(t => ({
-    regionId: REGION_BY_RES[t], storedResources: 0, expansionAbove: null, expansionBelow: null,
+    regionId: REGION_BY_RES[t], storedResources: 0,
   }))
   for (const [r, amtRaw] of Object.entries(over) as [ResourceType, number][]) {
     let amt = amtRaw
@@ -42,7 +42,7 @@ function regionsWith(over: Partial<Resources> = {}): RegionState[] {
     amt -= base.storedResources
     while (amt > 0) {
       const stored = Math.min(3, amt)
-      regions.push({ regionId: REGION_BY_RES[r], storedResources: stored, expansionAbove: null, expansionBelow: null })
+      regions.push({ regionId: REGION_BY_RES[r], storedResources: stored })
       amt -= stored
     }
   }
@@ -163,15 +163,6 @@ describe('production', () => {
     expect(next.players.host.regions[0].storedResources).toBe(0)
   })
 
-  it('yields +1 extra per Brown Expansion on the region, capped at capacity 3', () => {
-    const host = makePlayer('host', {
-      regions: [{ regionId: 'forest-2', storedResources: 2, expansionAbove: 'sawmill', expansionBelow: null }],
-    })
-    const state = makeState({ phase: 'roll', players: { host, guest: makePlayer('guest') } })
-    const next = applyRoll(state, { eventSymbol: 'event', productionNumber: 2 })
-    // yield = 2, stored 2 + 2 = 4 → clamped to 3
-    expect(next.players.host.regions[0].storedResources).toBe(3)
-  })
 })
 
 describe('event die', () => {
@@ -466,42 +457,6 @@ describe('demolish', () => {
     expect(next.players.host.principality[0].expansionSlots[0]).toBeNull()
     expect(next.players.host.playedCards).not.toContain('knight')
     expect(next.discardPile).toContain('knight')
-  })
-})
-
-// ─── Brown region expansions ─────────────────────────────────────────────────
-
-describe('region (brown) expansions', () => {
-  it('places a brown card on a region, paying its cost', () => {
-    const host = makePlayer('host', { hand: ['sawmill'], regions: regionsWith({ wood: 2 }) })
-    const state = makeState({ players: { host, guest: makePlayer('guest') } })
-    const next = applyAction(state, 'host', { type: 'PLACE_REGION_EXPANSION', cardId: 'sawmill', regionIndex: 0, position: 'above' })
-    expect(next.players.host.regions[0].expansionAbove).toBe('sawmill')
-    expect(next.players.host.hand).not.toContain('sawmill')
-    expect(availableResources(next.players.host).wood).toBe(0)
-    expect(next.players.host.playedCards).toContain('sawmill')
-  })
-
-  it('rejects placing on an occupied region slot', () => {
-    const host = makePlayer('host', {
-      hand: ['sawmill'],
-      regions: [{ regionId: 'forest-2', storedResources: 2, expansionAbove: 'forge', expansionBelow: null }],
-    })
-    const state = makeState({ players: { host, guest: makePlayer('guest') } })
-    const next = applyAction(state, 'host', { type: 'PLACE_REGION_EXPANSION', cardId: 'sawmill', regionIndex: 0, position: 'above' })
-    expect(next.players.host.regions[0].expansionAbove).toBe('forge') // unchanged
-    expect(next.players.host.hand).toContain('sawmill')
-  })
-
-  it('demolishes a brown region expansion to the discard', () => {
-    const host = makePlayer('host', {
-      regions: [{ regionId: 'forest-2', storedResources: 0, expansionAbove: 'sawmill', expansionBelow: null }],
-      playedCards: ['settlement', 'sawmill'],
-    })
-    const state = makeState({ players: { host, guest: makePlayer('guest') } })
-    const next = applyAction(state, 'host', { type: 'DEMOLISH_REGION_EXPANSION', regionIndex: 0, position: 'above' })
-    expect(next.players.host.regions[0].expansionAbove).toBeNull()
-    expect(next.discardPile).toContain('sawmill')
   })
 })
 

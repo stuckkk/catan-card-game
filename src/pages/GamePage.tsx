@@ -17,6 +17,7 @@ import Hand from '../components/Hand'
 import ResourceBar from '../components/ResourceBar'
 import DiceDisplay from '../components/DiceDisplay'
 import OpponentSummary from '../components/OpponentSummary'
+import OpponentVillage from '../components/OpponentVillage'
 import ResourceChoiceModal from '../components/ResourceChoiceModal'
 import HandCheckPanel from '../components/HandCheckPanel'
 import styles from './GamePage.module.css'
@@ -73,7 +74,7 @@ export default function GamePage() {
   // Board actions clear placement mode once a card has been placed on a slot.
   const handleBoardAction = useCallback((action: GameAction) => {
     dispatchAction(action)
-    if (action.type === 'PLACE_EXPANSION' || action.type === 'PLACE_REGION_EXPANSION') {
+    if (action.type === 'PLACE_EXPANSION') {
       setPlacingCardId(null)
     }
   }, [dispatchAction])
@@ -130,6 +131,8 @@ export default function GamePage() {
   const view = isPractice ? gameState : projected
 
   const myState = isPractice ? gameState?.players.host : projected?.players[myId]
+  const opponentId: PlayerId = myId === 'host' ? 'guest' : 'host'
+  const opponentState = view?.players[opponentId]
   const myHandRaw = myState?.hand
   const myHand: string[] = Array.isArray(myHandRaw) ? myHandRaw : []
   // The viewer's own hand is never redacted (only the opponent's is), so it's safe to
@@ -196,14 +199,25 @@ export default function GamePage() {
         </div>
       )}
 
-      {/* Opponent summary (collapsed by default on mobile) */}
-      <OpponentSummary
-        expanded={opponentExpanded}
-        onToggle={() => setOpponentExpanded(v => !v)}
-        myId={myId}
-        gameState={isPractice ? gameState : null}
-        projected={isPractice ? null : projected}
-      />
+      {/* Opponent summary (collapsed by default on mobile), full width, with the village
+          thumbnail stacked below it so the thumbnail never collides with the summary's
+          expandable detail panel growing underneath the toggle. */}
+      <div className={styles.topBar}>
+        <OpponentSummary
+          expanded={opponentExpanded}
+          onToggle={() => setOpponentExpanded(v => !v)}
+          myId={myId}
+          gameState={isPractice ? gameState : null}
+          projected={isPractice ? null : projected}
+        />
+
+        {opponentState && (
+          <OpponentVillage
+            principality={opponentState.principality}
+            regions={opponentState.regions}
+          />
+        )}
+      </div>
 
       {placingCardId && (
         <div className={styles.placingBanner}>
