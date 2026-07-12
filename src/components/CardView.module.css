@@ -34,7 +34,6 @@
 .central { background: var(--color-surface-2); border-color: var(--color-border); }
 .green   { background: #1a3a1a; border-color: var(--color-green-card); }
 .red     { background: #3a1a1a; border-color: var(--color-red-card); }
-.brown   { background: #2e1f0e; border-color: var(--color-brown-card); }
 .yellow  { background: #2e2608; border-color: var(--color-yellow-card); }
 
 .name {

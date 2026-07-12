@@ -112,7 +112,6 @@
   "cardType": {
     "green": "Grüne Erweiterung",
     "red": "Rote Erweiterung (nur Stadt)",
-    "brown": "Braune Erweiterung (Region)",
     "central": "Zentralachse",
     "road": "Straße",
     "settlement": "Siedlung",
@@ -219,22 +218,6 @@
     "university": {
       "name": "Universität",
       "description": "Gewährt 3 Fortschrittspunkte. Nur auf Stadtplätzen."
-    },
-    "goldMine": {
-      "name": "Goldmine",
-      "description": "Produziert 1 extra Gold auf einem Gebiet."
-    },
-    "irrigation": {
-      "name": "Bewässerung",
-      "description": "Produziert 1 extra Getreide auf einem Gebiet."
-    },
-    "sawmill": {
-      "name": "Sägewerk",
-      "description": "Produziert 1 extra Holz auf einem Gebiet."
-    },
-    "forge": {
-      "name": "Schmiede",
-      "description": "Produziert 1 extra Erz auf einem Gebiet."
     },
     "ambush": {
       "name": "Hinterhalt",

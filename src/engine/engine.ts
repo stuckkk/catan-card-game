@@ -1,7 +1,7 @@
 import {
   GameState, PlayerState, PlayerId, ResourceType, Resources, EMPTY_RESOURCES,
   GameAction, ProjectedState, DiceRoll, EventSymbol, ProductionNumber,
-  DeckId, DrawStackId, CentralSlot, RegionState, RegionExpansionPosition, CardDefinition,
+  DeckId, DrawStackId, CentralSlot, CardDefinition,
 } from './types'
 import {
   getCard, getRegion, CARD_REGISTRY,
@@ -189,21 +189,13 @@ export function getTradeRate(player: PlayerState, resource: ResourceType): 2 | 3
 
 // ─── Region Production ────────────────────────────────────────────────────────
 
-/** A Brown Expansion above or below a Region adds +1 to that Region's yield. */
-function regionYield(region: RegionState): number {
-  let bonus = 0
-  if (region.expansionAbove && getCard(region.expansionAbove).expansionColor === 'brown') bonus++
-  if (region.expansionBelow && getCard(region.expansionBelow).expansionColor === 'brown') bonus++
-  return 1 + bonus
-}
-
 function produceForPlayer(player: PlayerState, roll: ProductionNumber): PlayerState {
   const newRegions = player.regions.map(region => {
     const def = getRegion(region.regionId)
     if (def.productionNumber !== roll) return region
     if (region.storedResources >= 3) return region  // overflow — resource lost
     // Capacity is 3; any yield beyond that overflows and is lost.
-    return { ...region, storedResources: Math.min(3, region.storedResources + regionYield(region)) }
+    return { ...region, storedResources: Math.min(3, region.storedResources + 1) }
   })
   return { ...player, regions: newRegions }
 }
@@ -212,7 +204,7 @@ function produceForPlayer(player: PlayerState, roll: ProductionNumber): PlayerSt
 
 interface InitialBoard {
   principality: CentralSlot[]
-  regions: { regionId: string; storedResources: number; expansionAbove: null; expansionBelow: null }[]
+  regions: { regionId: string; storedResources: number }[]
 }
 
 function makeInitialPrincipalityAndRegions(): InitialBoard {
@@ -228,8 +220,6 @@ function makeInitialPrincipalityAndRegions(): InitialBoard {
   const regions = shuffled.map(rd => ({
     regionId: rd.id,
     storedResources: 1,  // each player starts with 1 of every resource
-    expansionAbove: null,
-    expansionBelow: null,
   }))
 
   const principality: CentralSlot[] = [
@@ -537,8 +527,8 @@ function applyBuildSettlement(state: GameState, actingPlayer: PlayerId, slotInde
   const spent = spendFromRegions(player, cost)
   const newRegions = [
     ...spent.regions,
-    { regionId: r1.id, storedResources: 0, expansionAbove: null, expansionBelow: null },
-    { regionId: r2.id, storedResources: 0, expansionAbove: null, expansionBelow: null },
+    { regionId: r1.id, storedResources: 0 },
+    { regionId: r2.id, storedResources: 0 },
   ]
 
   const regionIndices: [number, number] = [newRegions.length - 2, newRegions.length - 1]
@@ -616,10 +606,6 @@ function applyPlaceExpansion(
 
   // Validate placement rules
   if (card.expansionColor === 'red' && slot.kind !== 'city') return state
-  if (card.expansionColor === 'brown') {
-    // Brown goes on region — handled separately via region index
-    return state
-  }
   if (slot.expansionSlots[expansionSlotIndex] !== null) return state
 
   const principality = player.principality.map((s, i) => {
@@ -646,47 +632,6 @@ function applyPlaceExpansion(
     newState = card.customEffect(newState, actingPlayer)
   }
 
-  return newState
-}
-
-function applyPlaceRegionExpansion(
-  state: GameState,
-  actingPlayer: PlayerId,
-  cardId: string,
-  regionIndex: number,
-  position: RegionExpansionPosition
-): GameState {
-  if (state.phase !== 'action') return state
-  const player = state.players[actingPlayer]
-  const card = CARD_REGISTRY[cardId]
-  if (!card || card.expansionColor !== 'brown') return state
-  if (!player.hand.includes(cardId)) return state
-  if (!canAfford(availableResources(player), card.cost ?? {})) return state
-
-  const region = player.regions[regionIndex]
-  if (!region) return state
-  const field = position === 'above' ? 'expansionAbove' : 'expansionBelow'
-  if (region[field] !== null) return state
-
-  // Spend the cost from regions first, then attach the expansion to the region.
-  const spent = spendFromRegions(player, card.cost ?? {})
-  const regions = spent.regions.map((r, i) =>
-    i === regionIndex ? { ...r, [field]: cardId } : r
-  )
-
-  let newState: GameState = {
-    ...state,
-    players: {
-      ...state.players,
-      [actingPlayer]: {
-        ...player,
-        hand: removeFirst(player.hand, cardId),
-        regions,
-        playedCards: [...player.playedCards, cardId],
-      },
-    },
-  }
-  if (card.customEffect) newState = card.customEffect(newState, actingPlayer)
   return newState
 }
 
@@ -718,37 +663,6 @@ function applyDemolish(
     players: {
       ...state.players,
       [actingPlayer]: { ...player, principality, playedCards },
-    },
-    discardPile: [...state.discardPile, cardId],
-  }
-}
-
-function applyDemolishRegionExpansion(
-  state: GameState,
-  actingPlayer: PlayerId,
-  regionIndex: number,
-  position: RegionExpansionPosition
-): GameState {
-  if (state.phase !== 'action') return state
-  const player = state.players[actingPlayer]
-  const region = player.regions[regionIndex]
-  if (!region) return state
-  const field = position === 'above' ? 'expansionAbove' : 'expansionBelow'
-  const cardId = region[field]
-  if (!cardId) return state
-
-  const regions = player.regions.map((r, i) =>
-    i === regionIndex ? { ...r, [field]: null } : r
-  )
-  const playedCards = [...player.playedCards]
-  const pIdx = playedCards.indexOf(cardId)
-  if (pIdx !== -1) playedCards.splice(pIdx, 1)
-
-  return {
-    ...state,
-    players: {
-      ...state.players,
-      [actingPlayer]: { ...player, regions, playedCards },
     },
     discardPile: [...state.discardPile, cardId],
   }
@@ -1072,7 +986,6 @@ export function applyAction(state: GameState, actingPlayer: PlayerId, action: Ga
     case 'BUILD_SETTLEMENT':   next = applyBuildSettlement(state, actingPlayer, action.slotIndex); break
     case 'BUILD_CITY':         next = applyBuildCity(state, actingPlayer, action.slotIndex); break
     case 'PLACE_EXPANSION':    next = applyPlaceExpansion(state, actingPlayer, action.cardId, action.slotIndex, action.expansionSlotIndex); break
-    case 'PLACE_REGION_EXPANSION': next = applyPlaceRegionExpansion(state, actingPlayer, action.cardId, action.regionIndex, action.position); break
     case 'PLAY_ACTION_CARD':   next = applyPlayActionCard(state, actingPlayer, action.cardId); break
     case 'TRADE_WITH_BANK':    next = applyTradeWithBank(state, actingPlayer, action.give, action.receive); break
     case 'CHOOSE_RESOURCE':    next = applyChooseResource(state, actingPlayer, action.resource); break
@@ -1080,7 +993,6 @@ export function applyAction(state: GameState, actingPlayer: PlayerId, action: Ga
     case 'ACCEPT_TRADE':       next = applyRespondTrade(state, actingPlayer, true); break
     case 'DECLINE_TRADE':      next = applyRespondTrade(state, actingPlayer, false); break
     case 'DEMOLISH':           next = applyDemolish(state, actingPlayer, action.slotIndex, action.expansionSlotIndex); break
-    case 'DEMOLISH_REGION_EXPANSION': next = applyDemolishRegionExpansion(state, actingPlayer, action.regionIndex, action.position); break
     case 'END_ACTION_PHASE':   next = applyEndActionPhase(state, actingPlayer); break
     case 'DISCARD_TO_LIMIT':   next = applyDiscardToLimit(state, actingPlayer, action.cardIds); break
     case 'DRAW_TO_LIMIT':      next = applyDrawToLimit(state, actingPlayer, action.fromDeck); break

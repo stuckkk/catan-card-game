@@ -17,15 +17,17 @@ export default function OpponentVillage({ principality, regions }: Props) {
     <>
       <div className={styles.thumbnail}>
         <div className={styles.thumbnailBoard}>
-          <Principality
-            principality={principality}
-            regions={regions}
-            isMyBoard={false}
-            phase={undefined}
-            isMyTurn={false}
-            placingCardId={null}
-            onAction={() => {}}
-          />
+          <div className={styles.thumbnailScale}>
+            <Principality
+              principality={principality}
+              regions={regions}
+              isMyBoard={false}
+              phase={undefined}
+              isMyTurn={false}
+              placingCardId={null}
+              onAction={() => {}}
+            />
+          </div>
         </div>
         <button
           className={styles.thumbnailButton}

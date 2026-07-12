@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type {
-  CentralSlot, RegionState, GameAction, TurnPhase, ExpansionColor, RegionExpansionPosition,
+  CentralSlot, RegionState, GameAction, TurnPhase, ExpansionColor,
 } from '../engine/types'
 import { getCard } from '../engine/cards'
 import RegionCard from './RegionCard'
@@ -23,14 +23,14 @@ interface Props {
   onAction: (a: GameAction) => void
 }
 
-type RegionCell = { region: RegionState; regionIndex: number } | undefined
+type RegionCell = RegionState | undefined
 
 /** Whether a green/red card being placed may go on this central slot's expansion slots. */
 function slotAcceptsPlacing(slotKind: CentralSlot['kind'], placing: Placing): boolean {
   if (!placing) return false
   if (placing.color === 'green') return slotKind === 'settlement' || slotKind === 'city'
   if (placing.color === 'red') return slotKind === 'city'
-  return false  // brown goes on regions, not central slots
+  return false
 }
 
 /** Split a settlement/city's expansion slots into the above/below halves. */
@@ -142,44 +142,6 @@ function SettlementCore({ slot, idx, canBuild, onAction }: {
   )
 }
 
-/** A region card with its brown above/below expansion slots, supporting brown placement. */
-function RegionWithExpansions({ region, regionIndex, placing, onAction, onInspect }: {
-  region: RegionState
-  regionIndex: number
-  placing: Placing
-  onAction: (a: GameAction) => void
-  onInspect: (cardId: string) => void
-}) {
-  const { t } = useTranslation()
-  const placeable = placing?.color === 'brown'
-
-  const renderRegionExp = (cardId: string | null, position: RegionExpansionPosition) => {
-    if (cardId) return <CardView cardId={cardId} compact onClick={() => onInspect(cardId)} />
-    if (placeable && placing) {
-      return (
-        <button
-          className={`${styles.emptyExp} ${styles.placeable}`}
-          title={t(getCard(placing.cardId).nameKey)}
-          onClick={() => onAction({
-            type: 'PLACE_REGION_EXPANSION', cardId: placing.cardId, regionIndex, position,
-          })}
-        >
-          +
-        </button>
-      )
-    }
-    return null
-  }
-
-  return (
-    <div className={styles.regionStack}>
-      <div className={styles.regionExp}>{renderRegionExp(region.expansionAbove, 'above')}</div>
-      <RegionCard region={region} />
-      <div className={styles.regionExp}>{renderRegionExp(region.expansionBelow, 'below')}</div>
-    </div>
-  )
-}
-
 export default function Principality({
   principality, regions, isMyBoard, phase, isMyTurn, placingCardId, onAction,
 }: Props) {
@@ -213,8 +175,8 @@ export default function Principality({
 
   settlementSlots.forEach(({ slot }, i) => {
     const regs = slot.regionIndices
-      .map(ri => ({ region: regions[ri], regionIndex: ri }))
-      .filter(r => r.region) as { region: RegionState; regionIndex: number }[]
+      .map(ri => regions[ri])
+      .filter((r): r is RegionState => !!r)
     const targets: [RegionCell[], number][] = [
       [topRow, i], [bottomRow, i], [topRow, i + 1], [bottomRow, i + 1],
     ]
@@ -249,7 +211,7 @@ export default function Principality({
         {/* Top regions */}
         {topRow.map((cell, j) => cell && (
           <div key={`t${j}`} className={styles.regionCell} style={{ gridColumn: 2 * j + 1, gridRow: 1 }}>
-            <RegionWithExpansions region={cell.region} regionIndex={cell.regionIndex} placing={placing} onAction={onAction} onInspect={setInspectCardId} />
+            <RegionCard region={cell} />
           </div>
         ))}
 
@@ -298,7 +260,7 @@ export default function Principality({
         {/* Bottom regions */}
         {bottomRow.map((cell, j) => cell && (
           <div key={`b${j}`} className={styles.regionCell} style={{ gridColumn: 2 * j + 1, gridRow: 5 }}>
-            <RegionWithExpansions region={cell.region} regionIndex={cell.regionIndex} placing={placing} onAction={onAction} onInspect={setInspectCardId} />
+            <RegionCard region={cell} />
           </div>
         ))}
 

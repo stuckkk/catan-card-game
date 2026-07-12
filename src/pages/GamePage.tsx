@@ -74,7 +74,7 @@ export default function GamePage() {
   // Board actions clear placement mode once a card has been placed on a slot.
   const handleBoardAction = useCallback((action: GameAction) => {
     dispatchAction(action)
-    if (action.type === 'PLACE_EXPANSION' || action.type === 'PLACE_REGION_EXPANSION') {
+    if (action.type === 'PLACE_EXPANSION') {
       setPlacingCardId(null)
     }
   }, [dispatchAction])
@@ -199,21 +199,25 @@ export default function GamePage() {
         </div>
       )}
 
-      {/* Opponent summary (collapsed by default on mobile) */}
-      <OpponentSummary
-        expanded={opponentExpanded}
-        onToggle={() => setOpponentExpanded(v => !v)}
-        myId={myId}
-        gameState={isPractice ? gameState : null}
-        projected={isPractice ? null : projected}
-      />
-
-      {opponentState && (
-        <OpponentVillage
-          principality={opponentState.principality}
-          regions={opponentState.regions}
+      {/* Opponent summary (collapsed by default on mobile), full width, with the village
+          thumbnail stacked below it so the thumbnail never collides with the summary's
+          expandable detail panel growing underneath the toggle. */}
+      <div className={styles.topBar}>
+        <OpponentSummary
+          expanded={opponentExpanded}
+          onToggle={() => setOpponentExpanded(v => !v)}
+          myId={myId}
+          gameState={isPractice ? gameState : null}
+          projected={isPractice ? null : projected}
         />
-      )}
+
+        {opponentState && (
+          <OpponentVillage
+            principality={opponentState.principality}
+            regions={opponentState.regions}
+          />
+        )}
+      </div>
 
       {placingCardId && (
         <div className={styles.placingBanner}>

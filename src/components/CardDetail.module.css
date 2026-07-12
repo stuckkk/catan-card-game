@@ -36,7 +36,6 @@
 .central { background: var(--color-border); }
 .green   { background: var(--color-green-card); }
 .red     { background: var(--color-red-card); }
-.brown   { background: var(--color-brown-card); }
 .yellow  { background: var(--color-yellow-card); }
 
 .name {

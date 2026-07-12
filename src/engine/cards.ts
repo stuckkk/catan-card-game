@@ -247,48 +247,6 @@ export const UNIVERSITY: CardDefinition = {
   effects: [{ type: 'GRANT_SYMBOL', symbol: 'progress', amount: 3 }],
 }
 
-// ─── Brown Expansion Cards (Region slots) ─────────────────────────────────────
-
-export const GOLD_MINE: CardDefinition = {
-  id: 'gold-mine',
-  nameKey: 'cards.goldMine.name',
-  descriptionKey: 'cards.goldMine.description',
-  category: 'expansion',
-  expansionColor: 'brown',
-  cost: { brick: 1, ore: 1 },
-  effects: [{ type: 'GRANT_RESOURCE', resource: 'gold', amount: 1 }],
-}
-
-export const IRRIGATION: CardDefinition = {
-  id: 'irrigation',
-  nameKey: 'cards.irrigation.name',
-  descriptionKey: 'cards.irrigation.description',
-  category: 'expansion',
-  expansionColor: 'brown',
-  cost: { wood: 1, brick: 1 },
-  effects: [{ type: 'GRANT_RESOURCE', resource: 'grain', amount: 1 }],
-}
-
-export const SAWMILL: CardDefinition = {
-  id: 'sawmill',
-  nameKey: 'cards.sawmill.name',
-  descriptionKey: 'cards.sawmill.description',
-  category: 'expansion',
-  expansionColor: 'brown',
-  cost: { wood: 2 },
-  effects: [{ type: 'GRANT_RESOURCE', resource: 'wood', amount: 1 }],
-}
-
-export const FORGE: CardDefinition = {
-  id: 'forge',
-  nameKey: 'cards.forge.name',
-  descriptionKey: 'cards.forge.description',
-  category: 'expansion',
-  expansionColor: 'brown',
-  cost: { ore: 1, wood: 1 },
-  effects: [{ type: 'GRANT_RESOURCE', resource: 'ore', amount: 1 }],
-}
-
 // ─── Yellow Action Cards ──────────────────────────────────────────────────────
 
 export const AMBUSH: CardDefinition = {
@@ -392,10 +350,6 @@ export const CARD_REGISTRY: Record<string, CardDefinition> = {
   [CATHEDRAL.id]: CATHEDRAL,
   [GUILD_HALL.id]: GUILD_HALL,
   [UNIVERSITY.id]: UNIVERSITY,
-  [GOLD_MINE.id]: GOLD_MINE,
-  [IRRIGATION.id]: IRRIGATION,
-  [SAWMILL.id]: SAWMILL,
-  [FORGE.id]: FORGE,
   [AMBUSH.id]: AMBUSH,
   [CELEBRATION.id]: CELEBRATION,
   [INVENTION.id]: INVENTION,
@@ -478,13 +432,6 @@ export const DEFAULT_RED_DECK: string[] = [
   UNIVERSITY.id,
 ]
 
-export const DEFAULT_BROWN_DECK: string[] = [
-  GOLD_MINE.id, GOLD_MINE.id,
-  IRRIGATION.id, IRRIGATION.id,
-  SAWMILL.id, SAWMILL.id,
-  FORGE.id, FORGE.id,
-]
-
 export const DEFAULT_YELLOW_DECK: string[] = [
   AMBUSH.id, AMBUSH.id,
   CELEBRATION.id, CELEBRATION.id,
@@ -507,6 +454,5 @@ export const DRAW_STACK_IDS: DrawStackId[] = ['stack-1', 'stack-2', 'stack-3', '
 export const ALL_DRAW_CARDS: string[] = [
   ...DEFAULT_GREEN_DECK,
   ...DEFAULT_RED_DECK,
-  ...DEFAULT_BROWN_DECK,
   ...DEFAULT_YELLOW_DECK,
 ]
