@@ -16,6 +16,11 @@
 }
 
 .toggle:hover { background: var(--color-surface-2); }
+/* Full-width bar: the global button:active shrink (index.css) pulls the hit region in by
+   several percent, which is unnoticeable on small buttons but creates a real multi-pixel
+   dead zone at the edges of a 1000+px bar — clicks near the edges land outside the
+   already-shrunk box by the time mouseup fires. Disable the shrink here only. */
+.toggle:active { transform: none; }
 
 .quickStats {
   display: flex;
