@@ -1,24 +1,19 @@
 .board {
-  /* The single knob the whole board scales from. Grows with the viewport,
-     clamped so it stays tappable on phones and doesn't get huge on desktop.
-     An ancestor can shrink the board (e.g. the opponent-village thumbnail)
-     by setting --card-w-override; --card-w itself must never reference
-     itself in its own declaration — that's a cyclic custom property and
+  /* The single knob the whole board scales from. On the game screen it is derived from the
+     board area (a size container): wide enough for every column (--cols, set inline) and short
+     enough for the 5 rows, clamped so cards stay tappable on phones. An ancestor can pin the
+     size (e.g. the opponent thumbnail) by setting --card-w-override; --card-w itself must
+     never reference itself in its own declaration — that's a cyclic custom property and
      computes to invalid everywhere, not just where the override is unset. */
-  --card-w: var(--card-w-override, clamp(46px, 8vw, 84px));
+  --card-w: var(--card-w-override, clamp(46px, min(100cqi / (var(--cols, 5) * 1.16), 100cqb / 5.9), 128px));
   --card-h: calc(var(--card-w) * 1.28);
-  --exp-h: calc(var(--card-h) * 0.62); /* expansion slots tuck in shorter */
+  --exp-h: calc(var(--card-w) * 0.62); /* expansion slots tuck in shorter */
   --gap: calc(var(--card-w) * 0.14);
 
   display: flex;
   justify-content: center;
   align-items: center;
   width: 100%;
-}
-
-/* Wider screens: bigger cards to use the space (the board stays centred). */
-@media (min-width: 900px) {
-  .board { --card-w: var(--card-w-override, clamp(84px, 8.5vw, 124px)); }
 }
 
 /* Three-row grid: top regions / central axis / bottom regions. Region columns
@@ -64,32 +59,32 @@
   gap: var(--gap);
 }
 
+/* An unbuilt building site: a faint outline in the water. */
 .emptyExp {
   width: var(--card-w);
   height: var(--exp-h);
-  border: 1px dashed var(--color-border);
+  border: 1px dashed color-mix(in srgb, var(--sand) 35%, transparent);
   border-radius: var(--radius-sm);
-  opacity: 0.4;
 }
 
 /* A valid target highlighted while the player is placing an expansion card. */
 .placeable {
-  opacity: 1;
   cursor: pointer;
-  background: color-mix(in srgb, var(--color-accent) 18%, transparent);
-  border: 2px dashed var(--color-accent);
-  color: var(--color-accent);
-  font-size: clamp(20px, 4vw, 26px);
+  background: color-mix(in srgb, var(--beacon) 20%, transparent);
+  border: 2px dashed var(--beacon);
+  color: var(--beacon);
+  font-size: calc(var(--card-w) * 0.28);
   font-weight: 700;
   line-height: 1;
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-accent) 30%, transparent);
+  padding: 0;
   animation: placeablePulse 1.2s ease-in-out infinite;
 }
 
 @keyframes placeablePulse {
-  50% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--color-accent) 18%, transparent); }
+  50% { box-shadow: 0 0 0 calc(var(--card-w) * 0.05) color-mix(in srgb, var(--beacon) 25%, transparent); }
 }
 
+/* Settlement and City: a sand card with the building drawn on it. */
 .core {
   width: var(--card-w);
   min-height: var(--card-h);
@@ -97,56 +92,71 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  padding: 6px 4px;
+  gap: calc(var(--card-w) * 0.05);
+  padding: calc(var(--card-w) * 0.06);
   border-radius: var(--radius-sm);
-  border: 2px solid var(--color-border);
-  background: var(--color-surface-2);
+  background: var(--sand);
+  color: var(--ink);
   text-align: center;
+  box-shadow: inset 0 0 0 2px var(--core-c), var(--shadow);
 }
 
-.settlement { border-color: var(--color-settlement); background: color-mix(in srgb, var(--color-settlement) 22%, var(--color-surface-2)); }
-.city       { border-color: var(--color-city); background: color-mix(in srgb, var(--color-city) 30%, var(--color-surface-2)); }
+.settlement { --core-c: var(--color-settlement); }
+.city       { --core-c: var(--color-city); background: var(--sand-light); box-shadow: inset 0 0 0 3px var(--core-c), var(--shadow); }
+
+.coreIcon { font-size: calc(var(--card-w) * 0.3); line-height: 1; }
 
 .coreLabel {
-  font-size: clamp(9px, 2.4vw, 12px);
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  color: var(--color-text);
+  font-family: var(--font-display);
+  font-size: max(9px, calc(var(--card-w) * 0.15));
+  font-weight: 800;
+  line-height: 1.1;
 }
 
 .upgradeBtn {
   background: transparent;
-  border: 1px solid var(--color-city);
-  border-radius: var(--radius-sm);
-  color: var(--color-text);
-  font-size: 10px;
+  border: 1px solid var(--ink-muted);
+  border-radius: 999px;
+  color: var(--ink);
+  font-size: max(9px, calc(var(--card-w) * 0.12));
+  font-weight: 700;
   padding: 2px 6px;
+  white-space: nowrap;
 }
-.upgradeBtn:hover { background: var(--color-city); }
+.upgradeBtn:hover { background: var(--beacon); border-color: var(--beacon); }
 
+/* A road: a drawn track between two settlements. */
 .road {
-  width: calc(var(--card-w) * 0.6);
-  height: calc(var(--card-w) * 0.18);
+  width: calc(var(--card-w) * 0.75);
+  height: calc(var(--card-w) * 0.12);
   border-radius: 999px;
   background: var(--color-road);
-  border: 1px solid color-mix(in srgb, var(--color-road) 60%, black);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--sand) 60%, transparent);
+}
+
+/* Build targets: dashed outlines in the water, lit in beacon when hovered. */
+.buildRoad,
+.buildSettlement {
+  border: 2px dashed color-mix(in srgb, var(--sand) 45%, transparent);
+  background: transparent;
+  color: var(--sand);
+  font-weight: 700;
+  line-height: 1;
+  padding: 0;
+}
+.buildRoad:not(:disabled):hover,
+.buildSettlement:not(:disabled):hover {
+  border-color: var(--beacon);
+  color: var(--beacon);
+  background: color-mix(in srgb, var(--beacon) 12%, transparent);
 }
 
 .buildRoad {
   width: calc(var(--card-w) * 0.6);
   height: calc(var(--card-w) * 0.42);
-  border-radius: var(--radius-sm);
-  border: 2px dashed var(--color-border);
-  background: var(--color-surface);
-  color: var(--color-text-muted);
-  font-size: clamp(18px, 4vw, 24px);
-  font-weight: 700;
-  line-height: 1;
-  padding: 0;
+  border-radius: 999px;
+  font-size: calc(var(--card-w) * 0.24);
 }
-.buildRoad:not(:disabled):hover { border-color: var(--color-accent); color: var(--color-accent); background: color-mix(in srgb, var(--color-accent) 12%, var(--color-surface)); }
 
 .buildSettlement {
   width: var(--card-w);
@@ -157,16 +167,13 @@
   justify-content: center;
   gap: 4px;
   border-radius: var(--radius-sm);
-  border: 2px dashed var(--color-border);
-  background: var(--color-surface);
-  color: var(--color-text-muted);
-  font-size: clamp(9px, 2.4vw, 12px);
+  font-size: calc(var(--card-w) * 0.13);
   padding: 4px;
 }
-.buildSettlement:not(:disabled):hover { border-color: var(--color-accent); color: var(--color-accent); background: color-mix(in srgb, var(--color-accent) 12%, var(--color-surface)); }
+.buildSettlement:disabled { opacity: 0.6; }
 
 .buildIcon {
-  font-size: clamp(18px, 4vw, 24px);
+  font-size: calc(var(--card-w) * 0.28);
   font-weight: 700;
   line-height: 1;
 }
@@ -176,6 +183,9 @@
   flex-direction: column;
   gap: 4px;
 }
+/* With a Scout there are two build buttons; share the card height between them. */
+.buildStack .buildSettlement + .buildSettlement,
+.buildStack .buildSettlement:has(+ .buildSettlement) { min-height: calc((var(--card-h) - 4px) / 2); }
 
 /* A build the player can't currently afford: still clickable, to explain what's missing. */
-.unaffordable { opacity: 0.5; }
+.unaffordable { opacity: 0.45; }

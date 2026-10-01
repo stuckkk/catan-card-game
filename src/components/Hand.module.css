@@ -1,13 +1,15 @@
+/* The hand: cards in a row that overlap a little when space runs out, and scroll on phones. */
 .hand {
   overflow-x: auto;
-  padding-bottom: 4px;
+  padding: 6px 2px 2px;
+  min-width: 0;
 }
 
 .cards {
   display: flex;
   gap: 8px;
-  min-width: min-content;
-  justify-content: center;
+  width: max-content;
+  margin: 0 auto;
 }
 
 .cardWrap {
@@ -19,5 +21,7 @@
 
 .empty {
   color: var(--color-text-muted);
-  font-size: 12px;
+  font-size: 14px;
+  font-style: italic;
+  text-align: center;
 }

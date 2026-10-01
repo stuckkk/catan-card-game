@@ -1,18 +1,21 @@
+/* Phase panels (setup, search, draw, exchange) live in the turn panel, which already frames
+   them, so a panel is just a titled section. */
 .panel {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 10px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-surface-2);
+  gap: 10px;
 }
 
-.title { font-size: 13px; font-weight: 600; color: var(--color-text); }
-.hint { font-size: 12px; color: var(--color-text-muted); }
+.title {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--color-text);
+}
+.hint { font-size: 14px; color: var(--color-text-muted); }
 
-.section { display: flex; flex-direction: column; gap: 4px; }
-.label { font-size: 12px; color: var(--color-text-muted); }
+.section { display: flex; flex-direction: column; gap: 6px; }
+.label { font-size: 13px; color: var(--color-text-muted); }
 
 .cards { display: flex; gap: 6px; flex-wrap: wrap; }
 
@@ -21,15 +24,25 @@
 .resChip {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 5px 8px;
-  border-radius: var(--radius-sm);
-  border: 2px solid var(--color-border);
-  background: var(--color-surface);
+  gap: 6px;
+  padding: 7px 10px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--sea-mid);
   color: var(--color-text);
-  font-size: 12px;
-  line-height: 1;
+  font-size: 14px;
+  line-height: 1.1;
+  text-align: left;
   cursor: pointer;
+}
+
+/* Cards are named in the card face's type and colour. */
+.cardChip {
+  font-family: var(--font-display);
+  font-weight: 600;
+  background: var(--sand);
+  color: var(--ink);
+  border-color: transparent;
 }
 
 .cardChip:disabled,
@@ -37,25 +50,37 @@
 
 .cardChip:not(:disabled):hover,
 .deckChip:hover,
-.resChip:not(:disabled):hover { border-color: var(--color-accent); }
+.resChip:not(:disabled):hover { border-color: var(--beacon); }
 
-.selected {
-  border-color: var(--color-accent);
-  background: color-mix(in srgb, var(--color-accent) 22%, var(--color-surface));
+.selected,
+.cardChip.selected {
+  border-color: var(--beacon);
+  box-shadow: 0 0 0 2px var(--beacon);
 }
+.deckChip.selected,
+.resChip.selected { background: color-mix(in srgb, var(--beacon) 22%, var(--sea-mid)); }
 
-.deckChip { flex-direction: column; min-width: 52px; }
+/* A draw stack: name, cards left, and its buttons. */
+.deckChip {
+  flex-direction: column;
+  align-items: stretch;
+  min-width: 76px;
+  text-align: center;
+}
+.deckChip button { padding: 4px 8px; font-size: 13px; }
+
 .deckCount {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--color-text-muted);
-  font-weight: 600;
+  font-weight: 700;
 }
+.cardChip .deckCount { color: var(--ink-muted); font-family: var(--font-body); }
 
 .paidToggle {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--color-text-muted);
   cursor: pointer;
 }
@@ -64,23 +89,38 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding-top: 6px;
+  padding-top: 10px;
   border-top: 1px dashed var(--color-border);
+}
+
+/* The panel's main confirm button stays in view while the turn panel scrolls. */
+.panel > :global(button.primary) {
+  position: sticky;
+  bottom: 0;
+  box-shadow: 0 -10px 12px var(--sea-deep);
+}
+/* Opaque even while disabled, so the list never shows through it. */
+.panel > :global(button.primary:disabled) {
+  opacity: 1;
+  background: var(--sea-mid);
+  color: var(--foam-muted);
 }
 
 .row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
 .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.actions > button { flex: 1; }
 
+/* A card chip with its "details" button attached on the right. */
 .chipGroup { display: inline-flex; align-items: stretch; }
 .chipGroup .cardChip { border-top-right-radius: 0; border-bottom-right-radius: 0; }
 .infoBtn {
-  padding: 0 7px;
-  border: 2px solid var(--color-border);
-  border-left: none;
-  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-  background: var(--color-surface);
-  color: var(--color-text-muted);
-  font: italic 700 13px Georgia, serif;
+  padding: 0 9px;
+  border: 1px solid transparent;
+  border-left: 1px solid color-mix(in srgb, var(--ink) 25%, transparent);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  background: var(--sand-light);
+  color: var(--ink-muted);
+  font: italic 800 15px var(--font-display);
   cursor: pointer;
 }
-.infoBtn:hover { color: var(--color-accent); border-color: var(--color-accent); }
+.infoBtn:hover { color: var(--ink); background: var(--beacon); }

@@ -1,7 +1,7 @@
 .backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(4, 20, 19, 0.7);
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -28,8 +28,9 @@
 }
 
 .title {
-  font-size: 16px;
-  font-weight: 700;
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 800;
   text-align: center;
 }
 
@@ -47,13 +48,13 @@
   gap: 4px;
   padding: 10px 12px;
   min-width: 64px;
-  border-radius: var(--radius-sm);
-  border: 2px solid var(--color-border);
-  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--sea-mid);
   cursor: pointer;
 }
 
-.chip:hover { border-color: var(--color-accent); }
+.chip:hover { border-color: var(--beacon); box-shadow: 0 0 0 1px var(--beacon); }
 
 .icon { font-size: 22px; }
 .name { font-size: 12px; color: var(--color-text-muted); }

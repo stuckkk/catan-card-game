@@ -166,6 +166,13 @@ export default function GamePage() {
     if (placingCardId && !(isMyTurn && phase === 'action')) setPlacingCardId(null)
   }, [placingCardId, isMyTurn, phase])
 
+  // One line telling the player what to do now; phases with their own panel explain themselves.
+  const turnHint = !phase || phase === 'setup' || winner ? null
+    : !isMyTurn ? t('game.hint.waiting')
+    : phase === 'roll' ? t('game.hint.roll')
+    : phase === 'action' ? t('game.hint.action')
+    : null
+
   if (expired) {
     return (
       <div className={styles.page}>
@@ -203,36 +210,44 @@ export default function GamePage() {
         </div>
       )}
 
-      {/* Opponent summary (collapsed by default on mobile), full width, with the village
-          thumbnail stacked below it so the thumbnail never collides with the summary's
-          expandable detail panel growing underneath the toggle. */}
-      <div className={styles.topBar}>
-        <OpponentSummary
-          expanded={opponentExpanded}
-          onToggle={() => setOpponentExpanded(v => !v)}
-          myId={myId}
-          view={view}
-        />
-
-        {opponentState && (
-          <OpponentVillage
-            principality={opponentState.principality}
-            regions={opponentState.regions}
+      {/* Header: the opponent on the left, the last roll in the middle, my score on the right. */}
+      <header className={styles.topBar}>
+        <div className={styles.opponent}>
+          {opponentState && (
+            <OpponentVillage
+              principality={opponentState.principality}
+              regions={opponentState.regions}
+            />
+          )}
+          <OpponentSummary
+            expanded={opponentExpanded}
+            onToggle={() => setOpponentExpanded(v => !v)}
+            myId={myId}
+            view={view}
           />
-        )}
-      </div>
-
-      {placingCardId && (
-        <div className={styles.placingBanner}>
-          <span>{t('game.placing', { card: t(getCard(placingCardId).nameKey) })}</span>
-          <button className="secondary" onClick={() => setPlacingCardId(null)}>
-            {t('game.cancelPlacement')}
-          </button>
         </div>
-      )}
 
-      {/* My board */}
-      <div className={styles.myBoard}>
+        <div className={styles.roll}>
+          {/* Keyed by turn so the dice land again on every new roll. */}
+          {lastRoll && <DiceDisplay key={view.turn} roll={lastRoll} />}
+        </div>
+
+        <div className={styles.myScore}>
+          <span className={styles.myScoreLabel}>{t('game.you')}</span>
+          <span className={styles.vp}>{t('game.vpOfTarget', { count: myVP, target: view.config.vpTarget })}</span>
+        </div>
+      </header>
+
+      {/* My board: the sea the principality sits on. Sized to fit this area (container query). */}
+      <main className={styles.myBoard}>
+        {placingCardId && (
+          <div className={styles.placingBanner}>
+            <span>{t('game.placing', { card: t(getCard(placingCardId).nameKey) })}</span>
+            <button className="secondary" onClick={() => setPlacingCardId(null)}>
+              {t('game.cancelPlacement')}
+            </button>
+          </div>
+        )}
         <div className={styles.boardInner}>
           {myState && (
             <Principality
@@ -251,33 +266,21 @@ export default function GamePage() {
             />
           )}
         </div>
-      </div>
+      </main>
 
-      {/* Bottom panel: hand + controls */}
-      <div className={styles.bottomPanel}>
-        <div className={styles.statusBar}>
-          <span className={isMyTurn ? styles.myTurn : styles.theirTurn}>
-            {isMyTurn ? t('game.yourTurn') : t('game.opponentTurn')}
-          </span>
-          <span className={styles.vp}>{t('game.currentVP', { count: myVP })}</span>
+      {/* The turn panel: whose turn, which phase, what to do now, and the phase's controls. */}
+      <aside className={styles.turn}>
+        <div className={styles.turnHead}>
+          <div className={styles.statusBar}>
+            <span className={isMyTurn ? styles.myTurn : styles.theirTurn}>
+              {isMyTurn ? t('game.yourTurn') : t('game.opponentTurn')}
+            </span>
+          </div>
+          <PhaseTracker phase={phase} isMyTurn={isMyTurn} />
+          {turnHint && <p className={styles.hint}>{turnHint}</p>}
         </div>
-        <PhaseTracker phase={phase} isMyTurn={isMyTurn} />
 
-        {myResources && <ResourceBar resources={myResources} />}
-
-        {lastRoll && <DiceDisplay roll={lastRoll} />}
-
-        <Hand
-          cardIds={myHand}
-          isMyTurn={isMyTurn}
-          phase={phase}
-          resources={myResources}
-          opponentResources={opponentResources}
-          actionsUnlocked={actionCardsUnlocked(view)}
-          onAction={dispatchAction}
-          onBeginPlacement={setPlacingCardId}
-        />
-
+        <div className={styles.turnBody}>
         {pendingTrade && (
           <TradeOfferBanner offer={pendingTrade} myId={myId} onAction={dispatchAction} />
         )}
@@ -324,6 +327,8 @@ export default function GamePage() {
           />
         )}
 
+        </div>
+
         <div className={styles.controls}>
           {phase === 'roll' && isMyTurn && (
             <button className="primary" onClick={() => dispatchAction({ type: 'ROLL_DICE' })}>
@@ -341,7 +346,22 @@ export default function GamePage() {
             </button>
           )}
         </div>
-      </div>
+      </aside>
+
+      {/* The tray: what I hold. */}
+      <footer className={styles.tray}>
+        {myResources && <ResourceBar resources={myResources} />}
+        <Hand
+          cardIds={myHand}
+          isMyTurn={isMyTurn}
+          phase={phase}
+          resources={myResources}
+          opponentResources={opponentResources}
+          actionsUnlocked={actionCardsUnlocked(view)}
+          onAction={dispatchAction}
+          onBeginPlacement={setPlacingCardId}
+        />
+      </footer>
     </div>
   )
 }

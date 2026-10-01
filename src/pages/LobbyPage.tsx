@@ -105,47 +105,51 @@ export default function LobbyPage() {
     <div className={styles.page}>
       <div className={styles.container}>
         <div className={styles.header}>
-          <h1>{t('lobby.title')}</h1>
-          <div className={styles.langSwitch}>
-            <button className="secondary" onClick={() => i18n.changeLanguage('en')}
-              style={{ opacity: i18n.language === 'en' ? 1 : 0.5 }}>EN</button>
-            <button className="secondary" onClick={() => i18n.changeLanguage('de')}
-              style={{ opacity: i18n.language.startsWith('de') ? 1 : 0.5 }}>DE</button>
+          <div className={styles.langSwitch} role="group" aria-label={t('lobby.language')}>
+            <button className={styles.lang} aria-pressed={i18n.language === 'en'} onClick={() => i18n.changeLanguage('en')}>EN</button>
+            <button className={styles.lang} aria-pressed={i18n.language.startsWith('de')} onClick={() => i18n.changeLanguage('de')}>DE</button>
           </div>
+          <h1 className={styles.title}>{t('lobby.title')}</h1>
+          <p className={styles.tagline}>{t('lobby.tagline')}</p>
         </div>
 
         {mode === 'idle' && (
           <div className={styles.actions}>
-            <div className="card">
+            <section className={styles.option}>
               <h2>{t('lobby.createGame')}</h2>
-              <div className={styles.field}>
-                <label>{t('lobby.vpTarget')}</label>
-                <select value={vpTarget} onChange={e => setVpTarget(Number(e.target.value))}>
-                  <option value={7}>7</option>
-                  <option value={12}>12</option>
-                  <option value={13}>13</option>
-                </select>
+              <div className={styles.inline}>
+                <div className={styles.field}>
+                  <label htmlFor="vp-target">{t('lobby.vpTarget')}</label>
+                  <select id="vp-target" value={vpTarget} onChange={e => setVpTarget(Number(e.target.value))}>
+                    <option value={7}>7</option>
+                    <option value={12}>12</option>
+                    <option value={13}>13</option>
+                  </select>
+                </div>
+                <button className="primary" onClick={handleCreateGame}>{t('lobby.createGame')}</button>
               </div>
-              <button className="primary" onClick={handleCreateGame}>{t('lobby.createGame')}</button>
-            </div>
+            </section>
 
-            <div className={styles.divider}>— or —</div>
-
-            <div className="card">
+            <section className={styles.option}>
               <h2>{t('lobby.joinGame')}</h2>
-              <div className={styles.field}>
-                <label>{t('lobby.pasteRoomCode')}</label>
-                <input
-                  type="text"
-                  value={manualRoomId}
-                  onChange={e => setManualRoomId(e.target.value)}
-                  placeholder={t('lobby.roomCode')}
-                />
+              <div className={styles.inline}>
+                <div className={styles.field}>
+                  <label htmlFor="room-code">{t('lobby.pasteRoomCode')}</label>
+                  <input
+                    id="room-code"
+                    type="text"
+                    value={manualRoomId}
+                    onChange={e => setManualRoomId(e.target.value)}
+                    placeholder={t('lobby.roomCode')}
+                  />
+                </div>
+                <button className="primary" onClick={() => handleJoin(manualRoomId)} disabled={!manualRoomId.trim()}>
+                  {t('lobby.connect')}
+                </button>
               </div>
-              <button className="primary" onClick={() => handleJoin(manualRoomId)} disabled={!manualRoomId.trim()}>
-                {t('lobby.connect')}
-              </button>
-            </div>
+            </section>
+
+            <div className={styles.divider}><span>{t('lobby.or')}</span></div>
 
             <button className="secondary" onClick={handlePractice}>{t('lobby.practice')}</button>
           </div>

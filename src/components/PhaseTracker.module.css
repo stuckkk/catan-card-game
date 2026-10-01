@@ -1,8 +1,10 @@
+/* The steps of a turn as one segmented track: done steps filled, the current one lit. */
 .tracker {
   display: flex;
-  align-items: stretch;
-  gap: 4px;
   width: 100%;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  overflow: hidden;
 }
 
 .step {
@@ -10,56 +12,36 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  padding: 6px 4px;
-  border-radius: var(--radius-sm);
-  background: var(--color-surface-2);
-  border: 1px solid var(--color-border);
+  gap: 5px;
+  padding: 5px 6px;
   min-width: 0;
+  color: var(--color-text-muted);
 }
+.step + .step { border-left: 1px solid var(--color-border); }
 
 .dot {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
   flex-shrink: 0;
-  border-radius: 50%;
-  background: var(--color-border);
-  color: var(--color-text);
-  font-size: 11px;
-  font-weight: 700;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 13px;
 }
 
 .label {
-  font-size: 11px;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 500;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  color: var(--color-text-muted);
 }
 
-.done .dot { background: var(--color-success); color: #07210b; }
-.done .label { color: var(--color-text); }
+.done { color: var(--color-text); background: color-mix(in srgb, var(--foam) 8%, transparent); }
 
 .current {
-  border-color: var(--color-accent);
-  background: color-mix(in srgb, var(--color-accent) 18%, var(--color-surface-2));
+  color: var(--color-text);
+  background: color-mix(in srgb, var(--foam) 18%, transparent);
 }
-.current .dot { background: var(--color-accent); color: white; }
-.current .label { color: var(--color-text); }
+.current .label { font-weight: 700; }
 
-/* Brighter highlight when it is the local player's turn to act on this step. */
-.current.mine {
-  border-color: var(--color-success);
-  background: color-mix(in srgb, var(--color-success) 20%, var(--color-surface-2));
-}
-.current.mine .dot { background: var(--color-success); color: #07210b; }
+/* The local player's own current step. */
+.current.mine { background: var(--beacon); color: var(--ink); }
 
-/* On narrow screens collapse to just the numbered dots to save space. */
-@media (max-width: 520px) {
-  .label { display: none; }
-  .step { padding: 6px 2px; }
-}

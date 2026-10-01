@@ -19,7 +19,9 @@
     "roomNotFound": "Kein Spiel mit diesem Raum-Code gefunden.",
     "sessionExpired": "Dieses Spiel ist beendet.",
     "serverUnreachable": "Server nicht erreichbar.",
-    "backToLobby": "Zur Lobby"
+    "backToLobby": "Zur Lobby",
+    "tagline": "Das Kartenspiel für zwei. Baue dein Fürstentum aus und erreiche als Erster die Siegpunkte.",
+    "or": "oder"
   },
   "game": {
     "yourTurn": "Du bist dran",
@@ -152,7 +154,21 @@
       "noRegions": "Der Landschaftsstapel hat weniger als 2 Karten."
     },
     "supplyLeft": "noch {{count}}",
-    "opponent": "Gegner"
+    "opponent": "Gegner",
+    "you": "Du",
+    "vpOfTarget": "{{count}} von {{target}} SP",
+    "hint": {
+      "waiting": "Dein Gegner ist am Zug. Du kannst dir solange deine Karten ansehen.",
+      "roll": "Würfle, um deinen Zug zu beginnen.",
+      "action": "Baue in deinem Fürstentum, spiele Karten aus oder handle. Beende die Phase, wenn du fertig bist."
+    },
+    "phaseShort": {
+      "setup": "Aufbau",
+      "roll": "Würfeln",
+      "action": "Aktionen",
+      "draw": "Ziehen",
+      "exchange": "Tauschen"
+    }
   },
   "card": {
     "cost": "Kosten",

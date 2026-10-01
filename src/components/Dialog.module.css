@@ -1,7 +1,7 @@
 .backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(4, 20, 19, 0.7);
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -29,5 +29,5 @@
   .sheet { border-radius: var(--radius-lg); }
 }
 
-.title { font-size: 16px; font-weight: 700; text-align: center; }
+.title { font-family: var(--font-display); font-size: 20px; font-weight: 800; text-align: center; }
 .actions { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }

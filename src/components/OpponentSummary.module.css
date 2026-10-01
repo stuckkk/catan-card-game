@@ -1,52 +1,83 @@
+/* The opponent's public numbers in the header; the toggle opens their full stats below it. */
 .summary {
-  background: var(--color-surface);
+  position: relative;
+  min-width: 0;
 }
 
 .toggle {
-  width: 100%;
   background: none;
-  border-radius: 0;
-  padding: 8px 12px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
+  border-radius: var(--radius-md);
+  padding: 4px 8px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-areas:
+    "name chevron"
+    "stats stats";
+  justify-content: start;
+  column-gap: 6px;
+  row-gap: 2px;
   color: var(--color-text);
   text-align: left;
 }
+.toggle:hover { background: var(--sea-mid); }
 
-.toggle:hover { background: var(--color-surface-2); }
-/* Full-width bar: the global button:active shrink (index.css) pulls the hit region in by
-   several percent, which is unnoticeable on small buttons but creates a real multi-pixel
-   dead zone at the edges of a 1000+px bar — clicks near the edges land outside the
-   already-shrunk box by the time mouseup fires. Disable the shrink here only. */
-.toggle:active { transform: none; }
-
-.quickStats {
-  display: flex;
-  gap: 8px;
-  flex: 1;
+.toggle > :first-child {
+  grid-area: name;
+  font-size: 13px;
+  color: var(--color-text-muted);
 }
 
-.vp { color: var(--color-gold); font-weight: 600; }
-.hand { color: var(--color-text-muted); }
-.token { color: var(--color-accent); font-size: 11px; }
+.quickStats {
+  grid-area: stats;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 10px;
+}
+
+.vp {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--color-gold);
+}
+.hand { font-size: 13px; color: var(--color-text-muted); white-space: nowrap; }
+.token { color: var(--beacon); font-size: 12px; white-space: nowrap; }
 
 .chevron {
-  margin-left: auto;
+  grid-area: chevron;
+  justify-self: start;
   font-size: 10px;
   color: var(--color-text-muted);
 }
 
 .detail {
-  padding: 8px 16px 12px;
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 60;
+  min-width: 220px;
+  padding: 10px 14px;
   display: flex;
   flex-direction: column;
   gap: 6px;
+  background: var(--sea-deep);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
 }
 
 .statRow {
   display: flex;
   justify-content: space-between;
-  font-size: 13px;
+  gap: 16px;
+  font-size: 14px;
+}
+
+@media (max-width: 760px) {
+  .vp { font-size: 17px; }
+  /* Only the token icons fit here; the name is in the tooltip and the stats popover. */
+  .tokenName { display: none; }
+  .hand { font-size: 12px; }
 }

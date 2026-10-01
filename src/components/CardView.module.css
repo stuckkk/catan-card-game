@@ -1,46 +1,55 @@
+/* An expansion or action card: a sand face with its colour as a thick frame along the top,
+   like the printed cards. */
 .card {
+  --frame: var(--ink-muted);
   display: flex;
   flex-direction: column;
   gap: 4px;
-  padding: 8px 6px;
+  padding: 10px 7px 7px;
   border-radius: var(--radius-sm);
-  border: 2px solid transparent;
-  min-width: 64px;
-  min-height: 90px;
-  font-size: 11px;
+  border: none;
+  background: var(--sand);
+  color: var(--ink);
+  box-shadow: inset 0 5px 0 var(--frame), inset 0 0 0 1px var(--frame), var(--shadow);
+  width: 96px;
+  min-height: 100px;
+  font-size: 12px;
   text-align: left;
   cursor: pointer;
-  transition: border-color 0.15s, transform 0.1s;
+  flex-shrink: 0;
+  transition: transform 0.12s, box-shadow 0.12s;
 }
 
-.card:hover { transform: translateY(-2px); }
+.card:hover { transform: translateY(-4px); }
 
 /* Compact cards live on the board and size to the board's --card-w. */
 .compact {
   width: var(--card-w, 64px);
   height: var(--exp-h, 54px);
-  min-width: 0;
   min-height: 0;
   align-items: center;
   justify-content: center;
   text-align: center;
-  padding: 4px;
+  padding: calc(var(--card-w, 64px) * 0.08) 3px 3px;
+  box-shadow: inset 0 calc(var(--card-w, 64px) * 0.05) 0 var(--frame), inset 0 0 0 1px var(--frame), var(--shadow);
 }
-.compact .name { font-size: clamp(8px, 2.2vw, 11px); }
+.compact .name { font-size: calc(var(--card-w, 64px) * 0.13); }
 
-.selected { border-color: white !important; }
-.unaffordable { opacity: 0.45; }
+.selected { box-shadow: inset 0 5px 0 var(--frame), 0 0 0 3px var(--beacon), var(--shadow); }
+.unaffordable { opacity: 0.55; }
 
-.central { background: var(--color-surface-2); border-color: var(--color-border); }
-.green   { background: #1a3a1a; border-color: var(--color-green-card); }
-.red     { background: #3a1a1a; border-color: var(--color-red-card); }
-.yellow  { background: #2e2608; border-color: var(--color-yellow-card); }
+.central { --frame: var(--ink-muted); }
+.green   { --frame: var(--color-green-card); }
+.red     { --frame: var(--color-red-card); }
+.yellow  { --frame: var(--color-yellow-card); }
 
 .name {
-  font-weight: 600;
-  font-size: 11px;
-  line-height: 1.2;
-  color: var(--color-text);
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 14px;
+  line-height: 1.1;
+  hyphens: auto;
+  overflow-wrap: break-word;
 }
 
 .cost {
@@ -50,20 +59,28 @@
 }
 
 .costItem {
-  background: rgba(0,0,0,0.3);
+  background: color-mix(in srgb, var(--ink) 10%, transparent);
   border-radius: 3px;
   padding: 1px 4px;
-  font-size: 9px;
-  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink-muted);
 }
 
 .effects {
   display: flex;
   flex-wrap: wrap;
-  gap: 3px;
+  gap: 4px;
   margin-top: auto;
+  font-size: 11px;
+  font-weight: 700;
 }
 
-.vp { color: var(--color-gold); font-weight: 700; font-size: 10px; }
-.symbols { color: #aaa; font-size: 10px; }
-.trade { color: #5bc0eb; font-size: 10px; }
+@media (max-width: 760px) {
+  .card:not(.compact) { width: 84px; min-height: 84px; padding: 9px 6px 6px; }
+  .card:not(.compact) .name { font-size: 13px; }
+}
+
+.vp { color: #8A5A00; }
+.symbols { color: var(--ink-muted); }
+.trade { color: #1F5E7A; }

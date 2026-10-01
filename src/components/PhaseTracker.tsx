@@ -33,10 +33,12 @@ export default function PhaseTracker({ phase, isMyTurn }: Props) {
         return (
           <div
             key={step.key}
+            title={t(`game.phase.${step.key}`)}
+            aria-current={state === 'current' ? 'step' : undefined}
             className={[styles.step, styles[state], state === 'current' && isMyTurn ? styles.mine : ''].join(' ')}
           >
             <span className={styles.dot}>{i + 1}</span>
-            <span className={styles.label}>{t(`game.phase.${step.key}`)}</span>
+            <span className={styles.label}>{t(`game.phaseShort.${step.key}`)}</span>
           </div>
         )
       })}

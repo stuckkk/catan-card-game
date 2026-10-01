@@ -1,7 +1,7 @@
 .backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(4, 20, 19, 0.7);
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -9,8 +9,8 @@
 }
 
 .sheet {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
+  background: var(--sand);
+  color: var(--ink);
   border-top-left-radius: var(--radius-lg);
   border-top-right-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
@@ -29,32 +29,32 @@
 }
 
 .swatch {
-  height: 6px;
-  border-radius: 3px;
-  margin-bottom: 4px;
+  height: 8px;
+  margin: -20px -20px 8px;
+  border-top-left-radius: inherit;
+  border-top-right-radius: inherit;
 }
-.central { background: var(--color-border); }
+.central { background: var(--ink-muted); }
 .green   { background: var(--color-green-card); }
 .red     { background: var(--color-red-card); }
 .yellow  { background: var(--color-yellow-card); }
 
 .name {
-  font-size: 18px;
-  font-weight: 700;
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 800;
 }
 
 .type {
-  font-size: 12px;
-  color: var(--color-text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  margin-top: -4px;
+  font-size: 14px;
+  color: var(--ink-muted);
+  margin-top: -6px;
 }
 
 .description {
-  font-size: 14px;
+  font-size: 16px;
   line-height: 1.45;
-  color: var(--color-text);
+  color: var(--ink);
   margin: 6px 0;
 }
 
@@ -62,13 +62,15 @@
   display: flex;
   justify-content: space-between;
   gap: 12px;
-  font-size: 13px;
-  padding: 4px 0;
-  border-top: 1px solid var(--color-border);
+  font-size: 14px;
+  padding: 6px 0;
+  border-top: 1px solid color-mix(in srgb, var(--ink) 20%, transparent);
 }
 
-.rowLabel { color: var(--color-text-muted); }
-.rowValue { color: var(--color-text); font-weight: 600; text-align: right; }
+.rowLabel { color: var(--ink-muted); }
+.rowValue { font-weight: 700; text-align: right; }
+/* Secondary buttons sit on sand here, so they take the ink colour. */
+.actions :global(button.secondary) { color: var(--ink); border-color: color-mix(in srgb, var(--ink) 35%, transparent); }
 
 .actions {
   display: flex;

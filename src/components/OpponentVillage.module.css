@@ -1,15 +1,12 @@
-/* Sits as a normal block row below OpponentSummary's toggle (see GamePage's .topBar)
-   rather than position:fixed — that way it can never overlap the summary's expandable
-   detail panel, which grows in normal flow above it. */
+/* A small live picture of the opponent's board in the header; tap it for the full view. */
 .thumbnail {
   position: relative;
-  margin: 8px 0 10px 12px;
-  width: clamp(90px, 20vw, 115px);
-  height: clamp(78px, 17vw, 118px);
+  flex-shrink: 0;
+  width: 76px;
+  height: 58px;
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-surface);
-  box-shadow: var(--shadow-lg);
+  border-radius: var(--radius-md);
+  background: var(--sea);
   overflow: hidden;
 }
 
@@ -32,7 +29,7 @@
 .thumbnailScale {
   --card-w-override: 56px;
   flex-shrink: 0;
-  transform: scale(0.28);
+  transform: scale(0.21);
 }
 
 .thumbnailButton {
@@ -43,12 +40,12 @@
   border-radius: var(--radius-sm);
   cursor: pointer;
 }
-.thumbnailButton:hover { background: rgba(255, 255, 255, 0.06); }
+.thumbnailButton:hover { box-shadow: inset 0 0 0 2px var(--beacon); }
 
 .backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(4, 20, 19, 0.7);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -57,7 +54,7 @@
 }
 
 .sheet {
-  background: var(--color-surface);
+  background: var(--sea);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
@@ -78,10 +75,11 @@
 }
 
 .title {
-  font-size: 16px;
-  font-weight: 700;
+  font-size: 20px;
 }
+
 
 .boardWrap {
   overflow: auto;
+  --card-w-override: clamp(46px, 9vw, 96px);
 }

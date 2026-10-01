@@ -1,76 +1,127 @@
+/* The lobby: the game's name set large over the sea, and the ways in on one panel below it. */
 .page {
   min-height: 100dvh;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 16px;
+  padding: 32px 16px;
+  background:
+    radial-gradient(ellipse 60% 45% at 50% 30%, color-mix(in srgb, var(--sea-mid) 80%, transparent), transparent),
+    var(--sea);
 }
 
 .container {
   width: 100%;
-  max-width: 480px;
+  max-width: 460px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 28px;
 }
 
 .header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.header h1 {
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--color-text);
+  display: grid;
+  gap: 10px;
 }
 
 .langSwitch {
+  justify-self: end;
   display: flex;
-  gap: 6px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.lang {
+  padding: 4px 12px;
+  border-radius: 0;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+.lang[aria-pressed='true'] { background: var(--foam); color: var(--sea-deep); }
+
+/* The one bold thing on this page: the title, set like a map's cartouche. */
+.title {
+  font-size: clamp(44px, 13vw, 68px);
+  line-height: 0.95;
+  letter-spacing: -0.01em;
+  color: var(--sand);
+  text-wrap: balance;
+}
+
+.tagline {
+  font-size: 17px;
+  color: var(--color-text-muted);
+  max-width: 34ch;
 }
 
 .actions {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
 }
 
-.actions .card h2 {
-  font-size: 16px;
-  margin-bottom: 14px;
-  color: var(--color-text);
-}
-
-.actions .card {
+.option {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
+  padding: 16px;
+  background: var(--sea-deep);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
 }
+
+.option h2 { font-size: 20px; }
+
+/* Field and its button side by side, the button aligned with the input. */
+.inline {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+}
+.inline .field { flex: 1; min-width: 0; }
+.inline select { width: 100%; }
+.inline button { flex-shrink: 0; }
 
 .field {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 2px;
 }
 
 .divider {
-  text-align: center;
+  display: flex;
+  align-items: center;
+  gap: 12px;
   color: var(--color-text-muted);
-  font-size: 12px;
+  font-size: 14px;
+}
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  border-top: 1px solid var(--color-border);
 }
 
 .hint {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--color-text-muted);
 }
 
 .error {
-  color: var(--color-accent);
-  font-size: 13px;
+  color: var(--color-danger);
+  font-size: 14px;
   padding: 8px 12px;
-  background: rgba(233, 69, 96, 0.1);
-  border-radius: var(--radius-sm);
-  border: 1px solid rgba(233, 69, 96, 0.3);
+  background: color-mix(in srgb, var(--color-danger) 12%, transparent);
+  border-radius: var(--radius-md);
+  border: 1px solid color-mix(in srgb, var(--color-danger) 40%, transparent);
 }
+
+/* The other lobby states (hosting, joining, error) reuse the global .card panel. */
+.container > :global(.card) {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.container > :global(.card) h2 { font-size: 20px; }
