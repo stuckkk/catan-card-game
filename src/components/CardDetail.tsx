@@ -1,9 +1,8 @@
 import { useTranslation } from 'react-i18next'
 import { getCard } from '../engine/cards'
-import type { ResourceType } from '../engine/types'
+import type { DeclarativeEffect, ResourceType } from '../engine/types'
+import { RESOURCE_ORDER } from './resourceMeta'
 import styles from './CardDetail.module.css'
-
-const RESOURCE_KEYS: ResourceType[] = ['wood', 'wool', 'gold', 'brick', 'ore', 'grain']
 
 interface Props {
   cardId: string
@@ -12,29 +11,48 @@ interface Props {
   /** Whether the local player can begin placing this expansion card on the board. */
   canBuild?: boolean
   affordable?: boolean
+  /** Why the card can't be played right now, if relevant. */
+  note?: string | null
   onPlay?: () => void
   onBuild?: () => void
   onClose: () => void
 }
 
-const SYMBOL_LABEL: Record<string, string> = {
-  strength: 'symbols.strength',
-  commerce: 'symbols.commerce',
-  progress: 'symbols.progress',
+function useEffectText() {
+  const { t } = useTranslation()
+  const res = (r: ResourceType) => t(`resources.${r}`)
+  return (e: DeclarativeEffect): string => {
+    switch (e.type) {
+      case 'GRANT_SYMBOL': return t('effects.symbol', { amount: e.amount, symbol: t(`symbols.${e.symbol}`) })
+      case 'IMPROVED_TRADE': return t('effects.trade', { rate: e.rate, resource: res(e.resource) })
+      case 'INCREASE_HAND_LIMIT': return t('effects.handLimit', { amount: e.amount })
+      case 'DOUBLE_PRODUCTION': return t('effects.doubleProduction', { resource: res(e.resource) })
+      case 'BRIGAND_PROTECTION': return t('effects.brigandProtection')
+      case 'STRENGTH_PER_KNIGHT': return t('effects.strengthPerKnight', { amount: e.amount })
+      case 'COMMERCE_PER_FLEET': return t('effects.commercePerFleet', { amount: e.amount })
+      case 'SEARCH_DISCOUNT': return t('effects.searchDiscount')
+      case 'PLAGUE_PROTECTION': return t(e.scope === 'city' ? 'effects.plagueCity' : 'effects.plaguePrincipality')
+    }
+  }
 }
 
-export default function CardDetail({ cardId, canPlay, canBuild, affordable = true, onPlay, onBuild, onClose }: Props) {
+export default function CardDetail({ cardId, canPlay, canBuild, affordable = true, note, onPlay, onBuild, onClose }: Props) {
   const { t } = useTranslation()
+  const effectText = useEffectText()
   const def = getCard(cardId)
 
-  const cost = def.cost ? RESOURCE_KEYS.filter(r => (def.cost?.[r] ?? 0) > 0) : []
+  const cost = def.cost ? RESOURCE_ORDER.filter(r => (def.cost?.[r] ?? 0) > 0) : []
+  const typeLabel = [
+    t(`cardType.${def.expansionColor ?? def.category}`),
+    def.expansionKind ? t(`cardType.${def.expansionKind}`) : null,
+  ].filter(Boolean).join(' · ')
 
   return (
     <div className={styles.backdrop} onClick={onClose}>
       <div className={styles.sheet} onClick={e => e.stopPropagation()} role="dialog" aria-modal="true">
         <div className={[styles.swatch, styles[def.expansionColor ?? (def.category === 'action' ? 'yellow' : 'central')]].join(' ')} />
         <h3 className={styles.name}>{t(def.nameKey)}</h3>
-        <p className={styles.type}>{t(`cardType.${def.expansionColor ?? def.category}`)}</p>
+        <p className={styles.type}>{typeLabel}</p>
 
         <p className={styles.description}>{t(def.descriptionKey)}</p>
 
@@ -57,15 +75,12 @@ export default function CardDetail({ cardId, canPlay, canBuild, affordable = tru
         {def.effects.map((e, i) => (
           <div className={styles.row} key={i}>
             <span className={styles.rowLabel}>{t('card.effect')}</span>
-            <span className={styles.rowValue}>
-              {e.type === 'GRANT_SYMBOL' && `+${e.amount} ${t(SYMBOL_LABEL[e.symbol])}`}
-              {e.type === 'GRANT_RESOURCE' && `+${e.amount} ${t(`resources.${e.resource}`)}`}
-              {e.type === 'IMPROVED_TRADE' && `${t('card.improvedTrade')} (${t(`resources.${e.resource}`)})`}
-              {e.type === 'GRANT_VP' && `+${e.amount} ${t('game.currentVP', { count: e.amount })}`}
-              {e.type === 'INCREASE_HAND_LIMIT' && `+${e.amount}`}
-            </span>
+            <span className={styles.rowValue}>{effectText(e)}</span>
           </div>
         ))}
+
+        {def.notImplemented && <p className={styles.description}>{t('card.notInDeck')}</p>}
+        {note && <p className={styles.description}>{note}</p>}
 
         <div className={styles.actions}>
           {canPlay && onPlay && (

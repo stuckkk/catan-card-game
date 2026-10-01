@@ -1,9 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { applyAction, computeVP, availableResources, computePlayerStats } from '../engine/engine'
+import {
+  applyAction, computeVP, availableResources, computePlayerStats, projectStateFor, setupChooser,
+  actionCardsUnlocked, searchCost,
+} from '../engine/engine'
 import { getCard } from '../engine/cards'
-import type { GameState, GameAction, ProjectedState, PlayerId } from '../engine/types'
+import type { GameState, GameAction, ProjectedState, PlayerId, PlayerState } from '../engine/types'
 import { reconnectSession } from '../network/wsSession'
 import type { NetworkSession } from '../network/wsSession'
 import { sessionStore } from '../network/sessionStore'
@@ -12,17 +15,26 @@ import Principality from '../components/Principality'
 import PhaseTracker from '../components/PhaseTracker'
 import TradeMenu from '../components/TradeMenu'
 import TradeOfferBanner from '../components/TradeOfferBanner'
-import SwapPanel from '../components/SwapPanel'
+import DrawPanel from '../components/DrawPanel'
+import ExchangePanel from '../components/ExchangePanel'
+import SearchPanel from '../components/SearchPanel'
+import SetupPanel from '../components/SetupPanel'
 import Hand from '../components/Hand'
 import ResourceBar from '../components/ResourceBar'
 import DiceDisplay from '../components/DiceDisplay'
 import OpponentSummary from '../components/OpponentSummary'
 import OpponentVillage from '../components/OpponentVillage'
 import ResourceChoiceModal from '../components/ResourceChoiceModal'
-import HandCheckPanel from '../components/HandCheckPanel'
 import styles from './GamePage.module.css'
 
 type ClientRole = 'host' | 'guest' | 'practice'
+
+/** Practice is a hot-seat game: the seat shown is whoever has to act next. */
+function practiceSeat(state: GameState): PlayerId {
+  if (state.search) return state.search.player
+  if (state.phase === 'setup') return setupChooser(state) ?? state.setup.firstPlayer
+  return state.pendingChoices[0]?.player ?? state.activePlayer
+}
 
 export default function GamePage() {
   const { t } = useTranslation()
@@ -53,19 +65,12 @@ export default function GamePage() {
 
   const sessionRef = useRef<NetworkSession | null>(sessionStore.get())
 
-  const myId: PlayerId = role === 'guest' ? 'guest' : 'host'
+  const isPractice = role === 'practice'
+  const myId: PlayerId = isPractice && gameState ? practiceSeat(gameState) : role === 'guest' ? 'guest' : 'host'
 
   const dispatchAction = useCallback((action: GameAction) => {
     if (role === 'practice') {
-      setGameState(prev => {
-        if (!prev) return prev
-        // A resource choice is applied as its owner, not always 'host': this lets
-        // Practice/hot-seat resolve either seat's pending choice locally.
-        const actor: PlayerId = action.type === 'CHOOSE_RESOURCE'
-          ? prev.pendingChoices[0]?.player ?? 'host'
-          : 'host'
-        return applyAction(prev, actor, action)
-      })
+      setGameState(prev => (prev ? applyAction(prev, practiceSeat(prev), action) : prev))
     } else {
       sessionRef.current?.sendAction(action)
     }
@@ -125,20 +130,20 @@ export default function GamePage() {
     navigate('/')
   }
 
-  const isPractice = role === 'practice'
-  // The shared top-level fields (phase, activePlayer, decks, etc.) are identical between
-  // GameState and ProjectedState — only `players` differs in shape (redacted hand or not).
-  const view = isPractice ? gameState : projected
+  // Practice projects the local state exactly like the server does, so the UI only ever
+  // works off a ProjectedState.
+  const view: ProjectedState | null = isPractice ? (gameState ? projectStateFor(gameState, myId) : null) : projected
 
-  const myState = isPractice ? gameState?.players.host : projected?.players[myId]
+  const myState = view?.players[myId]
   const opponentId: PlayerId = myId === 'host' ? 'guest' : 'host'
   const opponentState = view?.players[opponentId]
   const myHandRaw = myState?.hand
   const myHand: string[] = Array.isArray(myHandRaw) ? myHandRaw : []
   // The viewer's own hand is never redacted (only the opponent's is), so it's safe to
-  // treat as a full PlayerState here regardless of the ProjectedState | GameState union.
-  const myFullState = myState as GameState['players']['host'] | undefined
+  // treat as a full PlayerState here.
+  const myFullState = myState as PlayerState | undefined
   const myResources = myFullState ? availableResources(myFullState) : undefined
+  const opponentResources = opponentState ? availableResources(opponentState as unknown as PlayerState) : undefined
 
   const activePlayer = view?.activePlayer
   const isMyTurn = activePlayer === myId
@@ -147,15 +152,14 @@ export default function GamePage() {
   const winner = view?.winner
   const pendingTrade = view?.pendingTrade
   const pendingChoices = view?.pendingChoices
-  const decks = view?.decks
+  const deckSizes = view?.deckSizes
+  const mySearch = view?.search?.player === myId ? view.search : null
 
   const activeChoice = pendingChoices?.[0] ?? null
   const myChoice = activeChoice && (activeChoice.player === myId || isPractice) ? activeChoice : null
 
-  // VP for the local player, including Hero/Trade advantage tokens. Both computations
-  // depend only on played cards (never hidden hands), so this works off either a raw
-  // GameState (Practice) or a ProjectedState (Host/Guest) alike.
-  const myVP = view ? computeVP(view as unknown as GameState, myId) : 0
+  // VP for the local player, including the Knight/Windmill tokens (public board state only).
+  const myVP = view ? computeVP(view, myId) : 0
 
   // Placement is only valid during my own action phase; abandon it otherwise.
   useEffect(() => {
@@ -207,8 +211,7 @@ export default function GamePage() {
           expanded={opponentExpanded}
           onToggle={() => setOpponentExpanded(v => !v)}
           myId={myId}
-          gameState={isPractice ? gameState : null}
-          projected={isPractice ? null : projected}
+          view={view}
         />
 
         {opponentState && (
@@ -240,6 +243,9 @@ export default function GamePage() {
               isMyTurn={isMyTurn}
               placingCardId={placingCardId}
               onAction={handleBoardAction}
+              canArrange={phase === 'setup' && !view.setup.picked[myId]}
+              hasScout={myHand.includes('scout')}
+              regionStack={view.regionStack}
             />
           )}
         </div>
@@ -264,6 +270,8 @@ export default function GamePage() {
           isMyTurn={isMyTurn}
           phase={phase}
           resources={myResources}
+          opponentResources={opponentResources}
+          actionsUnlocked={actionCardsUnlocked(view)}
           onAction={dispatchAction}
           onBeginPlacement={setPlacingCardId}
         />
@@ -287,21 +295,29 @@ export default function GamePage() {
           />
         )}
 
-        {phase === 'hand-check' && isMyTurn && myFullState && decks && (
-          <HandCheckPanel
+        {phase === 'setup' && <SetupPanel view={view} myId={myId} onAction={dispatchAction} />}
+
+        {mySearch && view.searchContents && (
+          <SearchPanel key={`${mySearch.deck}-${mySearch.purpose}`} search={mySearch} contents={view.searchContents} onAction={dispatchAction} />
+        )}
+
+        {phase === 'draw' && isMyTurn && !mySearch && myFullState && myResources && deckSizes && (
+          <DrawPanel
             hand={myHand}
             handLimit={computePlayerStats(myFullState).handLimit}
-            decks={decks}
+            deckSizes={deckSizes}
+            resources={myResources}
+            searchCost={searchCost(myFullState)}
             onAction={dispatchAction}
           />
         )}
 
-        {phase === 'swap' && isMyTurn && myResources && decks && myState && (
-          <SwapPanel
+        {phase === 'exchange' && isMyTurn && !mySearch && myFullState && myResources && deckSizes && (
+          <ExchangePanel
             hand={myHand}
-            decks={decks}
+            deckSizes={deckSizes}
             resources={myResources}
-            drawnThisTurn={myState.drawnThisTurn}
+            searchCost={searchCost(myFullState)}
             onAction={dispatchAction}
           />
         )}
@@ -317,9 +333,9 @@ export default function GamePage() {
               {t('game.endTurn')}
             </button>
           )}
-          {phase === 'swap' && isMyTurn && (
-            <button className="secondary" onClick={() => dispatchAction({ type: 'SKIP_SWAP' })}>
-              {t('game.skipSwap')}
+          {phase === 'exchange' && isMyTurn && !mySearch && (
+            <button className="secondary" onClick={() => dispatchAction({ type: 'SKIP_EXCHANGE' })}>
+              {t('game.skipExchange')}
             </button>
           )}
         </div>

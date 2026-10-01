@@ -3,10 +3,10 @@ import type { PendingTrade, PlayerId, ResourceType, Resources, GameAction } from
 import styles from './TradeOfferBanner.module.css'
 
 const RESOURCE_ICONS: Record<ResourceType, string> = {
-  wood: '🪵', wool: '🐑', gold: '💰', brick: '🧱', ore: '⛏', grain: '🌾',
+  lumber: '🪵', wool: '🐑', gold: '💰', brick: '🧱', ore: '⛏', grain: '🌾',
 }
 
-const ALL_RESOURCES: ResourceType[] = ['wood', 'wool', 'gold', 'brick', 'ore', 'grain']
+const ALL_RESOURCES: ResourceType[] = ['lumber', 'wool', 'gold', 'brick', 'ore', 'grain']
 
 interface Props {
   offer: PendingTrade

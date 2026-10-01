@@ -1,72 +1,34 @@
 import { useTranslation } from 'react-i18next'
-import type { PlayerId, GameState, ProjectedState } from '../engine/types'
-import { computePlayerStats, computeVP } from '../engine/engine'
+import type { PlayerId, PlayerState, ProjectedState } from '../engine/types'
+import { computePlayerStats, computeVP, tokenHolders } from '../engine/engine'
 import styles from './OpponentSummary.module.css'
 
 interface Props {
   expanded: boolean
   onToggle: () => void
   myId: PlayerId
-  /** Practice mode only: raw full state, both hands visible. */
-  gameState: GameState | null
-  /** Networked Host/Guest: own hand visible, opponent's hand redacted to a count. */
-  projected: ProjectedState | null
+  view: ProjectedState
 }
 
-function handSize(hand: string[] | number): number {
-  return typeof hand === 'number' ? hand : hand.length
-}
-
-export default function OpponentSummary({ expanded, onToggle, myId, gameState, projected }: Props) {
+/** The opponent's public numbers. Everything here comes from their board (played cards),
+ *  which is public, so it works off the projected view. */
+export default function OpponentSummary({ expanded, onToggle, myId, view }: Props) {
   const { t } = useTranslation()
-
-  let oppHandSize: number
-  let oppVP: number
-  let oppStrength: number
-  let oppCommerce: number
-  let oppProgress: number
-  let hasHeroToken: boolean
-  let hasTradeToken: boolean
-
-  if (myId === 'host') {
-    // Played cards (and the stats derived from them) are public board state, so the
-    // Host's own hand being redacted or not on the wire doesn't affect this branch.
-    const source = (gameState ?? projected) as GameState | null
-    if (!source) return null
-    const oppState = source.players.guest
-    oppHandSize = handSize(oppState.hand)
-    oppVP = computeVP(source, 'guest')
-    const stats = computePlayerStats(oppState)
-    oppStrength = stats.strengthPoints
-    oppCommerce = stats.commercePoints
-    oppProgress = stats.progressPoints
-    const hostStats = computePlayerStats(source.players.host)
-    hasHeroToken = oppStrength >= 3 && oppStrength > hostStats.strengthPoints
-    hasTradeToken = oppCommerce >= 3 && oppCommerce > hostStats.commercePoints
-  } else if (myId === 'guest' && projected) {
-    const oppState = projected.players.host
-    oppHandSize = handSize(oppState.hand)
-    // Guest doesn't have full host stats — show what we can derive
-    const guestStats = computePlayerStats(projected.players.guest as unknown as GameState['players']['guest'])
-    oppVP = 0  // host VP not visible to guest
-    oppStrength = 0
-    oppCommerce = 0
-    oppProgress = 0
-    hasHeroToken = guestStats.strengthPoints < 3  // rough heuristic
-    hasTradeToken = guestStats.commercePoints < 3
-  } else {
-    return null
-  }
+  const oppId: PlayerId = myId === 'host' ? 'guest' : 'host'
+  const opp = view.players[oppId]
+  const oppHandSize = typeof opp.hand === 'number' ? opp.hand : opp.hand.length
+  const stats = computePlayerStats(opp as unknown as PlayerState)
+  const tokens = tokenHolders(view)
 
   return (
     <div className={styles.summary}>
       <button className={styles.toggle} onClick={onToggle}>
-        <span>{t('game.opponentTurn')}</span>
+        <span>{t('game.opponent')}</span>
         <span className={styles.quickStats}>
-          {oppVP > 0 && <span className={styles.vp}>{t('game.currentVP', { count: oppVP })}</span>}
+          <span className={styles.vp}>{t('game.currentVP', { count: computeVP(view, oppId) })}</span>
           <span className={styles.hand}>{t('game.handSize', { count: oppHandSize })}</span>
-          {hasHeroToken && <span className={styles.token}>⚔ Hero</span>}
-          {hasTradeToken && <span className={styles.token}>⚖ Trade</span>}
+          {tokens.knight === oppId && <span className={styles.token}>⚔ {t('advantage.knight')}</span>}
+          {tokens.windmill === oppId && <span className={styles.token}>⚖ {t('advantage.windmill')}</span>}
         </span>
         <span className={styles.chevron}>{expanded ? '▲' : '▼'}</span>
       </button>
@@ -74,13 +36,13 @@ export default function OpponentSummary({ expanded, onToggle, myId, gameState, p
       {expanded && (
         <div className={styles.detail}>
           <div className={styles.statRow}>
-            <span>⚔ {t('symbols.strength')}</span><span>{oppStrength}</span>
+            <span>⚔ {t('symbols.strength')}</span><span>{stats.strengthPoints}</span>
           </div>
           <div className={styles.statRow}>
-            <span>⚖ {t('symbols.commerce')}</span><span>{oppCommerce}</span>
+            <span>🛡 {t('symbols.tournament')}</span><span>{stats.tournamentPoints}</span>
           </div>
           <div className={styles.statRow}>
-            <span>📚 {t('symbols.progress')}</span><span>{oppProgress}</span>
+            <span>⚖ {t('symbols.commerce')}</span><span>{stats.commercePoints}</span>
           </div>
         </div>
       )}

@@ -10,9 +10,11 @@ import styles from './PhaseTracker.module.css'
 const STEPS: { key: TurnPhase; mapsFrom: TurnPhase[] }[] = [
   { key: 'roll', mapsFrom: ['roll', 'event-resolution', 'production'] },
   { key: 'action', mapsFrom: ['action'] },
-  { key: 'hand-check', mapsFrom: ['hand-check'] },
-  { key: 'swap', mapsFrom: ['swap'] },
+  { key: 'draw', mapsFrom: ['draw'] },
+  { key: 'exchange', mapsFrom: ['exchange'] },
 ]
+
+const SETUP_STEPS: typeof STEPS = [{ key: 'setup', mapsFrom: ['setup'] }]
 
 interface Props {
   phase: TurnPhase | undefined
@@ -21,11 +23,12 @@ interface Props {
 
 export default function PhaseTracker({ phase, isMyTurn }: Props) {
   const { t } = useTranslation()
-  const activeIndex = phase ? STEPS.findIndex(s => s.mapsFrom.includes(phase)) : -1
+  const steps = phase === 'setup' ? SETUP_STEPS : STEPS
+  const activeIndex = phase ? steps.findIndex(s => s.mapsFrom.includes(phase)) : -1
 
   return (
     <div className={styles.tracker} aria-label={t('game.phaseTracker')}>
-      {STEPS.map((step, i) => {
+      {steps.map((step, i) => {
         const state = i === activeIndex ? 'current' : i < activeIndex ? 'done' : 'todo'
         return (
           <div

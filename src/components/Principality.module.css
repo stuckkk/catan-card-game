@@ -170,3 +170,9 @@
   font-weight: 700;
   line-height: 1;
 }
+
+.buildStack {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}

@@ -11,10 +11,14 @@
 .title { font-size: 13px; font-weight: 600; color: var(--color-text); }
 .hint { font-size: 12px; color: var(--color-text-muted); }
 
+.section { display: flex; flex-direction: column; gap: 4px; }
+.label { font-size: 12px; color: var(--color-text-muted); }
+
 .cards { display: flex; gap: 6px; flex-wrap: wrap; }
 
 .cardChip,
-.deckChip {
+.deckChip,
+.resChip {
   display: flex;
   align-items: center;
   gap: 4px;
@@ -29,10 +33,11 @@
 }
 
 .cardChip:disabled,
-.deckChip:disabled { opacity: 0.35; cursor: not-allowed; }
+.resChip:disabled { opacity: 0.35; cursor: not-allowed; }
 
 .cardChip:not(:disabled):hover,
-.deckChip:not(:disabled):hover { border-color: var(--color-accent); }
+.deckChip:hover,
+.resChip:not(:disabled):hover { border-color: var(--color-accent); }
 
 .selected {
   border-color: var(--color-accent);
@@ -45,3 +50,23 @@
   color: var(--color-text-muted);
   font-weight: 600;
 }
+
+.paidToggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.paid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 6px;
+  border-top: 1px dashed var(--color-border);
+}
+
+.row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; }

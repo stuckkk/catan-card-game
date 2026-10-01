@@ -41,3 +41,8 @@
 .pip.filled {
   background: var(--rc);
 }
+
+/* Setup: starting regions can be tapped to swap them. */
+.swappable { cursor: pointer; }
+.swappable:hover { outline: 2px dashed var(--color-accent); }
+.selected { outline: 3px solid var(--color-accent); }

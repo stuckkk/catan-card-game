@@ -250,6 +250,9 @@ Buildings vs Units: Knights and Fleets are **Units**; everything else is a **Bui
 
 * Event Cards are resolved by the engine for both players; resource choices are queued as pending choices,
   the roller's first.
+* Hidden information: each viewer receives a projection with the opponent's hand as a count, every stack
+  as a count, and the Region stack as its sorted composition; a stack being searched is revealed to the
+  searcher only.
 * Region adjacency is explicit: each Settlement/City lists its 4 corner Regions as
   `[topLeft, bottomLeft, topRight, bottomRight]`; neighbours share the corners between them.
 
@@ -266,6 +269,9 @@ Buildings vs Units: Knights and Fleets are **Units**; everything else is a **Bui
 * **Harbor:** follows the card text (Harbor 1 Commerce + 1 per Fleet); the almanac example (3 Fleets +
   Harbor = 6) omits the Harbor's own point.
 * **Garrison** gives 1 Commerce Point (windmill icon on the card; not mentioned in the almanac text).
+* **New Regions without a Scout:** the first card drawn goes above, the second below (the PDF lets the
+  player choose the side after drawing the first).
+* **Practice mode** (local, no server) is a hot-seat game: the screen always shows the seat that has to act.
 
 ---
 

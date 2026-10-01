@@ -10,7 +10,7 @@ const COLOR_CLASS: Record<string, string> = {
 }
 
 const RESOURCE_SYMBOLS: Record<ResourceType, string> = {
-  wood: 'W', wool: 'Wo', gold: 'G', brick: 'B', ore: 'O', grain: 'Gr',
+  lumber: 'L', wool: 'W', gold: 'Au', brick: 'B', ore: 'O', grain: 'G',
 }
 
 interface Props {
@@ -60,7 +60,7 @@ export default function CardView({ cardId, compact, selected, affordable = true,
             )}
             {symbolSummary && <span className={styles.symbols}>{symbolSummary}</span>}
             {def.effects.filter(e => e.type === 'IMPROVED_TRADE').map((e, i) => (
-              e.type === 'IMPROVED_TRADE' && <span key={i} className={styles.trade}>2:1 {e.resource[0].toUpperCase()}</span>
+              e.type === 'IMPROVED_TRADE' && <span key={i} className={styles.trade}>{e.rate}:1 {RESOURCE_SYMBOLS[e.resource]}</span>
             ))}
           </div>
         </>

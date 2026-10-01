@@ -4,7 +4,7 @@ import type { RegionState } from '../engine/types'
 import styles from './RegionCard.module.css'
 
 const RESOURCE_COLOR: Record<string, string> = {
-  wood: 'var(--color-wood)',
+  lumber: 'var(--color-lumber)',
   wool: 'var(--color-wool)',
   gold: 'var(--color-gold)',
   brick: 'var(--color-brick)',
@@ -13,21 +13,26 @@ const RESOURCE_COLOR: Record<string, string> = {
 }
 
 const RESOURCE_ICON: Record<string, string> = {
-  wood: '🪵', wool: '🐑', gold: '💰', brick: '🧱', ore: '⛏', grain: '🌾',
+  lumber: '🪵', wool: '🐑', gold: '💰', brick: '🧱', ore: '⛏', grain: '🌾',
 }
 
 interface Props {
   region: RegionState
+  /** Setup: tap to pick this region for swapping. */
+  onClick?: () => void
+  selected?: boolean
 }
 
-export default function RegionCard({ region }: Props) {
+export default function RegionCard({ region, onClick, selected }: Props) {
   const { t } = useTranslation()
   const def = getRegion(region.regionId)
   const fill = region.storedResources
 
   return (
     <div
-      className={styles.region}
+      className={[styles.region, onClick ? styles.swappable : '', selected ? styles.selected : ''].join(' ')}
+      onClick={onClick}
+      role={onClick ? 'button' : undefined}
       style={{ '--rc': RESOURCE_COLOR[def.resourceType] } as React.CSSProperties}
       title={t(def.nameKey)}
     >

@@ -3,7 +3,7 @@ import type { ResourceType, GameAction, PendingResourceChoice } from '../engine/
 import styles from './ResourceChoiceModal.module.css'
 
 const RESOURCE_ICONS: Record<ResourceType, string> = {
-  wood: '🪵', wool: '🐑', gold: '💰', brick: '🧱', ore: '⛏️', grain: '🌾',
+  lumber: '🪵', wool: '🐑', gold: '💰', brick: '🧱', ore: '⛏️', grain: '🌾',
 }
 
 interface Props {
@@ -12,14 +12,11 @@ interface Props {
 }
 
 /** Mandatory picker shown to the player who owns the active pending resource choice
- *  (Trade event: take 1 from the opponent; Harvest event: gain 1 free resource).
+ *  (Commerce: take 1 from the opponent; Tournament, Year of Plenty, Progress: gain 1 free resource).
  *  No cancel — a resource must be chosen to resume the turn. */
 export default function ResourceChoiceModal({ choice, onAction }: Props) {
   const { t } = useTranslation()
-  const titleKey =
-    choice.reason === 'trade' ? 'game.chooseResource.tradeTitle'
-    : choice.reason === 'tournament' ? 'game.chooseResource.tournamentTitle'
-    : 'game.chooseResource.harvestTitle'
+  const titleKey = `game.chooseResource.${choice.reason}Title`
 
   return (
     <div className={styles.backdrop} role="dialog" aria-modal="true">
