@@ -13,3 +13,7 @@ attachWebSocketServer(httpServer, sessionManager)
 httpServer.listen(PORT, () => {
   console.log(`catan-card-game server listening on port ${PORT}`)
 })
+
+// As PID 1 in a container Node ignores SIGTERM unless handled. Sessions live only in memory,
+// so there is nothing to flush: exit right away.
+for (const signal of ['SIGTERM', 'SIGINT'] as const) process.on(signal, () => process.exit(0))
