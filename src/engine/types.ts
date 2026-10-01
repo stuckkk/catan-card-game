@@ -2,20 +2,21 @@
 
 export type PlayerId = 'host' | 'guest'
 
-export type ResourceType = 'wood' | 'wool' | 'gold' | 'brick' | 'ore' | 'grain'
+export type ResourceType = 'lumber' | 'wool' | 'brick' | 'ore' | 'grain' | 'gold'
 export type Resources = Record<ResourceType, number>
 
 export const EMPTY_RESOURCES: Resources = {
-  wood: 0, wool: 0, gold: 0, brick: 0, ore: 0, grain: 0,
+  lumber: 0, wool: 0, brick: 0, ore: 0, grain: 0, gold: 0,
 }
 
 export type ProductionNumber = 1 | 2 | 3 | 4 | 5 | 6
-export type EventSymbol = 'bandit' | 'trade' | 'tournament' | 'harvest' | 'event'
+/** Event Die faces (GAME_LOGIC.md §6). 'event' (the "?" Event Card face) appears twice. */
+export type EventSymbol = 'brigand' | 'commerce' | 'tournament' | 'yearOfPlenty' | 'event'
 
-export type SymbolType = 'strength' | 'commerce' | 'progress' | 'tournament'
+export type SymbolType = 'strength' | 'commerce' | 'tournament'
 
-/** The 5 face-down draw stacks. Hand-draw cards (green/red/brown/yellow) are
- *  shuffled together and split across these; a draw is type-blind. */
+/** The 5 face-down expansion stacks. Expansion Cards (yellow/green/red) are shuffled
+ *  together and split across these; a draw is type-blind. */
 export type DrawStackId = 'stack-1' | 'stack-2' | 'stack-3' | 'stack-4' | 'stack-5'
 export type DeckId = DrawStackId | 'event'
 
@@ -23,14 +24,41 @@ export type DeckId = DrawStackId | 'event'
 
 export type CardCategory = 'road' | 'settlement' | 'city' | 'action' | 'expansion' | 'event' | 'region'
 
+/** Green = Region Expansion (Settlement or City), red = City Expansion (City only). */
 export type ExpansionColor = 'green' | 'red'
+
+/** Knights and Trade Fleets are Units; every other expansion is a Building. */
+export type ExpansionKind = 'building' | 'knight' | 'fleet'
 
 export type DeclarativeEffect =
   | { type: 'GRANT_SYMBOL'; symbol: SymbolType; amount: number }
-  | { type: 'GRANT_VP'; amount: number }
-  | { type: 'GRANT_RESOURCE'; resource: ResourceType; amount: number }
-  | { type: 'IMPROVED_TRADE'; resource: ResourceType }
+  /** Bank trade rate for one resource (Trade Fleet 2:1, Mint 1:1). */
+  | { type: 'IMPROVED_TRADE'; resource: ResourceType; rate: 1 | 2 }
   | { type: 'INCREASE_HAND_LIMIT'; amount: number }
+  /** Neighbouring Regions of this resource produce 2 instead of 1 (Mills, Foundry, …). */
+  | { type: 'DOUBLE_PRODUCTION'; resource: ResourceType }
+  /** Neighbouring Regions are not counted for the Brigand Attack (Garrison). */
+  | { type: 'BRIGAND_PROTECTION' }
+  /** +amount Strength per Knight owned (Smithy). */
+  | { type: 'STRENGTH_PER_KNIGHT'; amount: number }
+  /** +amount Commerce per Trade Fleet owned (Harbor). */
+  | { type: 'COMMERCE_PER_FLEET'; amount: number }
+  /** A Search costs 1 resource instead of 2 (Town Hall; does not stack). */
+  | { type: 'SEARCH_DISCOUNT' }
+  /** Plague immunity: all own Regions (Aqueduct) or the 4 Regions of its City (Bath House). */
+  | { type: 'PLAGUE_PROTECTION'; scope: 'principality' | 'city' }
+
+/** Player-supplied parameters for Action Cards that need choices. */
+export interface ActionCardParams {
+  /** Alchemist: the chosen Production Die result. */
+  productionNumber?: ProductionNumber
+  /** Caravan: resources traded in. Merchant: the 1 resource given to the opponent. */
+  give?: ResourceType[]
+  /** Caravan: resources received (same count as `give`). */
+  receive?: ResourceType[]
+  /** Merchant: the 1–2 resources taken from the opponent. */
+  take?: ResourceType[]
+}
 
 export interface CardDefinition {
   id: string
@@ -38,18 +66,21 @@ export interface CardDefinition {
   descriptionKey: string
   category: CardCategory
   expansionColor?: ExpansionColor
-  /** Cost to build/play. Undefined for cards with no resource cost. */
+  expansionKind?: ExpansionKind
+  /** Cost to build. Undefined for cards with no resource cost. */
   cost?: Partial<Resources>
   /** Static declarative effects that are always active while the card is in play. */
   effects: DeclarativeEffect[]
   /**
    * Escape hatch for effects too complex to express declaratively.
-   * For Action Cards: called when played from hand.
-   * For Expansion Cards: called once on placement.
+   * Action Cards: called when played (params from the PLAY_ACTION_CARD action); return null to
+   * reject the play as invalid. Event Cards: called when revealed, with the roller as actingPlayer.
    */
-  customEffect?: (state: GameState, actingPlayer: PlayerId) => GameState
-  /** VP directly granted by this card (e.g. settlements, cities, some expansions). */
+  customEffect?: (state: GameState, actingPlayer: PlayerId, params: ActionCardParams) => GameState | null
+  /** VP directly granted by this card (Settlements, Cities, some City Expansions). */
   directVP?: number
+  /** Defined in the catalogue but not implemented yet: kept out of the decks (GAME_LOGIC.md §13). */
+  notImplemented?: true
 }
 
 export interface RegionDefinition {
@@ -66,15 +97,17 @@ export interface RegionState {
   storedResources: number  // 0–3
 }
 
-/** A slot on the Central Axis. Odd indices are road positions, even are settlement/city. */
-export type CentralSlotKind = 'empty-road' | 'road' | 'empty-settlement' | 'settlement' | 'city'
+/** A slot on the Central Axis, alternating settlement-type slots and roads. */
+export type CentralSlotKind = 'road' | 'empty-settlement' | 'settlement' | 'city'
 
 export interface CentralSlot {
   kind: CentralSlotKind
   cardId: string | null
-  /** Indices into the regions array of PlayerState. Empty for roads. Starting settlements have 3; built settlements have 2. */
+  /** Settlements/Cities: indices into PlayerState.regions of the 4 corner Regions, in the order
+   *  [topLeft, bottomLeft, topRight, bottomRight]. Neighbours share the corners between them.
+   *  Empty for roads and empty settlement sites. */
   regionIndices: number[]
-  /** Placed expansion card IDs. Settlements: 2 slots, Cities: 4 slots. */
+  /** Building Sites. Settlement: [above, below]. City: [above, above, below, below]. */
   expansionSlots: (string | null)[]
 }
 
@@ -83,38 +116,36 @@ export interface CentralSlot {
 export interface PlayerState {
   id: PlayerId
   hand: string[]          // CardDefinition ids
-  /** Central Axis slots, always odd-length: [settlement, road, settlement, road, settlement, ...] */
+  /** Central Axis slots, always odd-length: [settlement, road, settlement, ...]. */
   principality: CentralSlot[]
   regions: RegionState[]  // indexed by regionIndices in CentralSlot
-  /** Placed permanent card IDs (expansion + road + settlement + city, all played cards) */
+  /** Placed permanent card IDs (roads, settlements, cities, expansions). */
   playedCards: string[]
-  /** Card IDs drawn this turn during the Check Hand Limit refill (Phase 3). These may not
-   *  be swapped away in Phase 4. Reset at the start of each end-of-turn hand check. */
-  drawnThisTurn: string[]
 }
 
 // ─── Derived / Computed ───────────────────────────────────────────────────────
 
 export interface PlayerStats {
+  /** VP from cards only (tokens are added by computeVP). */
   victoryPoints: number
   strengthPoints: number
   commercePoints: number
-  progressPoints: number
   tournamentPoints: number
   handLimit: number
-  hasHeroToken: boolean
-  hasTradeToken: boolean
 }
 
 // ─── Turn & Game State ────────────────────────────────────────────────────────
 
 export type TurnPhase =
+  | 'setup'
   | 'roll'
   | 'event-resolution'
   | 'production'
   | 'action'
-  | 'hand-check'
-  | 'swap'
+  /** Step 4: discard down to, or draw up to, the hand limit. */
+  | 'draw'
+  /** Step 4, optional: exchange 1 card (only if the hand was already at the limit). */
+  | 'exchange'
 
 export interface DiceRoll {
   eventSymbol: EventSymbol
@@ -127,16 +158,49 @@ export interface GameConfig {
   language: 'en' | 'de'
 }
 
+/** Shared supply of Development Cards (GAME_LOGIC.md §2). */
+export interface Supply {
+  road: number
+  settlement: number
+  city: number
+}
+
+/** Setup phase progress (GAME_LOGIC.md §3). */
+export interface SetupState {
+  /** Plays first; picks starting cards first. */
+  firstPlayer: PlayerId
+  /** The stack each player took their starting cards from, once they have. */
+  picked: Partial<Record<PlayerId, DrawStackId>>
+}
+
+/** An open stack search: the stack's contents are revealed to `player` only. */
+export interface StackSearch {
+  player: PlayerId
+  deck: DrawStackId
+  /** setup: take 3 starting cards. draw: take 1 toward the hand limit. exchange: take 1 replacement. */
+  purpose: 'setup' | 'draw' | 'exchange'
+}
+
 export interface GameState {
   sessionId: string
   config: GameConfig
   players: Record<PlayerId, PlayerState>
   activePlayer: PlayerId
   phase: TurnPhase
+  /** 1-based turn counter (turn 1 = first player's first turn). */
+  turn: number
+  setup: SetupState
   lastRoll: DiceRoll | null
+  /** Production Die result chosen with an Alchemist before this turn's roll. */
+  alchemistNumber: ProductionNumber | null
   winner: PlayerId | null
   decks: Record<DeckId, string[]>   // stacks of CardDefinition ids, top = last element
+  /** Shuffled Region stack (RegionDefinition ids), top = last element. */
+  regionStack: string[]
+  supply: Supply
   discardPile: string[]
+  /** An open stack search awaiting the searcher's pick. */
+  search: StackSearch | null
   /** A resource trade offered by the active player, awaiting the opponent's response. */
   pendingTrade: PendingTrade | null
   /** Interactive resource picks awaiting input, FIFO. Index 0 is the active prompt; while
@@ -154,7 +218,7 @@ export interface PendingTrade {
 }
 
 /** Why a player is being asked to pick a resource — drives the picker's label. */
-export type ResourceChoiceReason = 'trade' | 'harvest' | 'tournament'
+export type ResourceChoiceReason = 'commerce' | 'yearOfPlenty' | 'tournament' | 'progress'
 
 /** A pending interactive "choose a resource" prompt owned by one player. The engine
  *  pauses event resolution until the owner submits a CHOOSE_RESOURCE action. */
@@ -163,9 +227,9 @@ export interface PendingResourceChoice {
   player: PlayerId
   /** What triggered the choice. */
   reason: ResourceChoiceReason
-  /** Resource types offered. Trade: only resources the opponent holds. Harvest: all six. */
+  /** Resource types offered. Commerce: only resources the opponent holds. Otherwise all six. */
   options: ResourceType[]
-  /** Trade: the opponent the chosen resource is taken from. Harvest: null (gained from bank). */
+  /** Commerce: the opponent the chosen resource is taken from. Otherwise null (from the bank). */
   takeFrom: PlayerId | null
 }
 
@@ -179,23 +243,37 @@ export interface GameEvent {
 
 // ─── Projected State (sent to a viewer) ──────────────────────────────────────
 
-/** The opponent's hand is replaced with just a count; the viewer's own hand stays a full list. */
-export type ProjectedState = Omit<GameState, 'players'> & {
+/** What one viewer may see: the opponent's hand is a count, every stack is a count, the Region
+ *  stack is its (public) composition in sorted order, and an open search reveals that stack to
+ *  the searcher only. */
+export type ProjectedState = Omit<GameState, 'players' | 'decks' | 'regionStack'> & {
   players: Record<PlayerId, Omit<PlayerState, 'hand'> & { hand: string[] | number }>
+  deckSizes: Record<DeckId, number>
+  /** Region stack contents, sorted (the order stays hidden). */
+  regionStack: string[]
+  /** Contents of the stack the viewer is searching, top = last; null otherwise. */
+  searchContents: string[] | null
 }
 
-// ─── Actions (Guest → Host) ───────────────────────────────────────────────────
+// ─── Actions ─────────────────────────────────────────────────────────────────
 
 export type GameAction =
+  /** Setup: swap two of your 6 starting Regions (indices into your regions). */
+  | { type: 'SWAP_STARTING_REGIONS'; a: number; b: number }
+  /** Open a stack to look through. Setup: free. Draw phase: a paid Search (`payWith`). */
+  | { type: 'SEARCH_STACK'; deck: DrawStackId; payWith?: ResourceType[] }
+  /** Take card(s) from the open search: 3 in setup, otherwise 1. */
+  | { type: 'TAKE_FROM_SEARCH'; cardIds: string[] }
   | { type: 'ROLL_DICE' }
-  | { type: 'BUILD_ROAD'; slotIndex: number }
-  | { type: 'BUILD_SETTLEMENT'; slotIndex: number }
+  | { type: 'BUILD_ROAD'; side: 'left' | 'right' }
+  /** Build on an empty settlement site. `scoutRegionIds` plays a Scout from hand: [above, below]. */
+  | { type: 'BUILD_SETTLEMENT'; slotIndex: number; scoutRegionIds?: [string, string] }
   | { type: 'BUILD_CITY'; slotIndex: number }
-  /** Place a Green or Red Expansion in a Settlement/City Expansion Slot. */
+  /** Place a Region/City Expansion on a Building Site of a Settlement/City. */
   | { type: 'PLACE_EXPANSION'; cardId: string; slotIndex: number; expansionSlotIndex: number }
-  | { type: 'PLAY_ACTION_CARD'; cardId: string }
+  | { type: 'PLAY_ACTION_CARD'; cardId: string; params?: ActionCardParams }
   | { type: 'TRADE_WITH_BANK'; give: ResourceType; receive: ResourceType }
-  /** Submit the resource pick for the active pending choice (Trade/Harvest events). */
+  /** Submit the resource pick for the active pending choice. */
   | { type: 'CHOOSE_RESOURCE'; resource: ResourceType }
   /** Active player offers a resource trade to the opponent. */
   | { type: 'PROPOSE_TRADE'; give: Partial<Resources>; receive: Partial<Resources> }
@@ -203,14 +281,13 @@ export type GameAction =
   | { type: 'ACCEPT_TRADE' }
   /** Opponent (or proposer) declines/cancels the pending trade offer. */
   | { type: 'DECLINE_TRADE' }
-  /** Demolish own Green/Red Expansion (free, to discard). */
+  /** Demolish own expansion (free, to the discard pile). */
   | { type: 'DEMOLISH'; slotIndex: number; expansionSlotIndex: number }
   | { type: 'END_ACTION_PHASE' }
-  | { type: 'DISCARD_TO_LIMIT'; cardIds: string[] }
-  /** Draw one card from the chosen deck to refill toward the hand limit. */
-  | { type: 'DRAW_TO_LIMIT'; fromDeck: DeckId }
-  | { type: 'FREE_SWAP'; discardCardId: string; fromDeck: DeckId }
-  /** Pay 2 of one Resource, place a card under a deck, then take a named card from any deck. */
-  | { type: 'PAID_SWAP'; discardCardId: string; fromDeck: DeckId; searchCardId: string; searchDeck: DeckId; payWith: ResourceType }
-  | { type: 'SKIP_SWAP' }
-
+  /** Over the limit: put exactly the excess cards under stacks of your choice. */
+  | { type: 'DISCARD_TO_LIMIT'; discards: { cardId: string; toDeck: DrawStackId }[] }
+  /** Random draw: take the top card of a stack. */
+  | { type: 'DRAW_CARD'; fromDeck: DrawStackId }
+  /** Exchange: put a card under `deck`, then take its top card, or Search it (`payWith`). */
+  | { type: 'EXCHANGE'; cardId: string; deck: DrawStackId; payWith?: ResourceType[] }
+  | { type: 'SKIP_EXCHANGE' }

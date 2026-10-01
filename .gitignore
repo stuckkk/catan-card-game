@@ -23,3 +23,6 @@ dist-server
 *.njsproj
 *.sln
 *.sw?
+
+# Official rulebook (copyrighted, local reference only)
+rules.pdf

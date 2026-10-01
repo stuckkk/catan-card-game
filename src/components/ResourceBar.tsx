@@ -3,11 +3,11 @@ import type { Resources, ResourceType } from '../engine/types'
 import styles from './ResourceBar.module.css'
 
 const RESOURCE_ICONS: Record<ResourceType, string> = {
-  wood: '🪵', wool: '🐑', gold: '💰', brick: '🧱', ore: '⛏', grain: '🌾',
+  lumber: '🪵', wool: '🐑', gold: '💰', brick: '🧱', ore: '⛏', grain: '🌾',
 }
 
 const RESOURCE_COLORS: Record<ResourceType, string> = {
-  wood: 'var(--color-wood)',
+  lumber: 'var(--color-lumber)',
   wool: 'var(--color-wool)',
   gold: 'var(--color-gold)',
   brick: 'var(--color-brick)',
@@ -19,7 +19,7 @@ interface Props {
   resources: Resources
 }
 
-const ALL_RESOURCES: ResourceType[] = ['wood', 'wool', 'gold', 'brick', 'ore', 'grain']
+const ALL_RESOURCES: ResourceType[] = ['lumber', 'wool', 'gold', 'brick', 'ore', 'grain']
 
 export default function ResourceBar({ resources }: Props) {
   const { t } = useTranslation()

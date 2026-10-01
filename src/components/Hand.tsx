@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import CardView from './CardView'
 import CardDetail from './CardDetail'
+import ActionCardDialog from './ActionCardDialog'
 import type { GameAction, TurnPhase, Resources } from '../engine/types'
 import { getCard } from '../engine/cards'
 import styles from './Hand.module.css'
@@ -11,6 +12,9 @@ interface Props {
   isMyTurn: boolean
   phase: TurnPhase | undefined
   resources: Resources | undefined
+  opponentResources: Resources | undefined
+  /** Both players together have at least 7 VP. */
+  actionsUnlocked: boolean
   onAction: (a: GameAction) => void
   /** Begin placing an expansion card on the board (card-first placement flow). */
   onBeginPlacement: (cardId: string) => void
@@ -24,18 +28,34 @@ function canAffordCard(resources: Resources, cardId: string): boolean {
   )
 }
 
-export default function Hand({ cardIds, isMyTurn, phase, resources, onAction, onBeginPlacement }: Props) {
+type ParamCard = 'alchemist' | 'caravan' | 'merchant'
+
+export default function Hand({
+  cardIds, isMyTurn, phase, resources, opponentResources, actionsUnlocked, onAction, onBeginPlacement,
+}: Props) {
   const { t } = useTranslation()
   // Index (not id) so duplicate cards open the one actually tapped.
   const [openIndex, setOpenIndex] = useState<number | null>(null)
+  const [playing, setPlaying] = useState<ParamCard | null>(null)
 
   const canAct = isMyTurn && phase === 'action'
   const openId = openIndex != null ? cardIds[openIndex] : null
   const openDef = openId ? getCard(openId) : null
   const openAffordable = openId && resources ? canAffordCard(resources, openId) : false
 
+  // Why an action card can't be played right now (null = playable).
+  let actionNote: string | null = null
+  let canPlay = false
+  if (openDef?.category === 'action') {
+    const timingOk = isMyTurn && (openDef.id === 'alchemist' ? phase === 'roll' : phase === 'action')
+    if (openDef.notImplemented) actionNote = t('game.notImplemented')
+    else if (openDef.id === 'scout') actionNote = t('game.scoutOnlyOnBuild')
+    else if (!actionsUnlocked) actionNote = t('game.actionLocked')
+    else canPlay = timingOk
+  }
+
   function handlePlay(id: string) {
-    onAction({ type: 'PLAY_ACTION_CARD', cardId: id })
+    setPlaying(id as ParamCard)
     setOpenIndex(null)
   }
 
@@ -51,7 +71,6 @@ export default function Hand({ cardIds, isMyTurn, phase, resources, onAction, on
   return (
     <div className={styles.hand}>
       <div className={styles.cards} data-testid="hand-cards">
-        {/* one CardView per hand card */}
         {cardIds.map((id, idx) => {
           const affordable = resources ? canAffordCard(resources, id) : false
           return (
@@ -68,12 +87,23 @@ export default function Hand({ cardIds, isMyTurn, phase, resources, onAction, on
       {openId && openDef && (
         <CardDetail
           cardId={openId}
-          canPlay={canAct && openDef.category === 'action'}
+          canPlay={canPlay}
           canBuild={canAct && openDef.category === 'expansion'}
-          affordable={openAffordable}
+          affordable={openDef.category === 'action' ? true : openAffordable}
+          note={actionNote}
           onPlay={() => handlePlay(openId)}
           onBuild={() => handleBuild(openId)}
           onClose={() => setOpenIndex(null)}
+        />
+      )}
+
+      {playing && resources && opponentResources && (
+        <ActionCardDialog
+          cardId={playing}
+          myResources={resources}
+          opponentResources={opponentResources}
+          onAction={onAction}
+          onClose={() => setPlaying(null)}
         />
       )}
     </div>

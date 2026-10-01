@@ -170,3 +170,12 @@
   font-weight: 700;
   line-height: 1;
 }
+
+.buildStack {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* A build the player can't currently afford: still clickable, to explain what's missing. */
+.unaffordable { opacity: 0.5; }

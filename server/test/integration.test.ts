@@ -72,7 +72,9 @@ describe('server integration: host/guest game over real WebSocket connections', 
     const created = await waitFor(host, 'session_created')
     expect(created.playerId).toBe('host')
     const hostInitialState = await waitFor(host, 'state_update')
-    expect(hostInitialState.state.activePlayer).toBe('host')
+    expect(hostInitialState.state.phase).toBe('setup')
+    expect('decks' in hostInitialState.state).toBe(false)
+    expect(hostInitialState.state.deckSizes['stack-1']).toBeGreaterThan(0)
     expect(typeof hostInitialState.state.players.guest.hand).toBe('number')
     expect(Array.isArray(hostInitialState.state.players.host.hand)).toBe(true)
 
@@ -82,17 +84,22 @@ describe('server integration: host/guest game over real WebSocket connections', 
     expect(joined.playerId).toBe('guest')
     await waitFor(guest, 'state_update')
     await waitFor(host, 'peer_connected')
-    // Joining also broadcasts a (still pre-roll) state_update to the host - drain it so
-    // the next state_update we wait for is unambiguously the post-roll one.
+    // Joining also broadcasts a (still setup) state_update to the host - drain it so
+    // the next state_update we wait for is unambiguously the one after the action.
     await waitFor(host, 'state_update')
 
-    // Host rolls the dice; both sides should receive the resulting state, each with
-    // their own hand visible and the opponent's redacted to a count.
-    host.send({ type: 'action', action: { type: 'ROLL_DICE' } })
+    // The first player opens a stack for their starting cards; both sides receive the
+    // resulting state, but only the searcher sees the stack's contents.
+    const first = hostInitialState.state.setup.firstPlayer
+    const searcher = first === 'host' ? host : guest
+    searcher.send({ type: 'action', action: { type: 'SEARCH_STACK', deck: 'stack-1' } })
     const hostView = await waitFor(host, 'state_update')
     const guestView = await waitFor(guest, 'state_update')
-    expect(hostView.state.lastRoll).not.toBeNull()
-    expect(guestView.state.lastRoll).toEqual(hostView.state.lastRoll)
+    expect(hostView.state.search).toEqual({ player: first, deck: 'stack-1', purpose: 'setup' })
+    expect(guestView.state.search).toEqual(hostView.state.search)
+    const [searcherView, otherView] = first === 'host' ? [hostView, guestView] : [guestView, hostView]
+    expect(searcherView.state.searchContents?.length).toBeGreaterThan(0)
+    expect(otherView.state.searchContents).toBeNull()
     expect(Array.isArray(hostView.state.players.host.hand)).toBe(true)
     expect(typeof hostView.state.players.guest.hand).toBe('number')
     expect(Array.isArray(guestView.state.players.guest.hand)).toBe(true)
@@ -107,7 +114,7 @@ describe('server integration: host/guest game over real WebSocket connections', 
     const reconnected = await waitFor(reconnected1, 'reconnected')
     expect(reconnected.playerId).toBe('guest')
     const resumedState = await waitFor(reconnected1, 'state_update')
-    expect(resumedState.state.lastRoll).toEqual(hostView.state.lastRoll)
+    expect(resumedState.state.search).toEqual(hostView.state.search)
 
     host.close()
     reconnected1.close()

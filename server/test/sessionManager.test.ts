@@ -65,9 +65,18 @@ describe('SessionManager', () => {
   it('applies an action through the engine and returns the updated state', () => {
     const { roomId } = manager.createSession(12, 'en', fakeSocket())
     const before = manager.getSession(roomId)!.state
-    const next = manager.applyAction(roomId, before.activePlayer, { type: 'ROLL_DICE' })
+    expect(before.phase).toBe('setup')
+    // Both players take their starting cards (first player first, different stacks), then roll.
+    const first = before.setup.firstPlayer
+    const second = first === 'host' ? 'guest' : 'host'
+    for (const [player, deck] of [[first, 'stack-1'], [second, 'stack-2']] as const) {
+      const opened = manager.applyAction(roomId, player, { type: 'SEARCH_STACK', deck })!
+      manager.applyAction(roomId, player, { type: 'TAKE_FROM_SEARCH', cardIds: opened.decks[deck].slice(0, 3) })
+    }
+    const next = manager.applyAction(roomId, first, { type: 'ROLL_DICE' })
     expect(next).not.toBeNull()
     expect(next!.lastRoll).not.toBeNull()
+    expect(next!.players[first].hand).toHaveLength(3)
   })
 
   it('returns null from applyAction for an unknown room', () => {

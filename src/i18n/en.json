@@ -1,6 +1,6 @@
 {
   "lobby": {
-    "title": "Catan: The Duel",
+    "title": "Catan Card Game",
     "createGame": "Create Game",
     "joinGame": "Join Game",
     "vpTarget": "Victory Points Target",
@@ -27,8 +27,6 @@
     "phaseTracker": "Turn phase",
     "rollDice": "Roll Dice",
     "endTurn": "End Action Phase",
-    "skipSwap": "Skip Swap",
-    "swap": "Swap Card",
     "trade": "Trade with Bank",
     "tradeGive": "Give",
     "tradeReceive": "Get",
@@ -49,27 +47,12 @@
     "tradeWaiting": "Waiting for opponent to respond…",
     "tradeNothing": "—",
     "chooseResource": {
-      "tradeTitle": "Choose a resource to take from your opponent",
-      "harvestTitle": "Choose your free resource",
+      "commerceTitle": "Windmill Token: choose a resource to take from your opponent",
+      "yearOfPlentyTitle": "Year of Plenty: choose your free resource",
       "tournamentTitle": "You won the tournament — choose your free resource",
+      "progressTitle": "Progress: choose a free resource",
       "waiting": "Opponent is choosing a resource…"
     },
-    "swapTitle": "End-of-turn Card Swap",
-    "swapHint": "Discard one hand card and draw a new one from a stack.",
-    "swapDiscardLabel": "Card to discard",
-    "swapDrawnLocked": "Drawn this turn — can't be swapped away",
-    "swapDrawLabel": "Draw from stack",
-    "swapFreeButton": "Swap (draw top card)",
-    "swapPaidToggle": "Pay 2 to search a stack",
-    "swapPaidPayWith": "Pay with",
-    "swapPaidSearchLabel": "Take this card",
-    "swapPaidButton": "Pay & take card",
-    "handCheckDiscardTitle": "Over hand limit",
-    "handCheckDiscardHint": "Discard {{count}} card(s) to reach your hand limit of {{limit}}.",
-    "handCheckDiscardButton": "Discard selected",
-    "handCheckDrawTitle": "Draw to hand limit",
-    "handCheckDrawHint": "Draw {{count}} card(s) from any stack to reach your hand limit of {{limit}}.",
-    "handCheckContinue": "Continue",
     "deckCount": "{{count}}",
     "deckName": {
       "stack-1": "Stack 1",
@@ -79,12 +62,13 @@
       "stack-5": "Stack 5"
     },
     "phase": {
+      "setup": "Setup",
       "roll": "Roll Phase",
       "event-resolution": "Event Resolution",
       "production": "Production",
       "action": "Action Phase",
-      "hand-check": "Hand Check",
-      "swap": "Swap Phase"
+      "draw": "Draw Phase",
+      "exchange": "Exchange"
     },
     "vpTarget": "VP Target: {{count}}",
     "currentVP": "{{count}} VP",
@@ -98,20 +82,90 @@
     "youWin": "You win!",
     "opponentWins": "Opponent wins!",
     "playAgain": "Play Again",
-    "backToLobby": "Back to Lobby"
+    "backToLobby": "Back to Lobby",
+    "skipExchange": "Skip Exchange",
+    "setup": {
+      "youStart": "You play first.",
+      "opponentStarts": "Your opponent plays first.",
+      "arrangeHint": "Tap two of your regions to swap them. Arrange them before taking your starting cards.",
+      "pickHint": "Choose an expansion stack to look through, then take 3 cards from it.",
+      "waiting": "Waiting for your opponent to take their starting cards…"
+    },
+    "search": {
+      "title": "Searching {{stack}}",
+      "setupHint": "Take {{count}} cards. The stack keeps its order.",
+      "hint": "Take 1 card. The stack keeps its order.",
+      "details": "Show card details",
+      "topLabel": "top",
+      "take": "Take"
+    },
+    "draw": {
+      "title": "Draw to your hand limit",
+      "hint": "Draw {{count}} more card(s) (limit {{limit}}): the top card of a stack for free, or search a stack for {{cost}} resource(s) of your choice.",
+      "drawTop": "Draw top",
+      "search": "Search",
+      "discardTitle": "Over your hand limit",
+      "discardHint": "Put {{count}} card(s) under a stack (limit {{limit}}).",
+      "discardTo": "Put under",
+      "discardButton": "Put cards under stack"
+    },
+    "exchange": {
+      "title": "Exchange a card?",
+      "hint": "Put 1 card under a stack, then take a new card from that same stack.",
+      "cardLabel": "Card to put back",
+      "stackLabel": "Stack",
+      "top": "Take top card",
+      "search": "Search it (pay {{cost}})"
+    },
+    "pay": {
+      "label": "Pay {{count}} resource(s) of your choice",
+      "confirm": "Pay"
+    },
+    "actionLocked": "Action cards unlock once both players together have 7 VP.",
+    "scoutOnlyOnBuild": "Play the Scout when building a Settlement.",
+    "notImplemented": "This card is not implemented yet.",
+    "alchemist": {
+      "title": "Alchemist: choose the Production Die result"
+    },
+    "caravan": {
+      "title": "Caravan: trade up to 2 resources",
+      "give": "Trade in",
+      "receive": "Get"
+    },
+    "merchant": {
+      "title": "Merchant",
+      "take": "Take from your opponent (1–2)",
+      "give": "Then give back 1"
+    },
+    "scout": {
+      "build": "Build with Scout",
+      "title": "Scout: choose the regions above and below"
+    },
+    "regionAbove": "Above",
+    "regionBelow": "Below",
+    "confirm": "Confirm",
+    "cancel": "Cancel",
+    "buildConfirm": {
+      "title": "Build a {{name}}?",
+      "missing": "Not enough resources. Missing: {{list}}",
+      "noSupply": "No {{name}} cards left in the supply.",
+      "noRegions": "The region stack has fewer than 2 cards left."
+    },
+    "supplyLeft": "{{count}} left",
+    "opponent": "Opponent"
   },
   "card": {
     "cost": "Cost",
     "effect": "Effect",
     "victoryPoints": "Victory Points",
-    "improvedTrade": "2:1 Trade",
     "play": "Play",
     "build": "Build",
-    "close": "Close"
+    "close": "Close",
+    "notInDeck": "Not in the deck yet (to be implemented)."
   },
   "cardType": {
-    "green": "Green Expansion",
-    "red": "Red Expansion (City only)",
+    "green": "Region Expansion",
+    "red": "City Expansion (City only)",
     "central": "Central Axis",
     "road": "Road",
     "settlement": "Settlement",
@@ -119,129 +173,271 @@
     "action": "Action Card",
     "event": "Event Card",
     "expansion": "Expansion",
-    "region": "Region"
+    "region": "Region",
+    "building": "Building",
+    "knight": "Unit — Knight",
+    "fleet": "Unit — Trade Fleet"
   },
   "resources": {
-    "wood": "Wood",
+    "lumber": "Lumber",
     "wool": "Wool",
-    "gold": "Gold",
     "brick": "Brick",
     "ore": "Ore",
-    "grain": "Grain"
+    "grain": "Grain",
+    "gold": "Gold"
   },
   "symbols": {
     "strength": "Strength",
     "commerce": "Commerce",
-    "progress": "Progress"
+    "tournament": "Tournament"
   },
   "advantage": {
-    "hero": "Hero Token",
-    "trade": "Trade Token"
+    "knight": "Knight Token",
+    "windmill": "Windmill Token"
   },
   "dice": {
-    "bandit": "Bandit!",
-    "trade": "Trade",
+    "brigand": "Brigand Attack!",
+    "commerce": "Commerce",
     "tournament": "Tournament",
-    "harvest": "Harvest",
+    "yearOfPlenty": "Year of Plenty",
     "event": "Event"
   },
   "regions": {
     "forest": "Forest",
-    "meadow": "Meadow",
-    "river": "River",
-    "claypit": "Clay Pit",
-    "mountain": "Mountain",
-    "field": "Field"
+    "pasture": "Pasture",
+    "hills": "Hills",
+    "mountains": "Mountains",
+    "fields": "Fields",
+    "goldfield": "Gold Field"
   },
   "cards": {
     "road": {
       "name": "Road",
-      "description": "Required to build new Settlements. Cost: 1 Wood, 2 Brick."
+      "description": "Placed beside a Settlement or City; needed for a new Settlement."
     },
     "settlement": {
       "name": "Settlement",
-      "description": "Grants 1 VP and 2 Expansion Slots."
+      "description": "1 VP. 2 building sites; a region at each corner."
     },
     "city": {
       "name": "City",
-      "description": "Upgrades a Settlement. Grants 2 VP and 4 Expansion Slots."
+      "description": "Built on a Settlement. 2 VP, 4 building sites."
     },
-    "militiaman": {
-      "name": "Militiaman",
-      "description": "Grants 1 Strength Point."
+    "abbey": {
+      "name": "Abbey",
+      "description": "You can hold an extra card in your hand."
     },
-    "swordsman": {
-      "name": "Swordsman",
-      "description": "Grants 2 Strength Points."
+    "garrison": {
+      "name": "Garrison",
+      "description": "Do not count the resources on the 2 neighbouring regions when a Brigand Attack is rolled."
     },
-    "knight": {
-      "name": "Knight",
-      "description": "Grants 3 Strength Points."
+    "smithy": {
+      "name": "Smithy",
+      "description": "Each Knight in your principality gets 1 additional Strength Point."
     },
-    "merchant": {
-      "name": "Merchant",
-      "description": "Grants 1 Commerce Point."
+    "brickFactory": {
+      "name": "Brick Factory",
+      "description": "Doubles the brick production of the neighbouring hills."
     },
-    "market": {
-      "name": "Market",
-      "description": "Grants 2 Commerce Points."
+    "foundry": {
+      "name": "Foundry",
+      "description": "Doubles the ore production of the neighbouring mountains."
     },
-    "school": {
-      "name": "School",
-      "description": "Grants 1 Progress Point (+1 Hand Limit)."
+    "grainMill": {
+      "name": "Grain Mill",
+      "description": "Doubles the grain production of the neighbouring fields."
+    },
+    "sawmill": {
+      "name": "Sawmill",
+      "description": "Doubles the lumber production of the neighbouring forests."
+    },
+    "woolenMill": {
+      "name": "Woolen Mill",
+      "description": "Doubles the wool production of the neighbouring pastures."
+    },
+    "knightConrad": {
+      "name": "Conrad the Swift",
+      "description": "Slays foes from afar."
+    },
+    "knightFalk": {
+      "name": "Falk the Fair",
+      "description": "He does battle only for noble ladies. More style than substance."
+    },
+    "knightGotz": {
+      "name": "Gotz Ironfist",
+      "description": "Inventor of the all-around defense. No grass grows in his wake."
+    },
+    "knightHagen": {
+      "name": "Hagen the Sinister",
+      "description": "Wild and unstable."
+    },
+    "knightKarl": {
+      "name": "Karl the Strong",
+      "description": "Woe when he is unleashed."
+    },
+    "knightOtto": {
+      "name": "Otto the Berserker",
+      "description": "Catan's one-man army."
+    },
+    "knightPippin": {
+      "name": "Pippin the Short",
+      "description": "A dangerous knight to overlook."
+    },
+    "knightSiegfried": {
+      "name": "Siegfried Lackland",
+      "description": "Brave, noble and poor."
+    },
+    "knightWalter": {
+      "name": "Walter the Recreant",
+      "description": "Feared by friend and foe."
+    },
+    "aqueduct": {
+      "name": "Aqueduct",
+      "description": "1 VP. Protects all regions in your principality from the Plague."
+    },
+    "bathHouse": {
+      "name": "Bath House",
+      "description": "1 VP. Protects all 4 regions bordering this City from the Plague."
+    },
+    "church": {
+      "name": "Church",
+      "description": "1 VP. Protects Knights and Trade Fleets in this City from Civil War."
+    },
+    "colossus": {
+      "name": "The Colossus of Catan",
+      "description": "2 VP. Honor and fame for the builder."
+    },
+    "countingHouse": {
+      "name": "Counting House",
+      "description": "3 Commerce. Money talks."
+    },
+    "harbor": {
+      "name": "Harbor",
+      "description": "1 Commerce. Each Trade Fleet you own is worth 1 additional Commerce Point."
     },
     "library": {
       "name": "Library",
-      "description": "Grants 2 Progress Points (+2 Hand Limit)."
+      "description": "1 VP. You can hold an extra card in your hand."
     },
-    "watchtower": {
-      "name": "Watchtower",
-      "description": "Grants 1 Victory Point."
+    "marketplace": {
+      "name": "Marketplace",
+      "description": "2 Commerce. Fresh vegetables from the countryside."
     },
-    "tradeShipWood": { "name": "Wood Trade Ship" },
-    "tradeShipWool": { "name": "Wool Trade Ship" },
-    "tradeShipGold": { "name": "Gold Trade Ship" },
-    "tradeShipBrick": { "name": "Brick Trade Ship" },
-    "tradeShipOre": { "name": "Ore Trade Ship" },
-    "tradeShipGrain": { "name": "Grain Trade Ship" },
-    "tradeShip": {
-      "description": "Enables 2:1 trade for the matching resource type."
+    "merchantGuild": {
+      "name": "Merchant Guild",
+      "description": "4 Commerce. It is better to receive than to give."
     },
-    "cathedral": {
-      "name": "Cathedral",
-      "description": "Grants 1 VP and 2 Progress Points. City slot only."
+    "mint": {
+      "name": "Mint",
+      "description": "1 Commerce. You may trade 1 gold for 1 resource of your choice."
     },
-    "guildHall": {
-      "name": "Guild Hall",
-      "description": "Grants 3 Commerce Points. City slot only."
+    "townHall": {
+      "name": "Town Hall",
+      "description": "1 VP. Searching an expansion stack costs 1 resource less."
     },
-    "university": {
-      "name": "University",
-      "description": "Grants 3 Progress Points. City slot only."
+    "alchemist": {
+      "name": "Alchemist",
+      "description": "Play this card before your die roll. Choose the result of the Production Die."
     },
-    "ambush": {
-      "name": "Ambush",
-      "description": "Steal 1 resource from your opponent."
+    "arsonist": {
+      "name": "Arsonist",
+      "description": "Roll: on 1–5 your opponent returns a Building of your choice to his hand; on 6 you return one of his choice. Counter: Bishop."
     },
-    "celebration": {
-      "name": "Celebration",
-      "description": "Receive 1 Gold."
+    "bishop": {
+      "name": "Bishop",
+      "description": "Play against Brigands or the Arsonist before the attacker's roll: the attacker loses on 3–6."
     },
-    "invention": {
-      "name": "Invention",
-      "description": "Gain 1 Progress Point this turn."
+    "blackKnight": {
+      "name": "Black Knight",
+      "description": "Roll: on 1–5 your opponent returns a Knight of your choice to his hand; on 6 you return one of his choice. Counter: Herb Woman."
+    },
+    "brigands": {
+      "name": "Brigands",
+      "description": "Roll: on 1–5 take 2 resources of your choice from your opponent; on 6 he takes 2 from you. Counter: Bishop."
+    },
+    "caravan": {
+      "name": "Caravan",
+      "description": "Trade in up to 2 resources of your choice for the same number of others of your choice."
+    },
+    "herbWoman": {
+      "name": "Herb Woman",
+      "description": "Play against the Black Knight before the attacker's roll: the attacker loses on 3–6."
+    },
+    "merchant": {
+      "name": "Merchant",
+      "description": "Take 2 resources of your choice from your opponent and give them 1 resource of your choice."
+    },
+    "scout": {
+      "name": "Scout",
+      "description": "Play when building a Settlement: choose its 2 regions from the region stack, then reshuffle it."
+    },
+    "spy": {
+      "name": "Spy",
+      "description": "Search your opponent's hand and take any 1 Unit or Action card."
+    },
+    "eventCivilWar": {
+      "name": "Civil War",
+      "description": "Each player must return a Knight or Fleet to his hand. Counter: Church."
+    },
+    "eventConflict": {
+      "name": "Conflict",
+      "description": "The Knight Token holder puts 2 cards from his opponent's hand under an expansion stack."
+    },
+    "eventMasterBuilder": {
+      "name": "Master Builder",
+      "description": "Each player may trade 1 hand card for 1 card of his choice from an expansion stack."
     },
     "eventPlague": {
       "name": "Plague",
-      "description": "Your opponent loses 1 Wool."
+      "description": "Every region bordering a City loses 1 resource. Counter: Bath House, Aqueduct."
     },
-    "eventGoodHarvest": {
-      "name": "Good Harvest",
-      "description": "Receive 2 Grain."
+    "eventProductiveYear": {
+      "name": "Productive Year",
+      "description": "Every region bordering a Garrison gets 1 extra resource."
     },
-    "eventTradeProfit": {
-      "name": "Trade Profit",
-      "description": "Receive 2 Gold."
+    "eventProgress": {
+      "name": "Progress",
+      "description": "Each player gets 1 resource of his choice per Abbey and Library."
+    },
+    "eventYearEnd": {
+      "name": "Year End",
+      "description": "Reshuffle the event deck."
+    },
+    "fleetBrick": {
+      "name": "Brick Fleet",
+      "description": "You may trade 2 brick for 1 resource of your choice. 1 Commerce."
+    },
+    "fleetGold": {
+      "name": "Gold Fleet",
+      "description": "You may trade 2 gold for 1 resource of your choice. 1 Commerce."
+    },
+    "fleetGrain": {
+      "name": "Grain Fleet",
+      "description": "You may trade 2 grain for 1 resource of your choice. 1 Commerce."
+    },
+    "fleetLumber": {
+      "name": "Lumber Fleet",
+      "description": "You may trade 2 lumber for 1 resource of your choice. 1 Commerce."
+    },
+    "fleetOre": {
+      "name": "Ore Fleet",
+      "description": "You may trade 2 ore for 1 resource of your choice. 1 Commerce."
+    },
+    "fleetWool": {
+      "name": "Wool Fleet",
+      "description": "You may trade 2 wool for 1 resource of your choice. 1 Commerce."
     }
+  },
+  "effects": {
+    "symbol": "+{{amount}} {{symbol}}",
+    "trade": "{{rate}}:1 trade for {{resource}}",
+    "handLimit": "+{{amount}} hand limit",
+    "doubleProduction": "Doubles {{resource}} production of neighbouring regions",
+    "brigandProtection": "Neighbouring regions don't count for the Brigand Attack",
+    "strengthPerKnight": "+{{amount}} Strength per Knight",
+    "commercePerFleet": "+{{amount}} Commerce per Trade Fleet",
+    "searchDiscount": "Searching a stack costs only 1 resource",
+    "plaguePrincipality": "All your regions are immune to the Plague",
+    "plagueCity": "The 4 regions of this City are immune to the Plague"
   }
 }

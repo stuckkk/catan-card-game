@@ -1,6 +1,6 @@
 {
   "lobby": {
-    "title": "Catan: Das Duell",
+    "title": "Catan – Das Kartenspiel",
     "createGame": "Spiel erstellen",
     "joinGame": "Spiel beitreten",
     "vpTarget": "Siegpunkte-Ziel",
@@ -27,8 +27,6 @@
     "phaseTracker": "Zugphase",
     "rollDice": "Würfeln",
     "endTurn": "Aktionsphase beenden",
-    "skipSwap": "Tausch überspringen",
-    "swap": "Karte tauschen",
     "trade": "Mit der Bank handeln",
     "tradeGive": "Abgeben",
     "tradeReceive": "Erhalten",
@@ -49,27 +47,12 @@
     "tradeWaiting": "Warte auf Antwort des Gegners…",
     "tradeNothing": "—",
     "chooseResource": {
-      "tradeTitle": "Wähle einen Rohstoff, den du dem Gegner nimmst",
-      "harvestTitle": "Wähle deinen Gratis-Rohstoff",
+      "commerceTitle": "Handelsvorteil: Wähle einen Rohstoff, den du dem Gegner nimmst",
+      "yearOfPlentyTitle": "Gute Ernte: Wähle deinen Gratis-Rohstoff",
       "tournamentTitle": "Du hast das Turnier gewonnen – wähle deinen Gratis-Rohstoff",
+      "progressTitle": "Fortschritt: Wähle einen Gratis-Rohstoff",
       "waiting": "Gegner wählt einen Rohstoff…"
     },
-    "swapTitle": "Kartentausch am Zugende",
-    "swapHint": "Lege eine Handkarte ab und ziehe eine neue von einem Stapel.",
-    "swapDiscardLabel": "Abzulegende Karte",
-    "swapDrawnLocked": "Diese Runde gezogen — kann nicht getauscht werden",
-    "swapDrawLabel": "Von Stapel ziehen",
-    "swapFreeButton": "Tauschen (oberste Karte)",
-    "swapPaidToggle": "2 zahlen, um einen Stapel zu durchsuchen",
-    "swapPaidPayWith": "Bezahlen mit",
-    "swapPaidSearchLabel": "Diese Karte nehmen",
-    "swapPaidButton": "Zahlen & Karte nehmen",
-    "handCheckDiscardTitle": "Handkartenlimit überschritten",
-    "handCheckDiscardHint": "Lege {{count}} Karte(n) ab, um dein Handkartenlimit von {{limit}} zu erreichen.",
-    "handCheckDiscardButton": "Auswahl ablegen",
-    "handCheckDrawTitle": "Auf Handkartenlimit ziehen",
-    "handCheckDrawHint": "Ziehe {{count}} Karte(n) von einem Stapel, um dein Handkartenlimit von {{limit}} zu erreichen.",
-    "handCheckContinue": "Weiter",
     "deckCount": "{{count}}",
     "deckName": {
       "stack-1": "Stapel 1",
@@ -79,12 +62,13 @@
       "stack-5": "Stapel 5"
     },
     "phase": {
+      "setup": "Aufbau",
       "roll": "Würfelphase",
       "event-resolution": "Ereignisauflösung",
-      "production": "Produktion",
+      "production": "Ertrag",
       "action": "Aktionsphase",
-      "hand-check": "Handkarten prüfen",
-      "swap": "Tauschphase"
+      "draw": "Nachziehen",
+      "exchange": "Austausch"
     },
     "vpTarget": "SP-Ziel: {{count}}",
     "currentVP": "{{count}} SP",
@@ -98,150 +82,362 @@
     "youWin": "Du hast gewonnen!",
     "opponentWins": "Dein Gegner hat gewonnen!",
     "playAgain": "Nochmal spielen",
-    "backToLobby": "Zur Lobby"
+    "backToLobby": "Zur Lobby",
+    "skipExchange": "Tausch überspringen",
+    "setup": {
+      "youStart": "Du beginnst.",
+      "opponentStarts": "Dein Gegner beginnt.",
+      "arrangeHint": "Tippe zwei deiner Landschaften an, um sie zu tauschen. Ordne sie, bevor du deine Startkarten nimmst.",
+      "pickHint": "Wähle einen Ausbaustapel, sieh ihn durch und nimm 3 Karten daraus.",
+      "waiting": "Warte, bis dein Gegner seine Startkarten genommen hat…"
+    },
+    "search": {
+      "title": "{{stack}} durchsuchen",
+      "setupHint": "Nimm {{count}} Karten. Die Reihenfolge des Stapels bleibt erhalten.",
+      "hint": "Nimm 1 Karte. Die Reihenfolge des Stapels bleibt erhalten.",
+      "details": "Kartendetails anzeigen",
+      "topLabel": "oben",
+      "take": "Nehmen"
+    },
+    "draw": {
+      "title": "Auf Handkartenlimit ziehen",
+      "hint": "Ziehe noch {{count}} Karte(n) (Limit {{limit}}): die oberste Karte eines Stapels gratis, oder durchsuche einen Stapel für {{cost}} Rohstoff(e) deiner Wahl.",
+      "drawTop": "Oberste ziehen",
+      "search": "Durchsuchen",
+      "discardTitle": "Handkartenlimit überschritten",
+      "discardHint": "Lege {{count}} Karte(n) unter einen Stapel (Limit {{limit}}).",
+      "discardTo": "Darunterlegen",
+      "discardButton": "Karten unter Stapel legen"
+    },
+    "exchange": {
+      "title": "Eine Karte austauschen?",
+      "hint": "Lege 1 Karte unter einen Stapel und nimm eine neue Karte von genau diesem Stapel.",
+      "cardLabel": "Zurückzulegende Karte",
+      "stackLabel": "Stapel",
+      "top": "Oberste Karte nehmen",
+      "search": "Durchsuchen ({{cost}} zahlen)"
+    },
+    "pay": {
+      "label": "Bezahle {{count}} Rohstoff(e) deiner Wahl",
+      "confirm": "Bezahlen"
+    },
+    "actionLocked": "Aktionskarten sind erst spielbar, wenn beide Spieler zusammen 7 SP haben.",
+    "scoutOnlyOnBuild": "Spiele den Kundschafter beim Bau einer Siedlung.",
+    "notImplemented": "Diese Karte ist noch nicht umgesetzt.",
+    "alchemist": {
+      "title": "Alchemist: Wähle das Ergebnis des Ertragswürfels"
+    },
+    "caravan": {
+      "title": "Karawane: bis zu 2 Rohstoffe tauschen",
+      "give": "Abgeben",
+      "receive": "Erhalten"
+    },
+    "merchant": {
+      "title": "Kaufmann",
+      "take": "Vom Gegner nehmen (1–2)",
+      "give": "Dann 1 zurückgeben"
+    },
+    "scout": {
+      "build": "Mit Kundschafter bauen",
+      "title": "Kundschafter: Wähle die Landschaften oben und unten"
+    },
+    "regionAbove": "Oben",
+    "regionBelow": "Unten",
+    "confirm": "Bestätigen",
+    "cancel": "Abbrechen",
+    "buildConfirm": {
+      "title": "{{name}} bauen?",
+      "missing": "Nicht genug Rohstoffe. Es fehlt: {{list}}",
+      "noSupply": "Keine Karten „{{name}}“ mehr im Vorrat.",
+      "noRegions": "Der Landschaftsstapel hat weniger als 2 Karten."
+    },
+    "supplyLeft": "noch {{count}}",
+    "opponent": "Gegner"
   },
   "card": {
     "cost": "Kosten",
     "effect": "Effekt",
     "victoryPoints": "Siegpunkte",
-    "improvedTrade": "2:1 Handel",
     "play": "Ausspielen",
     "build": "Bauen",
-    "close": "Schließen"
+    "close": "Schließen",
+    "notInDeck": "Noch nicht im Spiel (wird später umgesetzt)."
   },
   "cardType": {
-    "green": "Grüne Erweiterung",
-    "red": "Rote Erweiterung (nur Stadt)",
-    "central": "Zentralachse",
+    "green": "Landschaftsausbau",
+    "red": "Stadtausbau (nur Stadt)",
+    "central": "Mittelachse",
     "road": "Straße",
     "settlement": "Siedlung",
     "city": "Stadt",
     "action": "Aktionskarte",
     "event": "Ereigniskarte",
-    "expansion": "Erweiterung",
-    "region": "Region"
+    "expansion": "Ausbau",
+    "region": "Landschaft",
+    "building": "Gebäude",
+    "knight": "Einheit — Ritter",
+    "fleet": "Einheit — Handelsflotte"
   },
   "resources": {
-    "wood": "Holz",
+    "lumber": "Holz",
     "wool": "Wolle",
-    "gold": "Gold",
     "brick": "Lehm",
     "ore": "Erz",
-    "grain": "Getreide"
+    "grain": "Getreide",
+    "gold": "Gold"
   },
   "symbols": {
     "strength": "Stärke",
     "commerce": "Handel",
-    "progress": "Fortschritt"
+    "tournament": "Turnier"
   },
   "advantage": {
-    "hero": "Heldentoken",
-    "trade": "Handelstoken"
+    "knight": "Ritterplättchen",
+    "windmill": "Windmühlenplättchen"
   },
   "dice": {
-    "bandit": "Räuber!",
-    "trade": "Handel",
+    "brigand": "Räuberüberfall!",
+    "commerce": "Handelsvorteil",
     "tournament": "Turnier",
-    "harvest": "Ernte",
+    "yearOfPlenty": "Gute Ernte",
     "event": "Ereignis"
   },
   "regions": {
     "forest": "Wald",
-    "meadow": "Wiese",
-    "river": "Fluss",
-    "claypit": "Lehmgrube",
-    "mountain": "Berg",
-    "field": "Feld"
+    "pasture": "Weide",
+    "hills": "Hügelland",
+    "mountains": "Gebirge",
+    "fields": "Acker",
+    "goldfield": "Goldfluss"
   },
   "cards": {
     "road": {
       "name": "Straße",
-      "description": "Benötigt zum Bau neuer Siedlungen. Kosten: 1 Holz, 2 Lehm."
+      "description": "Wird neben eine Siedlung oder Stadt gelegt; nötig für eine neue Siedlung."
     },
     "settlement": {
       "name": "Siedlung",
-      "description": "Gewährt 1 SP und 2 Erweiterungsplätze."
+      "description": "1 SP. 2 Bauplätze; an jeder Ecke eine Landschaft."
     },
     "city": {
       "name": "Stadt",
-      "description": "Wertet eine Siedlung auf. Gewährt 2 SP und 4 Erweiterungsplätze."
+      "description": "Wird auf eine Siedlung gebaut. 2 SP, 4 Bauplätze."
     },
-    "militiaman": {
-      "name": "Milizsoldat",
-      "description": "Gewährt 1 Stärkepunkt."
+    "abbey": {
+      "name": "Kloster",
+      "description": "Du darfst eine Karte mehr auf der Hand halten."
     },
-    "swordsman": {
-      "name": "Schwertkämpfer",
-      "description": "Gewährt 2 Stärkepunkte."
+    "garrison": {
+      "name": "Burg",
+      "description": "Die Rohstoffe der 2 Nachbarlandschaften zählen beim Räuberüberfall nicht."
     },
-    "knight": {
-      "name": "Ritter",
-      "description": "Gewährt 3 Stärkepunkte."
+    "smithy": {
+      "name": "Schmiede",
+      "description": "Jeder Ritter in deinem Fürstentum erhält 1 zusätzlichen Stärkepunkt."
     },
-    "merchant": {
-      "name": "Kaufmann",
-      "description": "Gewährt 1 Handelspunkt."
+    "brickFactory": {
+      "name": "Ziegelei",
+      "description": "Verdoppelt den Lehmertrag des benachbarten Hügellands."
     },
-    "market": {
-      "name": "Markt",
-      "description": "Gewährt 2 Handelspunkte."
+    "foundry": {
+      "name": "Eisengießerei",
+      "description": "Verdoppelt den Erzertrag des benachbarten Gebirges."
     },
-    "school": {
-      "name": "Schule",
-      "description": "Gewährt 1 Fortschrittspunkt (+1 Handkartenlimit)."
+    "grainMill": {
+      "name": "Getreidemühle",
+      "description": "Verdoppelt den Getreideertrag der benachbarten Äcker."
+    },
+    "sawmill": {
+      "name": "Sägewerk",
+      "description": "Verdoppelt den Holzertrag der benachbarten Wälder."
+    },
+    "woolenMill": {
+      "name": "Weberei",
+      "description": "Verdoppelt den Wollertrag der benachbarten Weiden."
+    },
+    "knightConrad": {
+      "name": "Konrad der Schnelle",
+      "description": "Bezwingt Feinde aus der Ferne."
+    },
+    "knightFalk": {
+      "name": "Falk der Schöne",
+      "description": "Kämpft nur für edle Damen. Mehr Schein als Sein."
+    },
+    "knightGotz": {
+      "name": "Götz Eisenfaust",
+      "description": "Erfinder der Rundumverteidigung. Wo er hintritt, wächst kein Gras."
+    },
+    "knightHagen": {
+      "name": "Hagen der Finstere",
+      "description": "Wild und unberechenbar."
+    },
+    "knightKarl": {
+      "name": "Karl der Starke",
+      "description": "Wehe, wenn er losgelassen."
+    },
+    "knightOtto": {
+      "name": "Otto der Berserker",
+      "description": "Catans Ein-Mann-Armee."
+    },
+    "knightPippin": {
+      "name": "Pippin der Kurze",
+      "description": "Ein gefährlich unterschätzter Ritter."
+    },
+    "knightSiegfried": {
+      "name": "Siegfried ohne Land",
+      "description": "Tapfer, edel und arm."
+    },
+    "knightWalter": {
+      "name": "Walter der Abtrünnige",
+      "description": "Gefürchtet bei Freund und Feind."
+    },
+    "aqueduct": {
+      "name": "Aquädukt",
+      "description": "1 SP. Schützt alle Landschaften deines Fürstentums vor der Seuche."
+    },
+    "bathHouse": {
+      "name": "Badehaus",
+      "description": "1 SP. Schützt die 4 Landschaften dieser Stadt vor der Seuche."
+    },
+    "church": {
+      "name": "Kirche",
+      "description": "1 SP. Schützt Ritter und Handelsflotten dieser Stadt vor dem Bürgerkrieg."
+    },
+    "colossus": {
+      "name": "Koloss von Catan",
+      "description": "2 SP. Ruhm und Ehre für den Erbauer."
+    },
+    "countingHouse": {
+      "name": "Kontor",
+      "description": "3 Handel. Geld regiert die Welt."
+    },
+    "harbor": {
+      "name": "Hafen",
+      "description": "1 Handel. Jede deiner Handelsflotten zählt 1 Handelspunkt mehr."
     },
     "library": {
       "name": "Bibliothek",
-      "description": "Gewährt 2 Fortschrittspunkte (+2 Handkartenlimit)."
+      "description": "1 SP. Du darfst eine Karte mehr auf der Hand halten."
     },
-    "watchtower": {
-      "name": "Wachturm",
-      "description": "Gewährt 1 Siegpunkt."
+    "marketplace": {
+      "name": "Marktplatz",
+      "description": "2 Handel. Frisches Gemüse vom Land."
     },
-    "tradeShipWood": { "name": "Holz-Handelsschiff" },
-    "tradeShipWool": { "name": "Woll-Handelsschiff" },
-    "tradeShipGold": { "name": "Gold-Handelsschiff" },
-    "tradeShipBrick": { "name": "Lehm-Handelsschiff" },
-    "tradeShipOre": { "name": "Erz-Handelsschiff" },
-    "tradeShipGrain": { "name": "Getreide-Handelsschiff" },
-    "tradeShip": {
-      "description": "Ermöglicht 2:1-Handel für den entsprechenden Rohstofftyp."
+    "merchantGuild": {
+      "name": "Handelsgilde",
+      "description": "4 Handel. Nehmen ist seliger denn Geben."
     },
-    "cathedral": {
-      "name": "Dom",
-      "description": "Gewährt 1 SP und 2 Fortschrittspunkte. Nur auf Stadtplätzen."
+    "mint": {
+      "name": "Münze",
+      "description": "1 Handel. Du darfst 1 Gold gegen 1 Rohstoff deiner Wahl tauschen."
     },
-    "guildHall": {
-      "name": "Gildenhaus",
-      "description": "Gewährt 3 Handelspunkte. Nur auf Stadtplätzen."
+    "townHall": {
+      "name": "Rathaus",
+      "description": "1 SP. Einen Ausbaustapel zu durchsuchen kostet 1 Rohstoff weniger."
     },
-    "university": {
-      "name": "Universität",
-      "description": "Gewährt 3 Fortschrittspunkte. Nur auf Stadtplätzen."
+    "alchemist": {
+      "name": "Alchemist",
+      "description": "Vor dem Würfeln spielen: Bestimme das Ergebnis des Ertragswürfels."
     },
-    "ambush": {
-      "name": "Hinterhalt",
-      "description": "Stehle 1 Rohstoff vom Gegner."
+    "arsonist": {
+      "name": "Brandstifter",
+      "description": "Würfle: bei 1–5 nimmt dein Gegner ein Gebäude deiner Wahl auf die Hand; bei 6 du eines seiner Wahl. Gegenkarte: Bischof."
     },
-    "celebration": {
-      "name": "Fest",
-      "description": "Erhalte 1 Gold."
+    "bishop": {
+      "name": "Bischof",
+      "description": "Gegen Raubritter oder Brandstifter vor dem Wurf spielen: der Angreifer verliert bei 3–6."
     },
-    "invention": {
-      "name": "Erfindung",
-      "description": "Erhalte 1 Fortschrittspunkt diesen Zug."
+    "blackKnight": {
+      "name": "Schwarzer Ritter",
+      "description": "Würfle: bei 1–5 nimmt dein Gegner einen Ritter deiner Wahl auf die Hand; bei 6 du einen seiner Wahl. Gegenkarte: Kräuterhexe."
+    },
+    "brigands": {
+      "name": "Raubritter",
+      "description": "Würfle: bei 1–5 nimm deinem Gegner 2 Rohstoffe deiner Wahl; bei 6 nimmt er dir 2. Gegenkarte: Bischof."
+    },
+    "caravan": {
+      "name": "Karawane",
+      "description": "Tausche bis zu 2 Rohstoffe deiner Wahl gegen ebenso viele andere deiner Wahl."
+    },
+    "herbWoman": {
+      "name": "Kräuterhexe",
+      "description": "Gegen den Schwarzen Ritter vor dem Wurf spielen: der Angreifer verliert bei 3–6."
+    },
+    "merchant": {
+      "name": "Kaufmann",
+      "description": "Nimm deinem Gegner 2 Rohstoffe deiner Wahl und gib ihm 1 Rohstoff deiner Wahl."
+    },
+    "scout": {
+      "name": "Kundschafter",
+      "description": "Beim Bau einer Siedlung spielen: Wähle ihre 2 Landschaften aus dem Landschaftsstapel und mische ihn danach."
+    },
+    "spy": {
+      "name": "Spion",
+      "description": "Sieh dir die Hand deines Gegners an und nimm 1 Einheit oder Aktionskarte."
+    },
+    "eventCivilWar": {
+      "name": "Bürgerkrieg",
+      "description": "Jeder Spieler muss einen Ritter oder eine Flotte auf die Hand nehmen. Gegenkarte: Kirche."
+    },
+    "eventConflict": {
+      "name": "Streit",
+      "description": "Der Besitzer des Ritterplättchens legt 2 Handkarten des Gegners unter einen Ausbaustapel."
+    },
+    "eventMasterBuilder": {
+      "name": "Baumeister",
+      "description": "Jeder Spieler darf 1 Handkarte gegen 1 Karte seiner Wahl aus einem Ausbaustapel tauschen."
     },
     "eventPlague": {
       "name": "Seuche",
-      "description": "Dein Gegner verliert 1 Wolle."
+      "description": "Jede Landschaft an einer Stadt verliert 1 Rohstoff. Gegenkarten: Badehaus, Aquädukt."
     },
-    "eventGoodHarvest": {
-      "name": "Gute Ernte",
-      "description": "Erhalte 2 Getreide."
+    "eventProductiveYear": {
+      "name": "Fruchtbares Jahr",
+      "description": "Jede Landschaft an einer Burg erhält 1 zusätzlichen Rohstoff."
     },
-    "eventTradeProfit": {
-      "name": "Handelsgewinn",
-      "description": "Erhalte 2 Gold."
+    "eventProgress": {
+      "name": "Fortschritt",
+      "description": "Jeder Spieler erhält 1 Rohstoff seiner Wahl pro Kloster und Bibliothek."
+    },
+    "eventYearEnd": {
+      "name": "Jahreswechsel",
+      "description": "Mische den Ereignisstapel."
+    },
+    "fleetBrick": {
+      "name": "Lehm-Handelsflotte",
+      "description": "Du darfst 2 Lehm gegen 1 Rohstoff deiner Wahl tauschen. 1 Handel."
+    },
+    "fleetGold": {
+      "name": "Gold-Handelsflotte",
+      "description": "Du darfst 2 Gold gegen 1 Rohstoff deiner Wahl tauschen. 1 Handel."
+    },
+    "fleetGrain": {
+      "name": "Getreide-Handelsflotte",
+      "description": "Du darfst 2 Getreide gegen 1 Rohstoff deiner Wahl tauschen. 1 Handel."
+    },
+    "fleetLumber": {
+      "name": "Holz-Handelsflotte",
+      "description": "Du darfst 2 Holz gegen 1 Rohstoff deiner Wahl tauschen. 1 Handel."
+    },
+    "fleetOre": {
+      "name": "Erz-Handelsflotte",
+      "description": "Du darfst 2 Erz gegen 1 Rohstoff deiner Wahl tauschen. 1 Handel."
+    },
+    "fleetWool": {
+      "name": "Wolle-Handelsflotte",
+      "description": "Du darfst 2 Wolle gegen 1 Rohstoff deiner Wahl tauschen. 1 Handel."
     }
+  },
+  "effects": {
+    "symbol": "+{{amount}} {{symbol}}",
+    "trade": "{{rate}}:1-Handel für {{resource}}",
+    "handLimit": "+{{amount}} Handkartenlimit",
+    "doubleProduction": "Verdoppelt den {{resource}}-Ertrag der Nachbarlandschaften",
+    "brigandProtection": "Nachbarlandschaften zählen beim Räuberüberfall nicht",
+    "strengthPerKnight": "+{{amount}} Stärke pro Ritter",
+    "commercePerFleet": "+{{amount}} Handel pro Handelsflotte",
+    "searchDiscount": "Stapel durchsuchen kostet nur 1 Rohstoff",
+    "plaguePrincipality": "Alle deine Landschaften sind vor der Seuche geschützt",
+    "plagueCity": "Die 4 Landschaften dieser Stadt sind vor der Seuche geschützt"
   }
 }

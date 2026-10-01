@@ -1,6 +1,6 @@
-# Catan: The Duel
+# Catan Card Game
 
-A two-player digital adaptation of the Catan card game. Run the server on a machine you control; other devices connect to it over the network to create a lobby and play.
+A two-player digital adaptation of the Catan Card Game (Mayfair Games, 2005). The rules the app implements are specified in [`GAME_LOGIC.md`](GAME_LOGIC.md). Run the server on a machine you control; other devices connect to it over the network to create a lobby and play.
 
 ## Running the server
 

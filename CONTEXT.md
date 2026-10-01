@@ -1,6 +1,6 @@
-# Catan: The Duel
+# Catan Card Game
 
-A two-player digital adaptation of the Catan card game, playable online by connecting to a server hosted on someone's own machine.
+A two-player digital adaptation of the Catan Card Game (Mayfair, 2005; rulebook in local `rules.pdf`, spec in `GAME_LOGIC.md`), playable online by connecting to a server hosted on someone's own machine.
 
 ## Language
 
@@ -32,57 +32,66 @@ _Avoid_: Board, field, territory
 **Central Axis**: The horizontal sequence of alternating Roads and Settlement/City slots that forms the spine of a Principality.
 _Avoid_: Main row, road track
 
-**Settlement**: A Central Axis card worth 1 VP that grants 2 Expansion Slots and 2 adjacent Region slots.
+**Settlement**: A Central Axis card worth 1 VP with 2 Building Sites and a Region at each of its 4 diagonal corners (shared with a neighbouring Settlement across a Road).
 _Avoid_: Village, town
 
-**City**: A Central Axis card that upgrades a Settlement, worth 2 VP total and granting 4 Expansion Slots and 2 adjacent Region slots.
+**City**: A Central Axis card placed on a Settlement, worth 2 VP total, with 4 Building Sites.
 _Avoid_: Town, upgrade
 
-**Road**: A Central Axis card that connects Settlements and is required before a new Settlement can be built at that position.
+**Road**: A Central Axis card placed beside a Settlement/City; required before a new Settlement can be built at its open end. Two Roads are never adjacent.
 _Avoid_: Path, connection
 
-**Region**: A terrain card placed diagonally adjacent to a Settlement or City. Produces 1 Resource when its Production Number is rolled. Tracks stored resources internally (0–3 capacity).
-_Avoid_: Terrain, land, tile
+**Region**: A terrain card (Forest, Pasture, Hills, Mountains, Fields, Gold Field) at a Settlement/City corner. Produces 1 Resource when its Production Number is rolled. Stores 0–3 resources itself.
+_Avoid_: Terrain, land, tile, meadow, river, clay pit
 
 **Production Number**: The number (1–6) printed on a Region card that determines which die result triggers its production.
 _Avoid_: Region number, die number
 
-**Expansion Slot**: An open space above or below a Settlement or City where a Green or Red Expansion Card can be placed. Settlements have 2; Cities have 4.
-_Avoid_: Building slot, card slot
+**Building Site**: A space above or below a Settlement or City where a Region or City Expansion can be placed. Settlements have 2; Cities have 4. A site borders the two Regions on its side of the axis. (Code: `expansionSlots`.)
+_Avoid_: Expansion slot, building slot, card slot
 
 ### Cards
 
 **Hand**: The set of cards currently held by a player, kept secret from the opponent. Subject to the Hand Limit.
 _Avoid_: Cards, deck hand
 
-**Hand Limit**: The maximum number of cards a player may hold at end of turn. Defaults to 3, increased by 1 per Progress Point owned.
+**Hand Limit**: The number of cards a player holds at end of turn. 3, +1 per Abbey and per Library.
 _Avoid_: Card limit, hand size
 
-**Action Card**: A yellow card played from Hand during the Action Phase that triggers an immediate effect and is then discarded.
+**Expansion Card**: Any card of the 5 shuffled expansion stacks: Action Cards, Region Expansions and City Expansions.
+_Avoid_: Hand card, draw card
+
+**Action Card**: A yellow card played from Hand that triggers an immediate effect and is then discarded. Playable only once both players together have ≥7 VP (Scout excepted).
 _Avoid_: Yellow card, event card, instant card
 
-**Green Expansion**: A permanent card placed in an Expansion Slot of a Settlement or City.
-_Avoid_: Settlement expansion, green card
+**Region Expansion**: A green permanent card placed on a Building Site of a Settlement or City. Either a Building or a Unit (Knight, Trade Fleet).
+_Avoid_: Green expansion, settlement expansion, green card
 
-**Red Expansion**: A permanent card placed in an Expansion Slot of a City only.
-_Avoid_: City expansion, red card
+**City Expansion**: A red permanent card placed on a Building Site of a City only. Always a Building.
+_Avoid_: Red expansion, red card
 
-**Brown Expansion**: A permanent card placed above or below a Region card.
-_Avoid_: Region expansion, brown card
+**Building / Unit**: Expansion subtypes. Knights and Trade Fleets are Units; everything else is a Building.
+_Avoid_: Structure, troop
 
-**Event Card**: A card drawn from the Event Deck when the "?" symbol is rolled on the Event Die.
+**Counter Card**: An Expansion Card (shield symbol) that protects against an attack or event, e.g. Garrison, Bath House, Bishop.
+_Avoid_: Defense card, blocker
+
+**Development Cards**: The shared supply stacks of Roads (7), Settlements (5), Cities (7) and the Region stack (11).
+_Avoid_: Building deck, bank cards
+
+**Event Card**: A blue card from the Event Deck, revealed when "?" is rolled, resolved for both players, then put under the Event Deck.
 _Avoid_: Mystery card, random card
 
 ### Resources & Economy
 
-**Resource**: One of six commodities — Wood, Wool, Gold, Brick, Ore, Grain — stored on Region cards or spent to build and buy.
-_Avoid_: Material, commodity, goods
+**Resource**: One of six commodities — Lumber, Wool, Brick, Ore, Grain, Gold — stored on Region cards or spent to build.
+_Avoid_: Material, commodity, goods, wood
 
 **Standard Trade**: Paying 3 identical Resources to receive 1 Resource of choice from the bank.
 _Avoid_: 3:1 trade, basic trade
 
-**Improved Trade**: Paying 2 identical Resources to receive 1 Resource of choice, enabled by owning the corresponding Trade Ship.
-_Avoid_: 2:1 trade, ship trade
+**Improved Trade**: Paying 2 identical Resources to receive 1 Resource of choice, enabled by owning the corresponding Trade Fleet (Mint: Gold 1:1).
+_Avoid_: 2:1 trade, ship trade, trade ship
 
 **Overflow**: A Resource gained when a Region is at full capacity (3) is permanently lost.
 _Avoid_: Discard, waste, cap
@@ -92,37 +101,49 @@ _Avoid_: Discard, waste, cap
 **Victory Points (VP)**: The win condition currency. Target is configurable per Session (default 12).
 _Avoid_: Points, score
 
-**Strength Points**: Points from the Axe symbol on Expansion Cards, determining eligibility for the Hero Token.
+**Strength Points**: The black number by the iron fist on Knights (plus Smithy bonus), deciding the Knight Token.
 _Avoid_: Combat points, attack points, axes
 
-**Commerce Points**: Points from the Scales symbol on Expansion Cards, determining eligibility for the Trade Token.
-_Avoid_: Trade points, merchant points
+**Commerce Points**: Windmill icons on Expansion Cards (Fleets, Garrison, Marketplace, …), deciding the Windmill Token.
+_Avoid_: Trade points, merchant points, scales
 
-**Progress Points**: Points from the Book symbol on Expansion Cards, each increasing the Hand Limit by 1.
-_Avoid_: Science points, book points
-
-**Tournament Points**: The Tournament value carried by Knight cards (separate from their Strength value). At the Tournament event, the player with the strictly higher total Tournament Points chooses 1 free resource; a tie gives nobody anything. Distinct from Strength Points and Progress Points.
+**Tournament Points**: The red number by the helmet on Knights (separate from Strength). At the Tournament event, the player with the strictly higher total chooses 1 free resource; a tie gives nobody anything.
 _Avoid_: Skill points, festival points, harp event
 
-**Hero Token**: The Strength Advantage marker. Grants 1 VP to the player with ≥3 Strength Points and strictly more Strength Points than the opponent.
-_Avoid_: Strength token, strength advantage, knight token
+**Knight Token**: 1 VP marker held by the player with strictly more Strength Points (tie: nobody).
+_Avoid_: Hero token, strength token, strength advantage
 
-**Trade Token**: The Commerce Advantage marker. Grants 1 VP to the player with ≥3 Commerce Points and strictly more Commerce Points than the opponent.
-_Avoid_: Commerce token, merchant token, commerce advantage
+**Windmill Token**: 1 VP marker held by the player with strictly more Commerce Points who also has at least one City (otherwise nobody).
+_Avoid_: Trade token, commerce token, merchant token
 
 ### Turn Structure
 
 **Action Phase**: The open-ended middle phase of a turn where the active player may play Action Cards, build structures, and trade in any order and any number of times.
 _Avoid_: Main phase, play phase
 
-**Production Roll**: The result of the number die (1–6), triggering Resource production on all matching Regions for both players. Processed after the Event Roll unless the Bandit was rolled.
+**Setup Phase**: Before the first turn: both players may rearrange their 6 starting Regions, then the first player and then the second pick 3 starting cards from different expansion stacks.
+_Avoid_: Pre-game, lobby phase
+
+**Production Roll**: The result of the number die (1–6), triggering Resource production on all matching Regions for both players. Always processed after the Event Roll.
 _Avoid_: Number roll, die roll
 
-**Event Roll**: The result of the symbol die (Bandit, Trade, Tournament, Harvest, or Event). Processed before the Production Roll; if Bandit is rolled, it replaces the Production Roll.
+**Event Roll**: The result of the Event Die (Brigand Attack, Commerce, Tournament, Year of Plenty, or Event Card on two faces). Processed before the Production Roll.
 _Avoid_: Symbol roll, special die
 
-**Swap**: The optional end-of-turn action allowing a player to exchange 1 card from their Hand. Free Swap places a card under a deck and draws the top of any deck. Paid Swap costs 2 Resources and allows searching a deck for a specific card.
-_Avoid_: Exchange, trade cards, card swap
+**Brigand Attack**: Event-die result: a player with more than 7 resources (not counting Regions next to their Garrisons) loses all Ore and Wool. Ignored in each player's first two turns.
+_Avoid_: Bandit, robber
+
+**Year of Plenty**: Event-die result: each player gains 1 resource of choice.
+_Avoid_: Harvest, sun event
+
+**Draw Phase**: Step 4 of a turn: discard down to the Hand Limit (under stacks) or draw up to it. Each draw is a Random Draw (free top card) or a Search.
+_Avoid_: Hand check, refill
+
+**Search**: Paying any 2 Resources (1 with a Town Hall) to look through one expansion stack in order and take any card from it.
+_Avoid_: Paid swap, paid draw
+
+**Exchange**: Optional, only when the hand was already at the limit: put 1 card under a stack and take a new one from that same stack (top card or Search).
+_Avoid_: Swap, trade cards, card swap
 
 ### Card Effects
 

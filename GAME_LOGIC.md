@@ -1,122 +1,288 @@
-# Catan - The Duel: Game Design Document & Rules Engine
+# Catan Card Game: Rules Engine Specification
 
-## 1. Game State & Victory Conditions
-**Players:** 2 (Player vs. Opponent).
-**Turn-based System:** Players alternate turns.
-**Victory Points (VP) Target:** Configurable per Session in the lobby (default 12). The available options correspond to the physical game's formats:
-* Introductory Game: 7 VP.
-* Theme Games: 12 VP.
-* Duel of the Princes: 13 VP.
+This is the **rulebook** for the app: the single source of truth for how the game behaves.
 
-**VP Sources:** 
-* Settlement: 1 VP.
-* City: 2 VP (Replaces Settlement VP).
-* Hero Token (Strength Advantage): 1 VP.
-* Trade Token (Commerce Advantage): 1 VP.
-* Specific City Expansions: 1 VP per symbol.
+**Upstream source:** the official rulebook *Catan Card Game* (Mayfair Games, 2005), kept locally as
+`rules.pdf` in the repo root (untracked: copyrighted). Page references below (`p.N`) point into it.
+Everything here follows the PDF unless it is listed in **§12 Deviations & Additions**. Rules or cards
+the engine does not support yet are listed in **§13 Not Yet Implemented**.
 
 ---
 
-## 2. Core Entities & Data Models
+## 1. Victory
 
-### Resource Types
-Wood, Wool, Gold, Brick, Ore, Grain. 
+* **Players:** 2, alternating turns.
+* **Target:** 12 VP (p.5, p.18). The target stays configurable per Session in the lobby (default 12;
+  options 7 / 12 / 13), as the PDF suggests lower totals for new players (p.18 tip). See §12.
+* **Win condition:** the game ends as soon as the **active player** has reached the target **during their
+  own turn** (p.18). Victory is only checked for the active player; a player who reaches the target during
+  the opponent's turn (e.g. a token changing hands) wins if they still have it during their own turn.
 
-### The Game Grid (The Principality)
-The board consists of interconnected slots for each player.
-**Central Axis:** A horizontal line alternating between Settlements/Cities and Roads.
-**Regions:** Placed diagonally adjacent to Settlements/Cities.
-**Expansion Slots:** 
-* 2 slots per Settlement (1 above, 1 below). 
-* 4 slots per City (2 above, 2 below).
-
-### Region Cards (Resource Trackers)
-Regions do not use external tokens. The card itself acts as an integer counter (Capacity: 0 to 3).
-* Earning 1 resource rotates the card 90 degrees counter-clockwise.
-* Spending 1 resource rotates the card 90 degrees clockwise.
-* Overflow rule: Any resource gained when the region is at maximum capacity (3) is permanently lost.
-
-### Card Types
-| Category | Subtype | Cost | Function/Rules |
-| :--- | :--- | :--- | :--- |
-| **Central** | Road | 1 Wood, 2 Brick | Required to build new Settlements. |
-| **Central** | Settlement | 1 Wood, 1 Brick, 1 Grain, 1 Wool | Grants 1 VP, 2 Expansion slots, and 2 adjacent Region cards. (Setup exception: each of the 2 starting Settlements is dealt 3 Region cards.) |
-| **Central** | City | 2 Grain, 3 Ore | Upgrades a Settlement. Grants 2 VP total, 4 Expansion slots total. |
-| **Action** | Yellow | N/A | Played from hand, triggers an immediate effect, and is discarded to the discard pile. |
-| **Expansion** | Green | Varies | Settlement/City Expansions. Permanent buildings or units. |
-| **Expansion** | Red | Varies | City Expansions. Must be placed on City slots exclusively. |
-
-### Draw Stacks
-All hand-draw cards (Green, Red, and Yellow) are shuffled together into a single pile and dealt into **5 face-down draw stacks of roughly equal size**. The stacks are **not** separated by card type or color — a draw is type-blind. Players draw from, bury under, and search these 5 stacks during the turn sequence (Phases 3 and 4).
-
-The **Event Deck** is a separate pile and is **not** one of the 5 draw stacks. Event cards are never held in hand: they are drawn and resolved immediately on the `?` event-die face (§4).
-
-**Setup:** After shuffling the combined pile, each player draws 3 cards off the top (active player first); the remaining cards are split into the 5 stacks.
+**VP sources:**
+* Settlement: 1 VP. City: 2 VP (replaces the Settlement's VP).
+* Knight Token: 1 VP. Windmill Token: 1 VP (§7).
+* City Expansions with the VP shield: Aqueduct, Bath House, Church, Library, Town Hall 1 VP each;
+  The Colossus of Catan 2 VP.
 
 ---
 
-## 3. The Game Loop (Turn Sequence)
-Every player turn executes the following strict sequential phases:
+## 2. Components
 
-**Phase 1: Roll Dice**
-Roll both the Event Die (Symbol) and Production Die (Number 1-6).
+### Resources & Regions (p.6)
+| Region | Resource |
+| :--- | :--- |
+| Forest | Lumber |
+| Pasture | Wool |
+| Hills | Brick |
+| Mountains | Ore |
+| Fields | Grain |
+| Gold Field | Gold |
 
-**Phase 2: Action Phase**
-The active player may perform the following actions infinitely and in any order: play cards, build, and trade. Demolishing own buildings or units is free and sends the respective cards to the discard pile.
+A **Region** card is its own resource counter: it stores **0–3** resources (rotated to show the count).
+Gaining rotates up, spending rotates down. A resource that would exceed 3 is **lost** (Overflow); it can
+never be moved to another region of the same type (p.10–11). Resources spent or gained may come from /
+go to any region(s) of the matching type.
 
-**Phase 3: Check Hand Limit**
-* Default hand limit is 3 cards.
-* Limit increases by 1 for every Progress Point (Book symbol) owned.
-* If the hand is below the limit, the player draws cards (one at a time, from any of the 5 draw stacks of their choice) to match the limit. If the hand is above the limit, the player must bury cards under a draw stack to match the limit.
+Each Region carries a **production number** (1–6). The PDF does not list them; the app uses the set in §12.
 
-**Phase 4: Swap Card**
-The player may optionally swap exactly 1 card.
-* Free Swap: Place 1 card under any of the 5 draw stacks, then draw the top card of any of the 5 stacks.
-* Paid Swap: Pay 2 identical resources (2 of a single resource type), place 1 card under any of the 5 draw stacks, then search **one chosen** stack for a specific card. If the named card is not in that stack, the search comes up empty.
-* A card drawn this turn during the Check Hand Limit step (Phase 3) may **not** be the card placed under a stack — in either a Free or Paid Swap. (With duplicate copies, you may still swap one away as long as you hold more copies than you drew this turn.) If every card in hand was just drawn, no swap is possible and the player can only skip.
-
----
-
-## 4. Dice & Events Logic
-
-### Event Die (Symbolwürfel) Evaluation
-Evaluated strictly based on the rolled symbol.
-* **Bandit (Red Club):** Triggers BEFORE the Production Die. Any player with strictly more than 7 total resources loses all Gold and Wool.
-* **Trade (Scales):** The player possessing the Trade Token takes 1 resource of their choice from the opponent.
-* **Tournament (Knights):** Each Knight carries a Tournament value in addition to its Strength value. The player with the strictly higher total Tournament Points (summed across their Knights) chooses 1 free resource from the bank. On a tie (including 0–0) nobody receives anything.
-* **Harvest (Sun):** Both players receive 1 free resource of their choice.
-* **Event (?):** The active player draws and resolves the top card of the Event Deck. This symbol occupies **two of the six event-die faces** (twice the chance of any other face).
-
-### Production Die (Ertragswürfel) Evaluation
-Number 1 through 6. Both players receive 1 resource on all regions matching the rolled number. This is handled AFTER the Event Die, unless the Bandit was rolled.
+### Card supply (p.2–3)
+* **Starting set** (one per player, 9 cards): 1 Road, 2 Settlements, 6 Regions (one of each resource).
+* **Development stacks** (shared, open supply): **7 Roads, 5 Settlements, 7 Cities**, and the
+  **Region stack** of **11 Regions** (2 each of Forest, Pasture, Hills, Mountains, Fields; 1 Gold Field),
+  shuffled face-down. When a supply stack is empty, that thing can no longer be built.
+* **Event deck:** 10 Event Cards (blue text fields), shuffled face-down. Not drawn into hands.
+* **Expansion Cards:** 62 cards (yellow Action Cards, green Region Expansions, red City Expansions),
+  shuffled together and split into **5 face-down expansion stacks** of roughly equal size. Draws are
+  type-blind.
+* **Discard pile:** played Action Cards and demolished/destroyed expansions go here, out of play.
 
 ---
 
-## 5. Economy & Trade Rates
-* **Standard Trade:** Pay 3 identical resources to receive 1 resource of choice from the bank.
-* **Improved Trade:** Pay 2 identical resources to receive 1 resource of choice. Requires owning a Trade Ship corresponding to the paid resource type.
+## 3. Setup (p.3–5)
+
+1. Each player gets their starting set. The Road sits in the middle with a Settlement at each end; the 6
+   starting Regions are arranged **in any order the player chooses** on the six corner spaces (3 above,
+   3 below the axis). Every starting Region holds **1** resource (so each player starts with 1 of each).
+2. Determine the first player (PDF: highest Production Die roll; app: random, see §12).
+3. The **first player** chooses one expansion stack, looks through it **without changing its order**, and
+   takes **3** cards of their choice into hand. Then the **second player** does the same with a
+   **different** stack. Stacks are returned without shuffling.
+4. Starting score: 2 VP each (two Settlements).
 
 ---
 
-## 6. Advantage State Machine
-Advantage tokens dynamically shift between players based on points displayed on built expansion cards.
+## 4. The Principality (p.7, p.11–14)
 
-**Strength Advantage (Hero Token)**
-* Condition: A player must have >= 3 Strength Points (Axe symbol) AND strictly greater Strength Points than the opponent.
-* Reward: Grants 1 VP. 
-* Loss Condition: Drops below 3 points or the opponent ties/exceeds the score.
-
-**Commerce Advantage (Trade Token)**
-* Condition: A player must have >= 3 Commerce Points (Scales symbol) AND strictly greater Commerce Points than the opponent.
-* Reward: Grants 1 VP. 
-* Loss Condition: Drops below 3 points or the opponent ties/exceeds the score.
+* **Central axis:** alternating Settlements/Cities and Roads, extended to the **left or right**.
+* **Roads** cost 2 Brick + 1 Lumber. A Road is placed directly left or right of one of your Settlements or
+  Cities; **two Roads may never be adjacent**.
+* **Settlements** cost 1 each of Wool, Lumber, Brick, Grain. A Settlement must be placed at the open end of
+  a Road (never next to another Settlement/City).
+  * Every Settlement has a Region at each of its 4 diagonal corners. Neighbouring Settlements share the
+    two Regions above and below the Road between them. A new Settlement therefore needs **2 new Regions**
+    (on its outer side): take the **top 2 cards of the Region stack**; new Regions start at **0**.
+    *Scout* (§9) lets you choose them instead.
+* **Cities** cost 3 Ore + 2 Grain and are placed on top of an existing Settlement (the Settlement no longer
+  counts for anything). City = 2 VP total.
+* **Building sites:** a Settlement has **2** (1 above, 1 below); a City has **4** (2 above, 2 below).
+  Green Region Expansions go on any building site of a Settlement or City; red City Expansions go only on a
+  City's building sites.
+* **Neighbouring regions of a building site:** a site above the axis borders the Settlement/City's two
+  **upper** Regions; a site below borders its two **lower** Regions. In a City both upper sites (and both
+  lower sites) are equivalent.
+* **Demolish:** during your turn you may discard any of your own Region/City Expansions to the discard pile.
+  No resources are refunded.
 
 ---
 
-## 7. Knight Stats
+## 5. Turn Sequence (p.8, p.32)
 
-Each Knight (a Green Expansion) carries **two independent values** that must not be conflated:
-* **Strength Points (Axe):** Count toward the Strength Advantage / Hero Token (§6).
-* **Tournament Points:** Count **only** for the Tournament event resolution (§4). These are distinct from Progress Points (Book), which increase the Hand Limit (§3) and have nothing to do with tournaments.
+1. **Roll both dice.** Resolve the **Event Die first**, then:
+2. **Production:** every Region (both players) whose number matches the Production Die gains 1 resource.
+   Production happens after **every** event, including the Brigand Attack.
+3. **Actions**, any number, any order: build, trade, play Action Cards.
+4. **Draw / hand limit** (§8).
+5. **Pass the dice.**
 
-Per-Knight Tournament values equal their Strength values: **Militiaman 1, Swordsman 2, Knight 3**. Only Knights carry Strength and Tournament values — no building grants either; buildings contribute neither to the Hero Token nor to the Tournament event.
+---
+
+## 6. Event Die (p.9–10)
+
+Six faces; the Event Card face (`?`) appears **twice** (see §12). All events affect both players.
+
+* **Brigand Attack (club):** each player counts the resources on all their Regions, **not counting Regions
+  next to one of their Garrisons**. A player with **more than 7** counted resources loses **all Ore and
+  all Wool** — from every region, protected ones included. **No Brigand Attacks in the first two turns of
+  each player**: the result is ignored (no re-roll) until the first player's third turn.
+* **Trade Advantage / Commerce (windmill):** the Windmill Token holder takes any 1 resource of their choice
+  from the opponent. No holder → nothing happens.
+* **Tournament (knight's head):** the player with the strictly higher total **Tournament Points** (red
+  number on their Knights) receives 1 resource of their choice. Tie (incl. 0–0) → nobody.
+* **Year of Plenty (sun):** each player receives 1 resource of their choice.
+* **Event Card (?):** reveal the top Event Card, resolve it for both players (§10), then put it face-down at
+  the **bottom** of the event deck.
+
+---
+
+## 7. Special Victory Points (p.8–9, p.15)
+
+Tokens are recomputed whenever the board changes; they move freely between players. On a tie the token goes
+back to the middle (nobody holds it).
+
+* **Knight Token (1 VP):** held by the player with strictly more **Strength Points** (black number by the
+  iron fist on their Knights, plus Smithy bonus). No minimum.
+* **Windmill Token (1 VP):** held by the player with strictly more **Commerce Points** (windmill icons)
+  **who also has at least one City**. If the player with more Commerce Points has no City, nobody holds it.
+
+---
+
+## 8. Hand Limit & Drawing (p.9, p.17–18)
+
+* **Hand limit** = 3, +1 per **Abbey**, +1 per **Library** in your principality.
+* At step 4 of your turn:
+  * **Hand above the limit:** put the excess cards face-down under expansion stack(s) of your choice.
+  * **Hand below the limit:** draw until you reach it. **Each** card is drawn one of two ways:
+    1. **Random draw:** top card of any expansion stack, free.
+    2. **Search:** pay **any 2 resources** (any mix; **1** with a Town Hall), choose one stack, look through
+       it without changing its order, take any 1 card.
+  * **Exchange:** only if your hand was **at or above** the limit when step 4 began (so you did not draw):
+    after discarding down to the limit you may put 1 more card under a stack and take a new card **from that
+    same stack**, either the top card (free) or by searching it (paid as above).
+* Cards gained during the turn are not played until a later turn (the turn ends after step 4).
+* **Outside your turn:** if an effect raises your hand above your limit, immediately put the excess under
+  stack(s) of your choice. Losing an Abbey/Library likewise forces an immediate discard down.
+* If every expansion stack is empty, drawing stops.
+
+---
+
+## 9. Trading & Action Cards (p.16–17)
+
+* **Bank trade:** pay 3 of one resource for 1 of your choice. **Trade Fleet:** 2:1 for its resource (a
+  second copy adds nothing). **Mint:** Gold 1:1. Paid resources may come from several regions.
+* **Trade with the opponent:** any terms both agree on.
+* **Action Cards** (yellow) cost nothing to play and go to the discard pile afterwards.
+  * They can only be played once the **combined VP of both players is at least 7**.
+    *Exception:* Scout may always be played when building a Settlement.
+  * Unless the card says otherwise, they are played after the dice have been resolved.
+  * Counter cards (Bishop, Herb Woman) are played in reaction during the opponent's turn.
+
+---
+
+## 10. Card Almanac (p.19–30)
+
+Costs: L = Lumber, W = Wool, B = Brick, O = Ore, G = Grain, Au = Gold. Costs were read from the card
+icons and confirmed by the project owner against the physical cards. "Impl." = implemented in the engine
+(see §13 for the rest).
+
+### Action Cards (yellow, no cost, 20)
+| Card | # | Effect | Impl. |
+| :--- | :-: | :--- | :-: |
+| Alchemist | 2 | Play **before** your roll: choose the Production Die result; then roll the Event Die normally (event still resolves first). | ✔ |
+| Arsonist | 2 | Roll: 1–5 opponent returns a Building of your choice to hand; 6 you return a Building of their choice. Counter: Bishop. Fleets/Knights are not Buildings. | ✘ |
+| Bishop | 2 | Counter vs. Arsonist/Brigands, played before the attacker's roll: attacker now loses on 3–6. | ✘ |
+| Black Knight | 3 | Roll: 1–5 opponent returns a Knight of your choice to hand; 6 you return one of theirs' choice. Counter: Herb Woman. | ✘ |
+| Brigands | 1 | Roll: 1–5 take 2 resources of your choice from the opponent; 6 they take 2 from you. Counter: Bishop. | ✘ |
+| Caravan | 1 | Trade in up to 2 of your resources for the same number of other resources of your choice. | ✔ |
+| Herb Woman | 2 | Counter vs. Black Knight: attacker loses on 3–6. | ✘ |
+| Merchant | 2 | Take up to 2 resources of your choice from the opponent, then give them 1 resource of your choice (may be one just taken). You need room on your Regions for what you take. | ✔ |
+| Scout | 2 | Play when building a Settlement: choose its 2 Regions from the Region stack, then reshuffle the stack. Playable below 7 combined VP. | ✔ |
+| Spy | 3 | Look at the opponent's hand; take 1 Unit or Action card (add to hand or play immediately). | ✘ |
+
+### Event Cards (blue, 10)
+| Card | # | Effect | Impl. |
+| :--- | :-: | :--- | :-: |
+| Civil War | 1 | Each player returns a Knight or Fleet to hand (Church protects those in its City). | ✘ |
+| Conflict | 1 | Knight Token holder takes 2 cards from the opponent's hand and puts them under a stack. | ✘ |
+| Master Builder | 1 | Each player may swap 1 hand card for any card of a chosen stack (roller chooses first; different stacks). | ✘ |
+| Plague | 2 | Every Region bordering a City loses 1 resource (once, even if it borders 2 Cities). Counter: Bath House, Aqueduct. | ✔ |
+| Productive Year | 2 | Every Region bordering a Garrison gains 1 resource per bordering Garrison (cap 3). | ✔ |
+| Progress | 2 | Each player gains 1 resource of their choice per Abbey and Library they own (roller chooses first). | ✔ |
+| Year End | 1 | Reshuffle the whole event deck (including Year End). | ✔ |
+
+### Region Expansions (green, Settlement or City, 26)
+| Card | # | Cost | Points | Effect |
+| :--- | :-: | :--- | :--- | :--- |
+| Abbey | 2 | L O B | – | Hand limit +1. |
+| Garrison | 3 | L B | 1 Commerce | Its 2 neighbouring Regions are not counted for the Brigand Attack. |
+| Smithy | 1 | 2O L | – | +1 Strength for each of your Knights. |
+| Brick Factory | 1 | B O | – | Neighbouring Hills produce 2 instead of 1 on their number (cap 3). |
+| Foundry | 1 | B O | – | Same for neighbouring Mountains. |
+| Grain Mill | 1 | G B | – | Same for neighbouring Fields. |
+| Sawmill | 1 | 2L | – | Same for neighbouring Forests. |
+| Woolen Mill | 1 | B W | – | Same for neighbouring Pastures. |
+| Brick / Gold / Grain / Lumber / Ore / Wool Fleet | 1 each | W L | 1 Commerce | 2:1 trade for its resource. |
+
+**Knights** (Units, 1 each): Strength (black, iron fist) / Tournament (red, helmet).
+| Knight | Cost | Strength | Tournament |
+| :--- | :--- | :-: | :-: |
+| Conrad the Swift | G O | 2 | 1 |
+| Falk the Fair | 2G 2O W | 1 | 5 |
+| Gotz Ironfist | 2G 2O 2W | 5 | 2 |
+| Hagen the Sinister | G O | 1 | 2 |
+| Karl the Strong | 2G 2O 3W | 7 | 1 |
+| Otto the Berserker | G 2O W | 3 | 2 |
+| Pippin the Short | G O W | 1 | 3 |
+| Siegfried Lackland | O | 1 | 1 |
+| Walter the Recreant | G O W | 3 | 1 |
+
+Buildings vs Units: Knights and Fleets are **Units**; everything else is a **Building**.
+
+### City Expansions (red, City only, 16)
+| Card | # | Cost | Points | Effect |
+| :--- | :-: | :--- | :--- | :--- |
+| Aqueduct | 2 | 2L 2O 2B | 1 VP | All your Regions are immune to Plague. |
+| Bath House | 2 | 2B O W | 1 VP | The 4 Regions bordering its City are immune to Plague (also a Region shared with a neighbouring City). |
+| Church | 2 | 2O 2G B | 1 VP | Knights/Fleets in its City are immune to Civil War. |
+| The Colossus of Catan | 1 | 3O 3B 3G | 2 VP | – |
+| Counting House | 1 | 2W G B | 3 Commerce | – |
+| Harbor | 1 | O W B | 1 Commerce | Each of your Trade Fleets gives +1 Commerce. |
+| Library | 2 | 2L 2O B | 1 VP | Hand limit +1. |
+| Marketplace | 1 | G W | 2 Commerce | – |
+| Merchant Guild | 1 | 3W 2B G | 4 Commerce | – |
+| Mint | 1 | 2L 2O 2B | 1 Commerce | Trade Gold 1:1. |
+| Town Hall | 2 | 2W 2O B | 1 VP | A search costs 1 resource instead of 2 (more Town Halls: no further reduction). |
+
+**Production doubling detail (p.26):** a doubled Region that already holds 2 gains only 1; nothing exceeds 3.
+
+---
+
+## 11. Engine Notes
+
+* Event Cards are resolved by the engine for both players; resource choices are queued as pending choices,
+  the roller's first.
+* Hidden information: each viewer receives a projection with the opponent's hand as a count, every stack
+  as a count, and the Region stack as its sorted composition; a stack being searched is revealed to the
+  searcher only.
+* Region adjacency is explicit: each Settlement/City lists its 4 corner Regions as
+  `[topLeft, bottomLeft, topRight, bottomRight]`; neighbours share the corners between them.
+
+---
+
+## 12. Deviations & Additions (not from the PDF)
+
+* **VP target** configurable in the lobby (7 / 12 / 13, default 12).
+* **First player** is chosen at random instead of by a die roll.
+* **Event die:** the `?` face appears twice (the PDF lists five events but not the face distribution).
+* **Region production numbers** (the PDF does not list them):
+  * Starting set (identical for both players): Fields 1, Mountains 2, Pasture 3, Forest 4, Hills 5, Gold Field 6.
+  * Region stack (11): Fields 3 & 5, Mountains 4 & 6, Pasture 1 & 5, Forest 2 & 6, Hills 3 & 4, Gold Field 2.
+* **Harbor:** follows the card text (Harbor 1 Commerce + 1 per Fleet); the almanac example (3 Fleets +
+  Harbor = 6) omits the Harbor's own point.
+* **Garrison** gives 1 Commerce Point (windmill icon on the card; not mentioned in the almanac text).
+* **New Regions without a Scout:** the first card drawn goes above, the second below (the PDF lets the
+  player choose the side after drawing the first).
+* **Practice mode** (local, no server) is a hot-seat game: the screen always shows the seat that has to act.
+
+---
+
+## 13. Not Yet Implemented
+
+These cards are defined but **kept out of the decks** until implemented, so no dead cards appear in play.
+Until then the expansion stacks hold 49 of 62 cards and the event deck 7 of 10.
+
+* Action Cards: **Arsonist, Bishop, Black Knight, Brigands, Herb Woman, Spy** (dice duels, reactions on
+  the opponent's turn, hidden-hand inspection).
+* Event Cards: **Civil War, Conflict, Master Builder** (interactive hand/board choices for both players).
+* Consequences: the off-turn hand-limit discard (§8) and losing an Abbey/Library outside your own turn
+  cannot occur yet; the Church's Civil War protection has no effect yet.
+* Player-to-player trades are offered by the active player only.

@@ -5,7 +5,7 @@ description: Change a game rule or mechanic in this Catan card game — intervie
 
 # Editing Game Logic
 
-`GAME_LOGIC.md` is the **rulebook**: the single source of truth for how the game behaves. A logic change is not "edit the engine" — it is "agree the rule, write it in the rulebook, then make code match." Rushing to code a half-understood mechanic is the recurring failure here (see `.claude/CLAUDE.md` §5).
+`GAME_LOGIC.md` is the **rulebook**: the single source of truth for how the game behaves. It is derived from the official rulebook `rules.pdf` (repo root, untracked — copyrighted; read it with `pdftotext -layout rules.pdf -`). Any rule that differs from or is missing in the PDF must be listed in `GAME_LOGIC.md` §12 *Deviations & Additions*; unimplemented rules/cards go in §13 *Not Yet Implemented*. A logic change is not "edit the engine" — it is "agree the rule, write it in the rulebook, then make code match." Rushing to code a half-understood mechanic is the recurring failure here (see `.claude/CLAUDE.md` §5).
 
 Two steps, in order.
 
@@ -15,6 +15,7 @@ Interview the user until you could hand the change to someone else and they woul
 
 The change is only pinned down once you can state, and the user has confirmed, all of:
 
+- **Source** — what `rules.pdf` says about it (cite the page), and whether the change deviates from it.
 - **Effect** — exactly what happens, with numbers.
 - **Timing** — which `TurnPhase` it fires in and at what point.
 - **Edges** — resource caps (0–3 per region), empty decks, ties, hand limit, overflow, "opponent has nothing."

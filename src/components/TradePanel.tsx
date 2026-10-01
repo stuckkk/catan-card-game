@@ -5,10 +5,10 @@ import { getTradeRate } from '../engine/engine'
 import styles from './TradePanel.module.css'
 
 const RESOURCE_ICONS: Record<ResourceType, string> = {
-  wood: '🪵', wool: '🐑', gold: '💰', brick: '🧱', ore: '⛏', grain: '🌾',
+  lumber: '🪵', wool: '🐑', gold: '💰', brick: '🧱', ore: '⛏', grain: '🌾',
 }
 
-const ALL_RESOURCES: ResourceType[] = ['wood', 'wool', 'gold', 'brick', 'ore', 'grain']
+const ALL_RESOURCES: ResourceType[] = ['lumber', 'wool', 'gold', 'brick', 'ore', 'grain']
 
 interface Props {
   resources: Resources
