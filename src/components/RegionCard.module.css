@@ -1,48 +1,65 @@
+/* A region: a piece of land in the region's colour, with a round number token like the
+   board game's, and the stored resources as pips along the bottom. */
 .region {
   /* Falls back when used outside the board (--card-w undefined). */
-  width: var(--card-w, 64px);
+  --w: var(--card-w, 64px);
+  width: var(--w);
   height: var(--card-h, 84px);
-  background: var(--color-surface-2);
-  border: 2px solid var(--rc, var(--color-border));
-  border-radius: var(--radius-sm);
-  padding: 4px;
+  background:
+    radial-gradient(circle at 30% 25%, color-mix(in srgb, white 14%, transparent), transparent 60%),
+    var(--rc, var(--color-border));
+  border-radius: calc(var(--w) * 0.12) calc(var(--w) * 0.2) calc(var(--w) * 0.1) calc(var(--w) * 0.22);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--sand) 70%, transparent), var(--shadow);
+  padding: calc(var(--w) * 0.08);
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 3px;
+  justify-content: space-between;
   position: relative;
-  box-shadow: inset 0 0 0 9999px color-mix(in srgb, var(--rc) 12%, transparent);
 }
 
 .number {
-  position: absolute;
-  top: 3px;
-  left: 4px;
-  font-size: clamp(10px, 2.6vw, 14px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(var(--w) * 0.34);
+  height: calc(var(--w) * 0.34);
+  border-radius: 50%;
+  background: var(--sand-light);
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: calc(var(--w) * 0.2);
   font-weight: 800;
-  color: var(--rc);
+  line-height: 1;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
 }
 
-.icon { font-size: clamp(16px, 4.5vw, 26px); line-height: 1; }
+.icon {
+  font-size: calc(var(--w) * 0.36);
+  line-height: 1;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.35));
+}
 
 .pips {
   display: flex;
-  gap: 3px;
+  gap: calc(var(--w) * 0.05);
 }
 
 .pip {
-  width: clamp(6px, 1.6vw, 9px);
-  height: clamp(6px, 1.6vw, 9px);
+  width: calc(var(--w) * 0.12);
+  height: calc(var(--w) * 0.12);
   border-radius: 50%;
-  background: var(--color-border);
+  background: color-mix(in srgb, black 30%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--sand) 50%, transparent);
 }
 
 .pip.filled {
-  background: var(--rc);
+  background: var(--sand-light);
+  box-shadow: inset 0 0 0 1px var(--ink);
 }
 
 /* Setup: starting regions can be tapped to swap them. */
 .swappable { cursor: pointer; }
-.swappable:hover { outline: 2px dashed var(--color-accent); }
-.selected { outline: 3px solid var(--color-accent); }
+.swappable:hover { box-shadow: 0 0 0 3px var(--beacon), var(--shadow); }
+.selected,
+.selected:hover { box-shadow: 0 0 0 4px var(--beacon), var(--shadow-lg); transform: translateY(-3px); }

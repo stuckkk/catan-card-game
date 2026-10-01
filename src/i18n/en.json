@@ -19,7 +19,9 @@
     "roomNotFound": "No game found for that room code.",
     "sessionExpired": "This game has ended.",
     "serverUnreachable": "Could not reach the server.",
-    "backToLobby": "Back to Lobby"
+    "backToLobby": "Back to Lobby",
+    "tagline": "The card game for two. Build up your principality and be the first to reach the victory points.",
+    "or": "or"
   },
   "game": {
     "yourTurn": "Your turn",
@@ -152,7 +154,21 @@
       "noRegions": "The region stack has fewer than 2 cards left."
     },
     "supplyLeft": "{{count}} left",
-    "opponent": "Opponent"
+    "opponent": "Opponent",
+    "you": "You",
+    "vpOfTarget": "{{count}} of {{target}} VP",
+    "hint": {
+      "waiting": "Your opponent is playing. You can look at your cards in the meantime.",
+      "roll": "Roll the dice to start your turn.",
+      "action": "Build on your board, play cards from your hand or trade. End the phase when you're done."
+    },
+    "phaseShort": {
+      "setup": "Setup",
+      "roll": "Roll",
+      "action": "Action",
+      "draw": "Draw",
+      "exchange": "Exchange"
+    }
   },
   "card": {
     "cost": "Cost",

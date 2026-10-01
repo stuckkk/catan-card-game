@@ -188,7 +188,8 @@ function SettlementCore({ slot, idx, canBuild, hasScout, regionStack, isReady, o
           disabled={!canBuild}
           onClick={() => onRequestBuild('settlement', { type: 'BUILD_SETTLEMENT', slotIndex: idx })}
         >
-          <span className={styles.buildIcon}>+</span> {t('cards.settlement.name')}
+          <span className={styles.buildIcon}>+</span>
+          <span>{t('cards.settlement.name')}</span>
         </button>
         {canBuild && hasScout && (
           <button
@@ -215,6 +216,7 @@ function SettlementCore({ slot, idx, canBuild, hasScout, regionStack, isReady, o
 
   return (
     <div className={`${styles.core} ${styles[slot.kind]}`}>
+      <span className={styles.coreIcon} aria-hidden="true">{slot.kind === 'city' ? '🏰' : '🏠'}</span>
       <span className={styles.coreLabel}>{t(`cards.${slot.kind}.name`)}</span>
       {slot.kind === 'settlement' && canBuild && (
         <button
@@ -222,7 +224,7 @@ function SettlementCore({ slot, idx, canBuild, hasScout, regionStack, isReady, o
           title={t('cards.city.name')}
           onClick={() => onRequestBuild('city', { type: 'BUILD_CITY', slotIndex: idx })}
         >
-          ⬆ {t('cards.city.name')}
+          + {t('cards.city.name')}
         </button>
       )}
     </div>
@@ -301,7 +303,7 @@ export default function Principality({
   }
 
   return (
-    <div className={styles.board}>
+    <div className={styles.board} style={{ '--cols': totalCols } as React.CSSProperties}>
       <div
         className={styles.grid}
         style={{ gridTemplateColumns: `repeat(${totalCols}, var(--card-w))` }}
