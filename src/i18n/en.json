@@ -95,6 +95,7 @@
       "title": "Searching {{stack}}",
       "setupHint": "Take {{count}} cards. The stack keeps its order.",
       "hint": "Take 1 card. The stack keeps its order.",
+      "details": "Show card details",
       "topLabel": "top",
       "take": "Take"
     },
@@ -144,6 +145,12 @@
     "regionBelow": "Below",
     "confirm": "Confirm",
     "cancel": "Cancel",
+    "buildConfirm": {
+      "title": "Build a {{name}}?",
+      "missing": "Not enough resources. Missing: {{list}}",
+      "noSupply": "No {{name}} cards left in the supply.",
+      "noRegions": "The region stack has fewer than 2 cards left."
+    },
     "supplyLeft": "{{count}} left",
     "opponent": "Opponent"
   },

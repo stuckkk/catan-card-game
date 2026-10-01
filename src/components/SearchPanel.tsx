@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { GameAction, StackSearch } from '../engine/types'
 import { getCard } from '../engine/cards'
+import CardDetail from './CardDetail'
 import styles from './Panel.module.css'
 
 interface Props {
@@ -15,6 +16,8 @@ interface Props {
 export default function SearchPanel({ search, contents, onAction }: Props) {
   const { t } = useTranslation()
   const [selected, setSelected] = useState<number[]>([])
+  // Card opened in the detail sheet (index into `contents`).
+  const [inspecting, setInspecting] = useState<number | null>(null)
   const needed = search.purpose === 'setup' ? Math.min(3, contents.length) : 1
 
   // Show the top card first; indices still refer to `contents`.
@@ -32,15 +35,19 @@ export default function SearchPanel({ search, contents, onAction }: Props) {
       </div>
       <div className={styles.cards}>
         {order.map((i, pos) => (
-          <button
-            key={i}
-            className={`${styles.cardChip} ${selected.includes(i) ? styles.selected : ''}`}
-            onClick={() => toggle(i)}
-            title={t(getCard(contents[i]).descriptionKey)}
-          >
-            {pos === 0 && <span className={styles.deckCount}>{t('game.search.topLabel')}</span>}
-            {t(getCard(contents[i]).nameKey)}
-          </button>
+          <span key={i} className={styles.chipGroup}>
+            <button
+              className={`${styles.cardChip} ${selected.includes(i) ? styles.selected : ''}`}
+              onClick={() => toggle(i)}
+              title={t(getCard(contents[i]).descriptionKey)}
+            >
+              {pos === 0 && <span className={styles.deckCount}>{t('game.search.topLabel')}</span>}
+              {t(getCard(contents[i]).nameKey)}
+            </button>
+            <button className={styles.infoBtn} title={t('game.search.details')} onClick={() => setInspecting(i)}>
+              i
+            </button>
+          </span>
         ))}
       </div>
       <button
@@ -50,6 +57,10 @@ export default function SearchPanel({ search, contents, onAction }: Props) {
       >
         {t('game.search.take')}
       </button>
+
+      {inspecting != null && (
+        <CardDetail cardId={contents[inspecting]} onClose={() => setInspecting(null)} />
+      )}
     </div>
   )
 }

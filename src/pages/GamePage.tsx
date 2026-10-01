@@ -246,6 +246,8 @@ export default function GamePage() {
               canArrange={phase === 'setup' && !view.setup.picked[myId]}
               hasScout={myHand.includes('scout')}
               regionStack={view.regionStack}
+              resources={myResources}
+              supply={view.supply}
             />
           )}
         </div>

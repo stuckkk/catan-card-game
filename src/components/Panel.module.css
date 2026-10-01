@@ -70,3 +70,17 @@
 
 .row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
 .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.chipGroup { display: inline-flex; align-items: stretch; }
+.chipGroup .cardChip { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.infoBtn {
+  padding: 0 7px;
+  border: 2px solid var(--color-border);
+  border-left: none;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font: italic 700 13px Georgia, serif;
+  cursor: pointer;
+}
+.infoBtn:hover { color: var(--color-accent); border-color: var(--color-accent); }

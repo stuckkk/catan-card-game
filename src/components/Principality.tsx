@@ -1,19 +1,25 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type {
-  CentralSlot, RegionState, GameAction, TurnPhase, ExpansionColor,
+  CentralSlot, RegionState, GameAction, TurnPhase, ExpansionColor, Resources, Supply,
 } from '../engine/types'
 import { getCard } from '../engine/cards'
+import { canAfford } from '../engine/board'
 import { getRegion } from '../engine/regions'
 import RegionCard from './RegionCard'
 import CardView from './CardView'
 import CardDetail from './CardDetail'
+import BuildConfirmDialog from './BuildConfirmDialog'
 import styles from './Principality.module.css'
 import dialog from './Dialog.module.css'
 import panel from './Panel.module.css'
 
 /** The expansion card currently being placed (card-first flow), with its resolved colour. */
 type Placing = { cardId: string; color: ExpansionColor } | null
+
+type BuildKind = 'road' | 'settlement' | 'city'
+/** A Road/Settlement/City build waiting for the player's confirmation. */
+type PendingBuild = { kind: BuildKind; action: GameAction }
 
 interface Props {
   principality: CentralSlot[]
@@ -30,6 +36,10 @@ interface Props {
   hasScout?: boolean
   /** Region stack composition, for the Scout picker. */
   regionStack?: string[]
+  /** The owner's spendable resources, to check build costs before confirming. */
+  resources?: Resources
+  /** Development Cards left in the shared supply. */
+  supply?: Supply
 }
 
 type RegionCell = { region: RegionState; index: number } | undefined
@@ -155,12 +165,16 @@ function ScoutPicker({ regionStack, onPick, onClose }: {
 
 /** The settlement/city core box, or the build-settlement button(s). Fixed size and grid
  *  position regardless of how many expansion cards are built above/below it. */
-function SettlementCore({ slot, idx, canBuild, hasScout, regionStack, onAction }: {
+function SettlementCore({ slot, idx, canBuild, hasScout, regionStack, isReady, onRequestBuild, onAction }: {
   slot: CentralSlot
   idx: number
   canBuild: boolean
   hasScout: boolean
   regionStack: string[]
+  /** Whether a build of this kind is affordable and allowed right now. */
+  isReady: (kind: BuildKind) => boolean
+  /** Ask for confirmation (or explain what's missing) before building. */
+  onRequestBuild: (kind: BuildKind, action: GameAction) => void
   onAction: (a: GameAction) => void
 }) {
   const { t } = useTranslation()
@@ -170,14 +184,21 @@ function SettlementCore({ slot, idx, canBuild, hasScout, regionStack, onAction }
     return (
       <div className={styles.buildStack}>
         <button
-          className={styles.buildSettlement}
+          className={`${styles.buildSettlement} ${canBuild && !isReady('settlement') ? styles.unaffordable : ''}`}
           disabled={!canBuild}
-          onClick={() => onAction({ type: 'BUILD_SETTLEMENT', slotIndex: idx })}
+          onClick={() => onRequestBuild('settlement', { type: 'BUILD_SETTLEMENT', slotIndex: idx })}
         >
           <span className={styles.buildIcon}>+</span> {t('cards.settlement.name')}
         </button>
         {canBuild && hasScout && (
-          <button className={styles.buildSettlement} onClick={() => setScouting(true)}>
+          <button
+            className={`${styles.buildSettlement} ${isReady('settlement') ? '' : styles.unaffordable}`}
+            onClick={() => {
+              // The Scout picker is the confirmation; if the build can't happen, explain why instead.
+              if (isReady('settlement')) setScouting(true)
+              else onRequestBuild('settlement', { type: 'BUILD_SETTLEMENT', slotIndex: idx })
+            }}
+          >
             {t('game.scout.build')}
           </button>
         )}
@@ -197,9 +218,9 @@ function SettlementCore({ slot, idx, canBuild, hasScout, regionStack, onAction }
       <span className={styles.coreLabel}>{t(`cards.${slot.kind}.name`)}</span>
       {slot.kind === 'settlement' && canBuild && (
         <button
-          className={styles.upgradeBtn}
+          className={`${styles.upgradeBtn} ${isReady('city') ? '' : styles.unaffordable}`}
           title={t('cards.city.name')}
-          onClick={() => onAction({ type: 'BUILD_CITY', slotIndex: idx })}
+          onClick={() => onRequestBuild('city', { type: 'BUILD_CITY', slotIndex: idx })}
         >
           ⬆ {t('cards.city.name')}
         </button>
@@ -210,7 +231,7 @@ function SettlementCore({ slot, idx, canBuild, hasScout, regionStack, onAction }
 
 export default function Principality({
   principality, regions, isMyBoard, phase, isMyTurn, placingCardId, onAction,
-  canArrange = false, hasScout = false, regionStack = [],
+  canArrange = false, hasScout = false, regionStack = [], resources, supply,
 }: Props) {
   const { t } = useTranslation()
   const canBuild = isMyBoard && isMyTurn && phase === 'action'
@@ -219,6 +240,17 @@ export default function Principality({
   const [inspectCardId, setInspectCardId] = useState<string | null>(null)
   // Setup: the first region tapped for a swap.
   const [swapFrom, setSwapFrom] = useState<number | null>(null)
+  const [pendingBuild, setPendingBuild] = useState<PendingBuild | null>(null)
+
+  /** Why a build is impossible regardless of resources, or null. */
+  function buildBlocker(kind: BuildKind): string | null {
+    if (supply && supply[kind] <= 0) return t('game.buildConfirm.noSupply', { name: t(`cards.${kind}.name`) })
+    // A new Settlement takes 2 Regions from the stack (with or without a Scout).
+    if (kind === 'settlement' && regionStack.length < 2) return t('game.buildConfirm.noRegions')
+    return null
+  }
+  const isReady = (kind: BuildKind) =>
+    !!resources && canAfford(resources, getCard(kind).cost ?? {}) && !buildBlocker(kind)
 
   // Resolve the card being placed (card-first flow) to its colour for valid-slot highlighting.
   const placingCard = placingCardId ? getCard(placingCardId) : null
@@ -291,7 +323,10 @@ export default function Principality({
         {/* Central axis: settlement/city cores, fixed here regardless of expansions built */}
         {settlementSlots.map(({ slot, idx }, k) => (
           <div key={`s${k}`} className={styles.axisCell} style={{ gridColumn: 2 * k + 2, gridRow: 3 }}>
-            <SettlementCore slot={slot} idx={idx} canBuild={canBuild} hasScout={hasScout} regionStack={regionStack} onAction={onAction} />
+            <SettlementCore
+              slot={slot} idx={idx} canBuild={canBuild} hasScout={hasScout} regionStack={regionStack}
+              isReady={isReady} onRequestBuild={(kind, action) => setPendingBuild({ kind, action })} onAction={onAction}
+            />
           </div>
         ))}
 
@@ -319,19 +354,37 @@ export default function Principality({
         {/* Extend the principality with a road off either end (only beside a settlement/city) */}
         {canExtend(principality[0]) && (
           <div className={styles.axisCell} style={{ gridColumn: 1, gridRow: 3 }}>
-            <button className={styles.buildRoad} title={t('cards.road.name')} onClick={() => onAction({ type: 'BUILD_ROAD', side: 'left' })}>
+            <button
+              className={`${styles.buildRoad} ${isReady('road') ? '' : styles.unaffordable}`}
+              title={t('cards.road.name')}
+              onClick={() => setPendingBuild({ kind: 'road', action: { type: 'BUILD_ROAD', side: 'left' } })}
+            >
               +
             </button>
           </div>
         )}
         {canExtend(principality[principality.length - 1]) && (
           <div className={styles.axisCell} style={{ gridColumn: totalCols, gridRow: 3 }}>
-            <button className={styles.buildRoad} title={t('cards.road.name')} onClick={() => onAction({ type: 'BUILD_ROAD', side: 'right' })}>
+            <button
+              className={`${styles.buildRoad} ${isReady('road') ? '' : styles.unaffordable}`}
+              title={t('cards.road.name')}
+              onClick={() => setPendingBuild({ kind: 'road', action: { type: 'BUILD_ROAD', side: 'right' } })}
+            >
               +
             </button>
           </div>
         )}
       </div>
+
+      {pendingBuild && resources && (
+        <BuildConfirmDialog
+          kind={pendingBuild.kind}
+          resources={resources}
+          blocker={buildBlocker(pendingBuild.kind)}
+          onConfirm={() => { onAction(pendingBuild.action); setPendingBuild(null) }}
+          onClose={() => setPendingBuild(null)}
+        />
+      )}
 
       {inspectCardId && (
         <CardDetail cardId={inspectCardId} onClose={() => setInspectCardId(null)} />

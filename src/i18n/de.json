@@ -95,6 +95,7 @@
       "title": "{{stack}} durchsuchen",
       "setupHint": "Nimm {{count}} Karten. Die Reihenfolge des Stapels bleibt erhalten.",
       "hint": "Nimm 1 Karte. Die Reihenfolge des Stapels bleibt erhalten.",
+      "details": "Kartendetails anzeigen",
       "topLabel": "oben",
       "take": "Nehmen"
     },
@@ -144,6 +145,12 @@
     "regionBelow": "Unten",
     "confirm": "Bestätigen",
     "cancel": "Abbrechen",
+    "buildConfirm": {
+      "title": "{{name}} bauen?",
+      "missing": "Nicht genug Rohstoffe. Es fehlt: {{list}}",
+      "noSupply": "Keine Karten „{{name}}“ mehr im Vorrat.",
+      "noRegions": "Der Landschaftsstapel hat weniger als 2 Karten."
+    },
     "supplyLeft": "noch {{count}}",
     "opponent": "Gegner"
   },
