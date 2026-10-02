@@ -99,7 +99,8 @@
       "hint": "Nimm 1 Karte. Die Reihenfolge des Stapels bleibt erhalten.",
       "details": "Kartendetails anzeigen",
       "topLabel": "oben",
-      "take": "Nehmen"
+      "take": "Nehmen",
+      "detailsShort": "Details"
     },
     "draw": {
       "title": "Auf Handkartenlimit ziehen",

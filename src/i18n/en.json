@@ -99,7 +99,8 @@
       "hint": "Take 1 card. The stack keeps its order.",
       "details": "Show card details",
       "topLabel": "top",
-      "take": "Take"
+      "take": "Take",
+      "detailsShort": "Details"
     },
     "draw": {
       "title": "Draw to your hand limit",

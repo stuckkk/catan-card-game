@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { GameAction, StackSearch } from '../engine/types'
-import { getCard } from '../engine/cards'
 import CardDetail from './CardDetail'
+import CardPicker from './CardPicker'
 import styles from './Panel.module.css'
 
 interface Props {
@@ -33,23 +33,13 @@ export default function SearchPanel({ search, contents, onAction }: Props) {
       <div className={styles.hint}>
         {search.purpose === 'setup' ? t('game.search.setupHint', { count: needed }) : t('game.search.hint')}
       </div>
-      <div className={styles.cards}>
-        {order.map((i, pos) => (
-          <span key={i} className={styles.chipGroup}>
-            <button
-              className={`${styles.cardChip} ${selected.includes(i) ? styles.selected : ''}`}
-              onClick={() => toggle(i)}
-              title={t(getCard(contents[i]).descriptionKey)}
-            >
-              {pos === 0 && <span className={styles.deckCount}>{t('game.search.topLabel')}</span>}
-              {t(getCard(contents[i]).nameKey)}
-            </button>
-            <button className={styles.infoBtn} title={t('game.search.details')} onClick={() => setInspecting(i)}>
-              i
-            </button>
-          </span>
-        ))}
-      </div>
+      <CardPicker
+        items={order.map(i => ({ cardId: contents[i], index: i }))}
+        selected={selected}
+        onToggle={toggle}
+        topIndex={order[0]}
+        onInspect={setInspecting}
+      />
       <button
         className="primary"
         disabled={selected.length !== needed}
