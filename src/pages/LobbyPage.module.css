@@ -90,6 +90,9 @@
   gap: 2px;
 }
 
+.shareButtons { display: flex; gap: 8px; margin-top: 6px; }
+.shareButtons > button { flex: 1; }
+
 .divider {
   display: flex;
   align-items: center;

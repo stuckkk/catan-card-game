@@ -63,3 +63,39 @@
 .swappable:hover { box-shadow: 0 0 0 3px var(--beacon), var(--shadow); }
 .selected,
 .selected:hover { box-shadow: 0 0 0 4px var(--beacon), var(--shadow-lg); transform: translateY(-3px); }
+
+/* Just produced: a glow around the region and its resource floating up, once per roll. */
+.produced {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  animation: produce-glow 1.8s ease-out forwards;
+}
+
+.gain {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  font-size: calc(var(--w) * 0.26);
+  line-height: 1;
+  transform: translateX(-50%);
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
+  animation: produce-float 1.8s ease-out forwards;
+}
+
+@keyframes produce-glow {
+  0% { box-shadow: 0 0 0 0 var(--beacon); }
+  25% { box-shadow: 0 0 0 5px var(--beacon), 0 0 22px 6px var(--beacon); }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+
+@keyframes produce-float {
+  0% { opacity: 0; transform: translate(-50%, 20%) scale(0.6); }
+  25% { opacity: 1; transform: translate(-50%, -60%) scale(1.1); }
+  100% { opacity: 0; transform: translate(-50%, -160%) scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .produced, .gain { animation-duration: 0.01ms; }
+}

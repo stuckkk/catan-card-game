@@ -38,3 +38,10 @@
   .icon { font-size: 17px; }
   .number { font-size: 21px; }
 }
+
+@media (max-width: 380px) {
+  .wrap { gap: 4px; }
+  .die { width: 30px; height: 30px; border-radius: 6px; }
+  .icon { font-size: 15px; }
+  .number { font-size: 18px; }
+}

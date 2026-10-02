@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { DeckId, DrawStackId, GameAction, ResourceType, Resources } from '../engine/types'
-import { getCard, DRAW_STACK_IDS } from '../engine/cards'
+import { DRAW_STACK_IDS } from '../engine/cards'
 import ResourcePicker from './ResourcePicker'
+import CardPicker from './CardPicker'
 import styles from './Panel.module.css'
 
 interface Props {
@@ -31,17 +32,11 @@ export default function DrawPanel({ hand, handLimit, deckSizes, resources, searc
       <div className={styles.panel}>
         <div className={styles.title}>{t('game.draw.discardTitle')}</div>
         <div className={styles.hint}>{t('game.draw.discardHint', { count: excess, limit: handLimit })}</div>
-        <div className={styles.cards}>
-          {hand.map((id, i) => (
-            <button
-              key={i}
-              className={`${styles.cardChip} ${selected.includes(i) ? styles.selected : ''}`}
-              onClick={() => setSelected(s => s.includes(i) ? s.filter(x => x !== i) : s.length < excess ? [...s, i] : s)}
-            >
-              {t(getCard(id).nameKey)}
-            </button>
-          ))}
-        </div>
+        <CardPicker
+          items={hand.map((cardId, index) => ({ cardId, index }))}
+          selected={selected}
+          onToggle={i => setSelected(s => s.includes(i) ? s.filter(x => x !== i) : s.length < excess ? [...s, i] : s)}
+        />
         <div className={styles.section}>
           <span className={styles.label}>{t('game.draw.discardTo')}</span>
           <div className={styles.cards}>

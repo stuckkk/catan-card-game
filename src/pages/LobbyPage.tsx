@@ -95,6 +95,17 @@ export default function LobbyPage() {
     navigate('/game', { state: { role: 'practice', initialGameState: initialState } })
   }
 
+  // Phones offer their native share sheet (WhatsApp, Messages…); copying stays available.
+  const canShare = typeof navigator.share === 'function'
+
+  async function handleShare() {
+    try {
+      await navigator.share({ title: t('lobby.title'), text: t('lobby.shareText'), url: inviteUrl })
+    } catch {
+      // Dismissed, or sharing failed: the link is still there to copy.
+    }
+  }
+
   async function handleCopy() {
     await navigator.clipboard.writeText(inviteUrl)
     setCopied(true)
@@ -161,9 +172,14 @@ export default function LobbyPage() {
             <div className={styles.field}>
               <label>{t('lobby.inviteLink')}</label>
               <textarea rows={3} readOnly value={inviteUrl} />
-              <button className="secondary" onClick={handleCopy}>
-                {copied ? t('lobby.linkCopied') : t('lobby.copyLink')}
-              </button>
+              <div className={styles.shareButtons}>
+                {canShare && (
+                  <button className="primary" onClick={handleShare}>{t('lobby.share')}</button>
+                )}
+                <button className="secondary" onClick={handleCopy}>
+                  {copied ? t('lobby.linkCopied') : t('lobby.copyLink')}
+                </button>
+              </div>
             </div>
             <p className={styles.hint}>{t('lobby.shareLink')}</p>
           </div>

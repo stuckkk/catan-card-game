@@ -21,7 +21,9 @@
     "serverUnreachable": "Server nicht erreichbar.",
     "backToLobby": "Zur Lobby",
     "tagline": "Das Kartenspiel für zwei. Baue dein Fürstentum aus und erreiche als Erster die Siegpunkte.",
-    "or": "oder"
+    "or": "oder",
+    "share": "Teilen…",
+    "shareText": "Spiel mit mir Catan:"
   },
   "game": {
     "yourTurn": "Du bist dran",
@@ -99,7 +101,8 @@
       "hint": "Nimm 1 Karte. Die Reihenfolge des Stapels bleibt erhalten.",
       "details": "Kartendetails anzeigen",
       "topLabel": "oben",
-      "take": "Nehmen"
+      "take": "Nehmen",
+      "detailsShort": "Details"
     },
     "draw": {
       "title": "Auf Handkartenlimit ziehen",
@@ -168,6 +171,85 @@
       "action": "Aktionen",
       "draw": "Ziehen",
       "exchange": "Tauschen"
+    },
+    "log": {
+      "player": "Spieler {{n}}",
+      "recent": "Letzte Ereignisse",
+      "empty": "Bisher ist nichts passiert.",
+      "rolled": "würfelt {{symbol}} · {{number}}",
+      "production": "Ertrag auf {{number}}: {{list}}",
+      "productionNone": "Ertrag auf {{number}}: nichts erhalten",
+      "brigand": "Räuberüberfall! {{list}}",
+      "brigandNone": "Räuberüberfall: niemand verliert etwas",
+      "eventCard": "Ereigniskarte: {{card}}",
+      "buildRoad": "baut eine Straße",
+      "buildSettlement": "baut eine Siedlung",
+      "buildSettlementScout": "baut eine Siedlung mit dem Kundschafter",
+      "buildCity": "baut eine Stadt",
+      "placeExpansion": "baut {{card}}",
+      "demolish": "reißt {{card}} ab",
+      "playCard": "spielt {{card}}",
+      "bankTrade": "tauscht {{give}} gegen {{receive}} mit der Bank",
+      "tookResource": "nimmt {{resource}} (Windmühlenplättchen)",
+      "choseResource": "wählt {{resource}}",
+      "proposeTrade": "bietet {{give}} für {{receive}}",
+      "acceptTrade": "nimmt den Handel an",
+      "tradeFailed": "Handel geplatzt (zu wenige Rohstoffe)",
+      "withdrawTrade": "zieht das Handelsangebot zurück",
+      "declineTrade": "lehnt das Handelsangebot ab",
+      "endAction": "beendet die Aktionsphase",
+      "setupSearch": "wählt Startkarten aus {{stack}}",
+      "search": "durchsucht {{stack}} gegen Bezahlung",
+      "takeFromSearch_one": "nimmt {{count}} Karte aus {{stack}}",
+      "takeFromSearch_other": "nimmt {{count}} Karten aus {{stack}}",
+      "drawCard": "zieht eine Karte von {{stack}}",
+      "discard_one": "legt {{count}} Karte unter einen Stapel",
+      "discard_other": "legt {{count}} Karten unter Stapel",
+      "exchange": "tauscht eine Karte bei {{stack}}",
+      "exchangeSearch": "tauscht eine Karte und durchsucht {{stack}}",
+      "skipExchange": "beendet den Zug",
+      "dismiss": "Schließen"
+    },
+    "build": {
+      "title": "Bauen",
+      "hint": "Tippe auf ein + in deinem Fürstentum, um zu bauen.",
+      "missing": "fehlt {{list}}",
+      "noneLeft": "keine mehr",
+      "noRegions": "keine Landschaften mehr",
+      "ready": "bereit"
+    },
+    "sheet": {
+      "show": "Optionen zeigen",
+      "hide": "Ausblenden"
+    },
+    "tradeMenuHint": "Mit der Bank oder deinem Gegner",
+    "help": {
+      "open": "Spielregeln",
+      "title": "So wird gespielt",
+      "goalTitle": "Ziel",
+      "goal": "Wer als Erster während des eigenen Zuges {{target}} Siegpunkte hat, gewinnt. Eine Siedlung zählt 1, eine Stadt 2, Ritter- und Windmühlenplättchen je 1, und manche Stadtausbauten zeigen ebenfalls Siegpunkte.",
+      "turnTitle": "Dein Zug",
+      "step": {
+        "roll": "– beide Würfel werfen. Zuerst wird der Ereigniswürfel ausgeführt, dann bringt jede Landschaft (deine und die des Gegners) mit der gewürfelten Zahl 1 Rohstoff. Eine Landschaft fasst höchstens 3.",
+        "action": "– bauen, handeln und Aktionskarten spielen, in beliebiger Reihenfolge und beliebig oft.",
+        "draw": "– die Hand bis zum Handlimit auffüllen: die oberste Karte eines Stapels kostenlos nehmen oder einen Stapel für 2 Rohstoffe deiner Wahl durchsuchen (1 mit Rathaus). Zu viele Karten? Lege die überzähligen unter Stapel.",
+        "exchange": "– war deine Hand schon voll, darfst du 1 Karte unter einen Stapel legen und eine neue vom selben Stapel nehmen."
+      },
+      "eventsTitle": "Ereigniswürfel",
+      "event": {
+        "brigand": "Wer mehr als 7 Rohstoffe auf seinen Landschaften hat, verliert alles Erz und alle Wolle. Landschaften neben einer Burg zählen nicht mit. Nicht in den ersten beiden Zügen jedes Spielers.",
+        "commerce": "Wer das Windmühlenplättchen hat, nimmt dem Gegner 1 Rohstoff seiner Wahl.",
+        "tournament": "Wer mehr Turnierpunkte hat, erhält 1 Rohstoff seiner Wahl. Bei Gleichstand niemand.",
+        "yearOfPlenty": "Jeder Spieler erhält 1 Rohstoff seiner Wahl.",
+        "event": "Die oberste Ereigniskarte wird aufgedeckt und gilt für beide Spieler."
+      },
+      "cardsTitle": "Karten",
+      "handLimit": "Handlimit: 3 Karten, +1 für jedes Kloster und jede Bibliothek in deinem Fürstentum.",
+      "actionCards": "Aktionskarten dürfen gespielt werden, sobald beide Spieler zusammen mindestens 7 Siegpunkte haben. Den Kundschafter darfst du beim Bau einer Siedlung immer spielen.",
+      "tradeTitle": "Handel",
+      "trade": "In deiner Aktionsphase: 3 gleiche Rohstoffe gegen 1 beliebigen von der Bank, oder 2:1 für einen Rohstoff, dessen Handelsflotte du besitzt (Münze: Gold 1:1). Du kannst dem Gegner auch jeden beliebigen Handel anbieten.",
+      "tokensTitle": "Ritter- und Windmühlenplättchen",
+      "tokens": "Das Ritterplättchen bekommt, wer mehr Stärkepunkte hat. Das Windmühlenplättchen bekommt, wer mehr Handelspunkte und mindestens eine Stadt hat. Bei Gleichstand hat es niemand."
     }
   },
   "card": {
@@ -177,7 +259,8 @@
     "play": "Ausspielen",
     "build": "Bauen",
     "close": "Schließen",
-    "notInDeck": "Noch nicht im Spiel (wird später umgesetzt)."
+    "notInDeck": "Noch nicht im Spiel (wird später umgesetzt).",
+    "missing": "Es fehlt:"
   },
   "cardType": {
     "green": "Landschaftsausbau",

@@ -109,18 +109,3 @@
 .row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
 .actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .actions > button { flex: 1; }
-
-/* A card chip with its "details" button attached on the right. */
-.chipGroup { display: inline-flex; align-items: stretch; }
-.chipGroup .cardChip { border-top-right-radius: 0; border-bottom-right-radius: 0; }
-.infoBtn {
-  padding: 0 9px;
-  border: 1px solid transparent;
-  border-left: 1px solid color-mix(in srgb, var(--ink) 25%, transparent);
-  border-radius: 0 var(--radius-md) var(--radius-md) 0;
-  background: var(--sand-light);
-  color: var(--ink-muted);
-  font: italic 800 15px var(--font-display);
-  cursor: pointer;
-}
-.infoBtn:hover { color: var(--ink); background: var(--beacon); }

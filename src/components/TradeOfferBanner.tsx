@@ -1,10 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import type { PendingTrade, PlayerId, ResourceType, Resources, GameAction } from '../engine/types'
+import { RESOURCE_ICON } from './resourceMeta'
 import styles from './TradeOfferBanner.module.css'
-
-const RESOURCE_ICONS: Record<ResourceType, string> = {
-  lumber: '🪵', wool: '🐑', gold: '💰', brick: '🧱', ore: '⛏', grain: '🌾',
-}
 
 const ALL_RESOURCES: ResourceType[] = ['lumber', 'wool', 'gold', 'brick', 'ore', 'grain']
 
@@ -17,7 +14,7 @@ interface Props {
 function basket(r: Partial<Resources>, empty: string) {
   const parts = ALL_RESOURCES.filter(k => (r[k] ?? 0) > 0)
   if (parts.length === 0) return empty
-  return parts.map(k => `${r[k]}${RESOURCE_ICONS[k]}`).join(' ')
+  return parts.map(k => `${r[k]}${RESOURCE_ICON[k]}`).join(' ')
 }
 
 /** Banner shown while a player-to-player trade offer is on the table. */

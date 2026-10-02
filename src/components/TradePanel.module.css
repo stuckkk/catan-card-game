@@ -12,13 +12,12 @@
 
 .row {
   display: flex;
-  align-items: center;
-  gap: 10px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
 }
 
 .label {
-  flex-shrink: 0;
-  width: 56px;
   font-size: 13px;
   color: var(--color-text-muted);
 }
@@ -44,13 +43,19 @@
 }
 
 .chip:disabled { opacity: 0.35; cursor: not-allowed; }
+
+/* Give chips: icon and count, with this resource's bank rate underneath. Kept readable when
+   there's too little to trade, so the counts can still be read. */
+.giveChip { flex-wrap: wrap; justify-content: center; width: 46px; row-gap: 2px; }
+.giveChip:disabled { opacity: 0.55; }
+.chipRate { flex-basis: 100%; text-align: center; font-size: 10px; font-weight: 700; color: var(--color-text-muted); }
 .disabledChip { opacity: 0.35; }
 .chip:not(:disabled):hover { border-color: var(--color-accent); }
 
 .selected { border-color: var(--beacon); box-shadow: 0 0 0 1px var(--beacon); background: color-mix(in srgb, var(--beacon) 22%, var(--sea-mid)); }
 
 .icon { font-size: 15px; }
-.count { font-size: 11px; color: var(--color-text-muted); }
+.count { font-size: 12px; font-weight: 700; color: var(--color-text); }
 
 .action {
   display: flex;

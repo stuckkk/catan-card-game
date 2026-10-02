@@ -81,3 +81,7 @@
   .tokenName { display: none; }
   .hand { font-size: 12px; }
 }
+
+@media (max-width: 380px) {
+  .toggle { padding: 4px 2px; }
+}

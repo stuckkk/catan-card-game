@@ -1,0 +1,41 @@
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+  gap: 10px 8px;
+  padding-top: 6px;
+}
+
+.pick {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+/* The card fills its grid cell instead of its fixed hand width. */
+.pick > button:not(.details) { width: 100%; min-height: 92px; }
+
+.top {
+  position: absolute;
+  top: -7px;
+  right: -3px;
+  z-index: 1;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--beacon);
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: 800;
+  pointer-events: none;
+}
+
+.details {
+  padding: 3px 6px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+.details:hover { color: var(--color-text); border-color: var(--beacon); }

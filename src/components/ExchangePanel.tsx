@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { DeckId, DrawStackId, GameAction, ResourceType, Resources } from '../engine/types'
-import { getCard, DRAW_STACK_IDS } from '../engine/cards'
+import { DRAW_STACK_IDS } from '../engine/cards'
 import ResourcePicker from './ResourcePicker'
+import CardPicker from './CardPicker'
 import styles from './Panel.module.css'
 
 interface Props {
@@ -33,17 +34,11 @@ export default function ExchangePanel({ hand, deckSizes, resources, searchCost, 
 
       <div className={styles.section}>
         <span className={styles.label}>{t('game.exchange.cardLabel')}</span>
-        <div className={styles.cards}>
-          {hand.map((id, i) => (
-            <button
-              key={i}
-              className={`${styles.cardChip} ${cardIndex === i ? styles.selected : ''}`}
-              onClick={() => setCardIndex(c => (c === i ? null : i))}
-            >
-              {t(getCard(id).nameKey)}
-            </button>
-          ))}
-        </div>
+        <CardPicker
+          items={hand.map((cardId, index) => ({ cardId, index }))}
+          selected={cardIndex != null ? [cardIndex] : []}
+          onToggle={i => setCardIndex(c => (c === i ? null : i))}
+        />
       </div>
 
       <div className={styles.section}>

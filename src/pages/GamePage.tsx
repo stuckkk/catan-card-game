@@ -1,9 +1,9 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocation, useNavigate } from 'react-router-dom'
 import {
   applyAction, computeVP, availableResources, computePlayerStats, projectStateFor, setupChooser,
-  actionCardsUnlocked, searchCost,
+  actionCardsUnlocked, searchCost, tokenHolders,
 } from '../engine/engine'
 import { getCard } from '../engine/cards'
 import type { GameState, GameAction, ProjectedState, PlayerId, PlayerState } from '../engine/types'
@@ -25,6 +25,12 @@ import DiceDisplay from '../components/DiceDisplay'
 import OpponentSummary from '../components/OpponentSummary'
 import OpponentVillage from '../components/OpponentVillage'
 import ResourceChoiceModal from '../components/ResourceChoiceModal'
+import Toasts from '../components/Toasts'
+import ActivityFeed from '../components/ActivityFeed'
+import BuildStrip from '../components/BuildStrip'
+import HelpButton from '../components/HelpButton'
+import { describeEvent, isToastWorthy, playerLabel } from '../components/activityText'
+import type { ActivityLine } from '../components/activityText'
 import styles from './GamePage.module.css'
 
 type ClientRole = 'host' | 'guest' | 'practice'
@@ -158,6 +164,35 @@ export default function GamePage() {
   const activeChoice = pendingChoices?.[0] ?? null
   const myChoice = activeChoice && (activeChoice.player === myId || isPractice) ? activeChoice : null
 
+  // Activity: everything logged so far as text, the latest production (to make the producing
+  // regions glow), and toasts for what arrives while this screen is open.
+  const eventLog = view?.eventLog
+  const activity = useMemo(
+    () => (eventLog ?? []).map(e => describeEvent(t, e, myId, isPractice)).filter((l): l is ActivityLine => l !== null),
+    [eventLog, t, myId, isPractice],
+  )
+  const lastProduction = eventLog && [...eventLog].reverse().find(e => e.type === 'production')
+  const production = lastProduction ? { id: lastProduction.id, roll: Number(lastProduction.payload?.roll) } : null
+
+  const [toasts, setToasts] = useState<ActivityLine[]>([])
+  // Log ids already seen; null until the first state arrives, so a reconnect doesn't replay history.
+  const seenLog = useRef<Set<string> | null>(null)
+  useEffect(() => {
+    if (!eventLog) return
+    if (!seenLog.current) {
+      seenLog.current = new Set(isPractice ? [] : eventLog.map(e => e.id))
+    }
+    const seen = seenLog.current
+    const fresh = eventLog.filter(e => !seen.has(e.id))
+    fresh.forEach(e => seen.add(e.id))
+    const lines = fresh
+      .filter(e => isToastWorthy(e, myId, isPractice))
+      .map(e => describeEvent(t, e, myId, isPractice))
+      .filter((l): l is ActivityLine => l !== null)
+    if (lines.length > 0) setToasts(prev => [...prev, ...lines].slice(-3))
+  }, [eventLog, myId, isPractice, t])
+  const dismissToast = useCallback((id: string) => setToasts(prev => prev.filter(x => x.id !== id)), [])
+
   // VP for the local player, including the Knight/Windmill tokens (public board state only).
   const myVP = view ? computeVP(view, myId) : 0
 
@@ -165,6 +200,16 @@ export default function GamePage() {
   useEffect(() => {
     if (placingCardId && !(isMyTurn && phase === 'action')) setPlacingCardId(null)
   }, [placingCardId, isMyTurn, phase])
+
+  // Phone: the turn panel's body is a bottom sheet over the board. It opens by itself when the
+  // panel needs the player, stays collapsed otherwise (the board is where building happens),
+  // and collapses while a card is being placed. A manual toggle holds until the situation changes.
+  const panelNeedsMe = !!mySearch || phase === 'setup' || (isMyTurn && (phase === 'draw' || phase === 'exchange'))
+    || (!!pendingTrade && pendingTrade.from !== myId)
+  const sheetKey = `${view?.turn}|${phase}|${mySearch?.deck ?? ''}|${pendingTrade ? 'trade' : ''}`
+  const [sheetOverride, setSheetOverride] = useState<{ key: string; collapsed: boolean } | null>(null)
+  const sheetCollapsed = !!placingCardId
+    || (sheetOverride?.key === sheetKey ? sheetOverride.collapsed : !panelNeedsMe)
 
   // One line telling the player what to do now; phases with their own panel explain themselves.
   const turnHint = !phase || phase === 'setup' || winner ? null
@@ -205,10 +250,28 @@ export default function GamePage() {
         <div className={styles.winOverlay}>
           <div className={styles.winCard}>
             <h2>{winner === myId ? t('game.youWin') : t('game.opponentWins')}</h2>
+            <ul className={styles.finalScore}>
+              {(['host', 'guest'] as PlayerId[]).map(pl => {
+                const tokens = tokenHolders(view)
+                return (
+                  <li key={pl} className={pl === winner ? styles.scoreWinner : undefined}>
+                    <span>{playerLabel(t, pl, myId, isPractice)}</span>
+                    <span className={styles.scoreTokens}>
+                      {tokens.knight === pl && <span title={t('advantage.knight')}>⚔️</span>}
+                      {tokens.windmill === pl && <span title={t('advantage.windmill')}>⚖️</span>}
+                    </span>
+                    <span className={styles.scoreVP}>{t('game.currentVP', { count: computeVP(view, pl) })}</span>
+                  </li>
+                )
+              })}
+            </ul>
             <button className="primary" onClick={leaveGame}>{t('game.backToLobby')}</button>
           </div>
         </div>
       )}
+
+      {/* A mandatory pick; kept out of the turn panel so a collapsed phone sheet can't hide it. */}
+      {myChoice && <ResourceChoiceModal choice={myChoice} onAction={dispatchAction} />}
 
       {/* Header: the opponent on the left, the last roll in the middle, my score on the right. */}
       <header className={styles.topBar}>
@@ -232,11 +295,18 @@ export default function GamePage() {
           {lastRoll && <DiceDisplay key={view.turn} roll={lastRoll} />}
         </div>
 
-        <div className={styles.myScore}>
-          <span className={styles.myScoreLabel}>{t('game.you')}</span>
-          <span className={styles.vp}>{t('game.vpOfTarget', { count: myVP, target: view.config.vpTarget })}</span>
+        <div className={styles.headerEnd}>
+          <HelpButton vpTarget={view.config.vpTarget} />
+          <div className={styles.myScore}>
+            <span className={styles.myScoreLabel}>{t('game.you')}</span>
+            <span className={styles.vp}>{t('game.vpOfTarget', { count: myVP, target: view.config.vpTarget })}</span>
+          </div>
         </div>
       </header>
+
+      <div className={styles.toastArea}>
+        <Toasts toasts={toasts} onDismiss={dismissToast} />
+      </div>
 
       {/* My board: the sea the principality sits on. Sized to fit this area (container query). */}
       <main className={styles.myBoard}>
@@ -263,6 +333,7 @@ export default function GamePage() {
               regionStack={view.regionStack}
               resources={myResources}
               supply={view.supply}
+              production={production}
             />
           )}
         </div>
@@ -280,15 +351,25 @@ export default function GamePage() {
           {turnHint && <p className={styles.hint}>{turnHint}</p>}
         </div>
 
-        <div className={styles.turnBody}>
+        <div className={`${styles.turnBody} ${sheetCollapsed ? styles.collapsed : ''}`}>
+        <button
+          className={styles.sheetHandle}
+          aria-expanded={!sheetCollapsed}
+          onClick={() => setSheetOverride({ key: sheetKey, collapsed: !sheetCollapsed })}
+        >
+          <span className={styles.grip} aria-hidden="true" />
+          <span>{sheetCollapsed ? t('game.sheet.show') : t('game.sheet.hide')}</span>
+        </button>
         {pendingTrade && (
           <TradeOfferBanner offer={pendingTrade} myId={myId} onAction={dispatchAction} />
         )}
 
-        {myChoice && <ResourceChoiceModal choice={myChoice} onAction={dispatchAction} />}
-
         {activeChoice && !myChoice && (
           <div className={styles.choiceWaiting}>{t('game.chooseResource.waiting')}</div>
+        )}
+
+        {phase === 'action' && isMyTurn && myResources && (
+          <BuildStrip resources={myResources} supply={view.supply} regionsLeft={view.regionStack.length} />
         )}
 
         {phase === 'action' && isMyTurn && myResources && myState && (
@@ -327,6 +408,7 @@ export default function GamePage() {
           />
         )}
 
+        <ActivityFeed lines={activity} />
         </div>
 
         <div className={styles.controls}>

@@ -37,8 +37,14 @@
 
 .roll { justify-self: center; }
 
-.myScore {
+.headerEnd {
   justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.myScore {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
@@ -98,6 +104,15 @@
 }
 .placingBanner button.secondary { color: var(--ink); border-color: var(--ink); padding: 4px 12px; }
 
+/* Shares the board's grid cell, on top of it; the toasts inside catch their own taps. */
+.toastArea {
+  grid-area: board;
+  position: relative;
+  z-index: 60;
+  align-self: start;
+  pointer-events: none;
+}
+
 /* ---------- Turn panel ---------- */
 
 .turn {
@@ -148,6 +163,9 @@
 /* Keep children at their natural height so the body scrolls instead of squashing them. */
 .turnBody > * { flex-shrink: 0; }
 .turnBody:empty { display: none; }
+
+/* The bottom-sheet handle only exists on phones. */
+.sheetHandle { display: none; }
 
 .choiceWaiting {
   font-size: 14px;
@@ -219,6 +237,26 @@
 
 .winCard h2 { font-size: 32px; }
 
+.finalScore {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 240px;
+}
+.finalScore li {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--ink) 8%, transparent);
+  font-weight: 700;
+}
+.finalScore li.scoreWinner { background: var(--beacon); }
+.scoreTokens { display: flex; gap: 4px; }
+.scoreVP { margin-left: auto; font-family: var(--font-display); font-size: 20px; font-weight: 800; }
+
 /* ---------- Phone and narrow tablets ---------- */
 
 @media (max-width: 760px) {
@@ -240,14 +278,55 @@
   .myBoard { padding: 8px; }
 
   .turn {
+    position: relative;
     border-left: none;
     border-top: 1px solid var(--color-border);
-    max-height: 46dvh;
   }
   .turnHead { padding: 10px 12px 8px; gap: 8px; }
   .myTurn, .theirTurn { font-size: 18px; }
   .hint { font-size: 13px; }
-  .turnBody { padding: 0 12px 8px; }
+
+  /* The turn panel's body becomes a sheet sliding up over the board from the panel's top
+     edge, so opening it never shrinks the board. */
+  .turnBody {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 100%;
+    z-index: 40;
+    max-height: 58dvh;
+    padding: 0 12px 12px;
+    background: var(--sea-deep);
+    border-top: 1px solid var(--color-border);
+    border-radius: 14px 14px 0 0;
+    box-shadow: 0 -10px 30px rgba(4, 20, 19, 0.55);
+  }
+  .turnBody.collapsed { overflow: hidden; padding-bottom: 0; box-shadow: 0 -4px 14px rgba(4, 20, 19, 0.45); }
+  .turnBody.collapsed > :not(.sheetHandle) { display: none; }
+
+  .sheetHandle {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    margin: 0 -12px;
+    padding: 6px 12px 6px;
+    border: none;
+    border-radius: 14px 14px 0 0;
+    background: var(--sea-deep);
+    color: var(--color-text-muted);
+    font-size: 12px;
+  }
+  .sheetHandle:active { transform: none; }
+  .grip {
+    width: 36px;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--shoal);
+  }
   .controls { padding: 8px 12px; }
   .controls button { padding: 10px 14px; }
 
@@ -257,4 +336,12 @@
     gap: 8px;
     padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
   }
+}
+
+/* Very narrow phones: tighten the header so the dice and score fit next to the opponent. */
+@media (max-width: 380px) {
+  .topBar { gap: 6px; padding: 6px 8px; }
+  .headerEnd { gap: 6px; }
+  .myScoreLabel { display: none; }
+  .vp { font-size: 15px; }
 }

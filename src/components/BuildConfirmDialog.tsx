@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import type { Resources } from '../engine/types'
 import { getCard } from '../engine/cards'
-import { RESOURCE_ORDER } from './resourceMeta'
+import { RESOURCE_ORDER, missingResources } from './resourceMeta'
 import dialog from './Dialog.module.css'
 import styles from './BuildConfirmDialog.module.css'
 
@@ -19,7 +19,8 @@ export default function BuildConfirmDialog({ kind, resources, blocker, onConfirm
   const { t } = useTranslation()
   const cost = getCard(kind).cost ?? {}
   const parts = RESOURCE_ORDER.filter(r => (cost[r] ?? 0) > 0)
-  const missing = parts.filter(r => resources[r] < (cost[r] ?? 0))
+  const short = missingResources(cost, resources)
+  const missing = parts.filter(r => (short[r] ?? 0) > 0)
   const list = (rs: typeof parts, n: (r: typeof parts[number]) => number) =>
     rs.map(r => `${n(r)} ${t(`resources.${r}`)}`).join(', ')
 
@@ -32,7 +33,7 @@ export default function BuildConfirmDialog({ kind, resources, blocker, onConfirm
           <div className={styles.problem}>{blocker}</div>
         ) : missing.length > 0 ? (
           <div className={styles.problem}>
-            {t('game.buildConfirm.missing', { list: list(missing, r => (cost[r] ?? 0) - resources[r]) })}
+            {t('game.buildConfirm.missing', { list: list(missing, r => short[r] ?? 0) })}
           </div>
         ) : null}
         <div className={dialog.actions}>

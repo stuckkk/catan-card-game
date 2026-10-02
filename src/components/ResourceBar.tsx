@@ -1,10 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import type { Resources, ResourceType } from '../engine/types'
+import { RESOURCE_ICON } from './resourceMeta'
 import styles from './ResourceBar.module.css'
-
-const RESOURCE_ICONS: Record<ResourceType, string> = {
-  lumber: '🪵', wool: '🐑', gold: '💰', brick: '🧱', ore: '⛏', grain: '🌾',
-}
 
 const RESOURCE_COLORS: Record<ResourceType, string> = {
   lumber: 'var(--color-lumber)',
@@ -27,7 +24,7 @@ export default function ResourceBar({ resources }: Props) {
     <div className={styles.bar} data-testid="resource-bar">
       {ALL_RESOURCES.map(r => (
         <div key={r} className={styles.resource} data-resource={r} style={{ '--rc': RESOURCE_COLORS[r] } as React.CSSProperties}>
-          <span className={styles.icon}>{RESOURCE_ICONS[r]}</span>
+          <span className={styles.icon}>{RESOURCE_ICON[r]}</span>
           <span className={styles.count} data-testid={`res-${r}`}>{resources[r]}</span>
           <span className={styles.name}>{t(`resources.${r}`)}</span>
         </div>
