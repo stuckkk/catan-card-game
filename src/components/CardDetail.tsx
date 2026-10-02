@@ -84,7 +84,9 @@ export default function CardDetail({ cardId, canPlay, canBuild, affordable = tru
         {def.notImplemented && <p className={styles.description}>{t('card.notInDeck')}</p>}
         {note && <p className={styles.description}>{note}</p>}
         {canBuild && !affordable && resources && def.cost && (
-          <p className={styles.missing}>{t('card.missing', { list: basket(missingResources(def.cost, resources)) })}</p>
+          <p className={styles.missing}>
+            {t('card.missing')} <span className={styles.missingList}>{basket(missingResources(def.cost, resources))}</span>
+          </p>
         )}
 
         <div className={styles.actions}>

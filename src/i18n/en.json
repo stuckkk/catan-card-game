@@ -260,7 +260,7 @@
     "build": "Build",
     "close": "Close",
     "notInDeck": "Not in the deck yet (to be implemented).",
-    "missing": "Missing: {{list}}"
+    "missing": "Missing:"
   },
   "cardType": {
     "green": "Region Expansion",
