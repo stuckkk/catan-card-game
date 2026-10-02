@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { getRegion } from '../engine/cards'
 import type { RegionState } from '../engine/types'
+import { RESOURCE_ICON } from './resourceMeta'
 import styles from './RegionCard.module.css'
 
 const RESOURCE_COLOR: Record<string, string> = {
@@ -10,10 +11,6 @@ const RESOURCE_COLOR: Record<string, string> = {
   brick: 'var(--color-brick)',
   ore: 'var(--color-ore)',
   grain: 'var(--color-grain)',
-}
-
-const RESOURCE_ICON: Record<string, string> = {
-  lumber: '🪵', wool: '🐑', gold: '💰', brick: '🧱', ore: '⛏', grain: '🌾',
 }
 
 interface Props {

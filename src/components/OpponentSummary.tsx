@@ -27,8 +27,8 @@ export default function OpponentSummary({ expanded, onToggle, myId, view }: Prop
         <span className={styles.quickStats}>
           <span className={styles.vp}>{t('game.currentVP', { count: computeVP(view, oppId) })}</span>
           <span className={styles.hand}>{t('game.handSize', { count: oppHandSize })}</span>
-          {tokens.knight === oppId && <span className={styles.token} title={t('advantage.knight')}>⚔ <span className={styles.tokenName}>{t('advantage.knight')}</span></span>}
-          {tokens.windmill === oppId && <span className={styles.token} title={t('advantage.windmill')}>⚖ <span className={styles.tokenName}>{t('advantage.windmill')}</span></span>}
+          {tokens.knight === oppId && <span className={styles.token} title={t('advantage.knight')}>⚔️ <span className={styles.tokenName}>{t('advantage.knight')}</span></span>}
+          {tokens.windmill === oppId && <span className={styles.token} title={t('advantage.windmill')}>⚖️ <span className={styles.tokenName}>{t('advantage.windmill')}</span></span>}
         </span>
         <span className={styles.chevron}>{expanded ? '▲' : '▼'}</span>
       </button>
@@ -36,13 +36,13 @@ export default function OpponentSummary({ expanded, onToggle, myId, view }: Prop
       {expanded && (
         <div className={styles.detail}>
           <div className={styles.statRow}>
-            <span>⚔ {t('symbols.strength')}</span><span>{stats.strengthPoints}</span>
+            <span>⚔️ {t('symbols.strength')}</span><span>{stats.strengthPoints}</span>
           </div>
           <div className={styles.statRow}>
-            <span>🛡 {t('symbols.tournament')}</span><span>{stats.tournamentPoints}</span>
+            <span>🛡️ {t('symbols.tournament')}</span><span>{stats.tournamentPoints}</span>
           </div>
           <div className={styles.statRow}>
-            <span>⚖ {t('symbols.commerce')}</span><span>{stats.commercePoints}</span>
+            <span>⚖️ {t('symbols.commerce')}</span><span>{stats.commercePoints}</span>
           </div>
         </div>
       )}

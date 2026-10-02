@@ -257,8 +257,8 @@ export default function GamePage() {
                   <li key={pl} className={pl === winner ? styles.scoreWinner : undefined}>
                     <span>{playerLabel(t, pl, myId, isPractice)}</span>
                     <span className={styles.scoreTokens}>
-                      {tokens.knight === pl && <span title={t('advantage.knight')}>⚔</span>}
-                      {tokens.windmill === pl && <span title={t('advantage.windmill')}>⚖</span>}
+                      {tokens.knight === pl && <span title={t('advantage.knight')}>⚔️</span>}
+                      {tokens.windmill === pl && <span title={t('advantage.windmill')}>⚖️</span>}
                     </span>
                     <span className={styles.scoreVP}>{t('game.currentVP', { count: computeVP(view, pl) })}</span>
                   </li>

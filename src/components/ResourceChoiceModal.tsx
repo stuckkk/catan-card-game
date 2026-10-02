@@ -1,10 +1,7 @@
 import { useTranslation } from 'react-i18next'
-import type { ResourceType, GameAction, PendingResourceChoice } from '../engine/types'
+import type { GameAction, PendingResourceChoice } from '../engine/types'
+import { RESOURCE_ICON } from './resourceMeta'
 import styles from './ResourceChoiceModal.module.css'
-
-const RESOURCE_ICONS: Record<ResourceType, string> = {
-  lumber: '🪵', wool: '🐑', gold: '💰', brick: '🧱', ore: '⛏️', grain: '🌾',
-}
 
 interface Props {
   choice: PendingResourceChoice
@@ -30,7 +27,7 @@ export default function ResourceChoiceModal({ choice, onAction }: Props) {
               onClick={() => onAction({ type: 'CHOOSE_RESOURCE', resource: r })}
               title={t(`resources.${r}`)}
             >
-              <span className={styles.icon}>{RESOURCE_ICONS[r]}</span>
+              <span className={styles.icon}>{RESOURCE_ICON[r]}</span>
               <span className={styles.name}>{t(`resources.${r}`)}</span>
             </button>
           ))}

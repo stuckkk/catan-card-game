@@ -3,11 +3,8 @@ import { useTranslation } from 'react-i18next'
 import type { Resources, ResourceType, GameAction } from '../engine/types'
 import { EMPTY_RESOURCES } from '../engine/types'
 import TradePanel from './TradePanel'
+import { RESOURCE_ICON } from './resourceMeta'
 import styles from './TradeMenu.module.css'
-
-const RESOURCE_ICONS: Record<ResourceType, string> = {
-  lumber: '🪵', wool: '🐑', gold: '💰', brick: '🧱', ore: '⛏', grain: '🌾',
-}
 
 const ALL_RESOURCES: ResourceType[] = ['lumber', 'wool', 'gold', 'brick', 'ore', 'grain']
 
@@ -76,7 +73,7 @@ export default function TradeMenu({ resources, playedCards, offerPending, onActi
         <div className={styles.steppers}>
           {ALL_RESOURCES.map(r => (
             <div key={r} className={styles.stepper}>
-              <span className={styles.icon} title={t(`resources.${r}`)}>{RESOURCE_ICONS[r]}</span>
+              <span className={styles.icon} title={t(`resources.${r}`)}>{RESOURCE_ICON[r]}</span>
               <div className={styles.stepBtns}>
                 <button
                   className={styles.step}
