@@ -21,7 +21,9 @@
     "serverUnreachable": "Server nicht erreichbar.",
     "backToLobby": "Zur Lobby",
     "tagline": "Das Kartenspiel für zwei. Baue dein Fürstentum aus und erreiche als Erster die Siegpunkte.",
-    "or": "oder"
+    "or": "oder",
+    "share": "Teilen…",
+    "shareText": "Spiel mit mir Catan:"
   },
   "game": {
     "yourTurn": "Du bist dran",

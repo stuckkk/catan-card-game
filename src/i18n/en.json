@@ -21,7 +21,9 @@
     "serverUnreachable": "Could not reach the server.",
     "backToLobby": "Back to Lobby",
     "tagline": "The card game for two. Build up your principality and be the first to reach the victory points.",
-    "or": "or"
+    "or": "or",
+    "share": "Share…",
+    "shareText": "Join my game of Catan:"
   },
   "game": {
     "yourTurn": "Your turn",
