@@ -220,7 +220,35 @@
       "show": "Show options",
       "hide": "Hide"
     },
-    "tradeMenuHint": "With the bank or your opponent"
+    "tradeMenuHint": "With the bank or your opponent",
+    "help": {
+      "open": "How to play",
+      "title": "How to play",
+      "goalTitle": "Goal",
+      "goal": "Be the first to have {{target}} victory points during your own turn. A Settlement is worth 1, a City 2, the Knight and Windmill Tokens 1 each, and some City Expansions show victory points too.",
+      "turnTitle": "Your turn",
+      "step": {
+        "roll": "— roll both dice. The event die is resolved first, then every region (yours and your opponent’s) showing the rolled number produces 1 resource. A region holds at most 3.",
+        "action": "— build, trade and play Action Cards, in any order and as often as you like.",
+        "draw": "— fill your hand up to the hand limit: take the top card of a stack for free, or search a stack for 2 resources of your choice (1 with a Town Hall). Too many cards? Put the extras under stacks.",
+        "exchange": "— if your hand was already full, you may put 1 card under a stack and take a new one from that same stack."
+      },
+      "eventsTitle": "Event die",
+      "event": {
+        "brigand": "Whoever has more than 7 resources on their regions loses all Ore and all Wool. Regions next to a Garrison aren’t counted. Not in each player’s first two turns.",
+        "commerce": "The Windmill Token holder takes 1 resource of their choice from the opponent.",
+        "tournament": "The player with more Tournament Points gets 1 resource of their choice. A tie gives nothing.",
+        "yearOfPlenty": "Each player gets 1 resource of their choice.",
+        "event": "The top Event Card is revealed and applies to both players."
+      },
+      "cardsTitle": "Cards",
+      "handLimit": "Hand limit: 3 cards, +1 for each Abbey and Library you own.",
+      "actionCards": "Action Cards can be played once both players together have at least 7 victory points. The Scout can always be played when building a Settlement.",
+      "tradeTitle": "Trading",
+      "trade": "In your action phase: 3 of one resource for 1 of your choice from the bank, or 2:1 for a resource whose Trade Fleet you own (Mint: Gold 1:1). You can also offer your opponent any deal.",
+      "tokensTitle": "Knight and Windmill Tokens",
+      "tokens": "The Knight Token goes to the player with more Strength Points. The Windmill Token goes to the player with more Commerce Points who also has at least one City. On a tie nobody holds it."
+    }
   },
   "card": {
     "cost": "Cost",

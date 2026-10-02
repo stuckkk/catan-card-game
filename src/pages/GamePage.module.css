@@ -37,8 +37,14 @@
 
 .roll { justify-self: center; }
 
-.myScore {
+.headerEnd {
   justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.myScore {
   display: flex;
   flex-direction: column;
   align-items: flex-end;

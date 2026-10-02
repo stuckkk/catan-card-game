@@ -28,6 +28,7 @@ import ResourceChoiceModal from '../components/ResourceChoiceModal'
 import Toasts from '../components/Toasts'
 import ActivityFeed from '../components/ActivityFeed'
 import BuildStrip from '../components/BuildStrip'
+import HelpButton from '../components/HelpButton'
 import { describeEvent, isToastWorthy, playerLabel } from '../components/activityText'
 import type { ActivityLine } from '../components/activityText'
 import styles from './GamePage.module.css'
@@ -291,9 +292,12 @@ export default function GamePage() {
           {lastRoll && <DiceDisplay key={view.turn} roll={lastRoll} />}
         </div>
 
-        <div className={styles.myScore}>
-          <span className={styles.myScoreLabel}>{t('game.you')}</span>
-          <span className={styles.vp}>{t('game.vpOfTarget', { count: myVP, target: view.config.vpTarget })}</span>
+        <div className={styles.headerEnd}>
+          <HelpButton vpTarget={view.config.vpTarget} />
+          <div className={styles.myScore}>
+            <span className={styles.myScoreLabel}>{t('game.you')}</span>
+            <span className={styles.vp}>{t('game.vpOfTarget', { count: myVP, target: view.config.vpTarget })}</span>
+          </div>
         </div>
       </header>
 

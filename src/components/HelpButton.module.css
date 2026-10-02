@@ -1,0 +1,25 @@
+.button {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+  background: var(--sea-mid);
+  color: var(--color-text);
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 800;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.button:hover { border-color: var(--beacon); }
+
+.section { display: flex; flex-direction: column; gap: 6px; font-size: 14px; }
+.section h3 { font-size: 16px; color: var(--sand); }
+.section p { color: var(--color-text); }
+
+.steps { padding-left: 20px; display: flex; flex-direction: column; gap: 4px; }
+
+.events { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.events li { display: flex; gap: 8px; align-items: baseline; }
+.icon { width: 20px; flex-shrink: 0; text-align: center; }
