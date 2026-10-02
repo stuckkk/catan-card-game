@@ -100,7 +100,10 @@ export default function TradeMenu({ resources, playedCards, offerPending, onActi
   return (
     <div className={styles.menu}>
       <button className={styles.header} onClick={() => setOpen(o => !o)}>
-        <span>{t('game.tradeMenu')}</span>
+        <span className={styles.headerText}>
+          <span><span aria-hidden="true">⇄</span> {t('game.tradeMenu')}</span>
+          {!open && <span className={styles.sub}>{t('game.tradeMenuHint')}</span>}
+        </span>
         <span className={styles.chevron}>{open ? '▾' : '▸'}</span>
       </button>
 

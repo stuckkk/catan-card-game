@@ -219,7 +219,8 @@
     "sheet": {
       "show": "Show options",
       "hide": "Hide"
-    }
+    },
+    "tradeMenuHint": "With the bank or your opponent"
   },
   "card": {
     "cost": "Cost",

@@ -43,13 +43,14 @@ export default function TradePanel({ resources, playedCards, onAction }: Props) 
           {ALL_RESOURCES.map(r => (
             <button
               key={r}
-              className={`${styles.chip} ${give === r ? styles.selected : ''}`}
+              className={`${styles.chip} ${styles.giveChip} ${give === r ? styles.selected : ''}`}
               disabled={resources[r] < getTradeRate({ playedCards } as PlayerState, r)}
               onClick={() => setGive(g => (g === r ? null : r))}
               title={t(`resources.${r}`)}
             >
               <span className={styles.icon}>{RESOURCE_ICONS[r]}</span>
               <span className={styles.count}>{resources[r]}</span>
+              <span className={styles.chipRate}>{t('game.tradeRate', { rate: getTradeRate({ playedCards } as PlayerState, r) })}</span>
             </button>
           ))}
         </div>
@@ -74,7 +75,7 @@ export default function TradePanel({ resources, playedCards, onAction }: Props) 
 
       <div className={styles.action}>
         {give && (
-          <span className={styles.rate}>{t('game.tradeRate', { rate })}</span>
+          <span className={styles.rate}>{rate}{RESOURCE_ICONS[give]} → 1{receive ? RESOURCE_ICONS[receive] : '?'}</span>
         )}
         <button className="primary" disabled={!canTrade} onClick={doTrade}>
           {t('game.tradeButton')}
