@@ -861,3 +861,52 @@ describe('projectStateFor', () => {
     expect(projectStateFor(s, 'guest').players.host.hand).toBe(1)
   })
 })
+
+describe('activity log', () => {
+  const hidden = ['smithy', 'abbey', 'garrison', 'mint']
+  const lastEntry = (s: GameState) => s.eventLog[s.eventLog.length - 1]
+  const mentionsHiddenCard = (s: GameState) => hidden.some(id => JSON.stringify(s.eventLog).includes(id))
+
+  it('logs a production roll with what each player gained', () => {
+    const s = applyRoll(makeState({ phase: 'roll' }), roll('tournament', 4))  // forest-4, tournament tie
+    expect(s.eventLog.map(e => e.type)).toEqual(['production'])
+    expect(s.eventLog[0].payload).toEqual({ roll: 4, gains: { host: { lumber: 1 }, guest: { lumber: 1 } } })
+  })
+
+  it('puts the roll before the production it caused', () => {
+    const s = applyAction(makeState({ phase: 'roll' }), 'host', { type: 'ROLL_DICE' })
+    expect(s.eventLog[0].type).toBe('ROLL_DICE')
+    expect(s.eventLog[0].payload).toEqual(s.lastRoll)
+  })
+
+  it('never names the cards drawn, searched, put back or exchanged', () => {
+    const decks = { ...emptyDecks(), 'stack-1': ['smithy', 'abbey'], 'stack-2': ['garrison'] }
+    let s = applyAction(makeState({ phase: 'draw', decks }), 'host', { type: 'DRAW_CARD', fromDeck: 'stack-1' })
+    expect(lastEntry(s)).toMatchObject({ type: 'DRAW_CARD', payload: { deck: 'stack-1' } })
+
+    const host = makePlayer('host', { regions: regionsWith({ lumber: 2 }) })
+    s = applyAction(makeState({ phase: 'draw', decks, players: { host, guest: makePlayer('guest') } }), 'host',
+      { type: 'SEARCH_STACK', deck: 'stack-1', payWith: ['lumber', 'lumber'] })
+    s = applyAction(s, 'host', { type: 'TAKE_FROM_SEARCH', cardIds: ['smithy'] })
+    expect(lastEntry(s)).toMatchObject({ type: 'TAKE_FROM_SEARCH', payload: { deck: 'stack-1', count: 1 } })
+    expect(mentionsHiddenCard(s)).toBe(false)
+
+    const holding = makePlayer('host', { hand: ['mint', 'smithy', 'abbey'] })
+    s = applyAction(makeState({ phase: 'exchange', decks, players: { host: holding, guest: makePlayer('guest') } }), 'host',
+      { type: 'EXCHANGE', cardId: 'mint', deck: 'stack-2' })
+    expect(lastEntry(s)).toMatchObject({ type: 'EXCHANGE', payload: { deck: 'stack-2', searched: false } })
+    expect(mentionsHiddenCard(s)).toBe(false)
+  })
+
+  it('adds nothing for a rejected action', () => {
+    const s = makeState({ phase: 'action' })
+    expect(applyAction(s, 'guest', { type: 'END_ACTION_PHASE' })).toBe(s)
+  })
+
+  it('keeps only the most recent entries', () => {
+    const old = Array.from({ length: 50 }, (_, i) => ({ id: `${i}`, timestamp: 0, player: 'host' as PlayerId, type: 'old' }))
+    const s = applyAction(makeState({ phase: 'action', eventLog: old }), 'host', { type: 'END_ACTION_PHASE' })
+    expect(s.eventLog).toHaveLength(50)
+    expect(lastEntry(s).type).toBe('END_ACTION_PHASE')
+  })
+})

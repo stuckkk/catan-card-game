@@ -1,7 +1,7 @@
 import type {
   GameState, PlayerState, PlayerId, ResourceType, Resources, GameAction, ProjectedState,
   DiceRoll, EventSymbol, ProductionNumber, DeckId, DrawStackId, CentralSlot, PlayerStats,
-  ActionCardParams, DeclarativeEffect,
+  ActionCardParams, DeclarativeEffect, GameEvent,
 } from './types'
 import { getCard, CARD_REGISTRY, ALL_DRAW_CARDS, DRAW_STACK_IDS, DEFAULT_EVENT_DECK, SCOUT } from './cards'
 import { getRegion, STARTING_REGIONS, STACK_REGIONS } from './regions'
@@ -39,6 +39,23 @@ function removeAll(list: string[], items: string[]): string[] | null {
 
 function nanoid(): string {
   return Math.random().toString(36).slice(2, 9)
+}
+
+/** Append an entry to the activity log. Payloads hold public information only: they reach
+ *  both players, so never a card id from a hand or a stack. */
+function logEvent(state: GameState, player: PlayerId, type: string, payload?: Record<string, unknown>): GameState {
+  return { ...state, eventLog: [...state.eventLog, makeEvent(player, type, payload)] }
+}
+
+function makeEvent(player: PlayerId, type: string, payload?: Record<string, unknown>): GameEvent {
+  return { id: nanoid(), timestamp: Date.now(), player, type, payload }
+}
+
+/** How much of each resource `to` has more of than `from` (only the positive differences). */
+function resourceGain(from: Resources, to: Resources): Partial<Resources> {
+  const out: Partial<Resources> = {}
+  for (const r of ALL_RESOURCE_TYPES) if (to[r] > from[r]) out[r] = to[r] - from[r]
+  return out
 }
 
 function withPlayer(state: GameState, id: PlayerId, player: PlayerState): GameState {
@@ -264,11 +281,12 @@ function resolveEventSymbol(state: GameState, symbol: EventSymbol): GameState {
   switch (symbol) {
     case 'brigand': {
       if (state.turn <= BRIGAND_GRACE_TURNS) return { ...state, phase: 'production' }
-      return {
-        ...state,
-        players: { host: brigandAttack(state.players.host), guest: brigandAttack(state.players.guest) },
-        phase: 'production',
+      const players = { host: brigandAttack(state.players.host), guest: brigandAttack(state.players.guest) }
+      const losses = {
+        host: resourceGain(availableResources(players.host), availableResources(state.players.host)),
+        guest: resourceGain(availableResources(players.guest), availableResources(state.players.guest)),
       }
+      return logEvent({ ...state, players, phase: 'production' }, active, 'brigand', { losses })
     }
 
     case 'commerce': {
@@ -316,11 +334,10 @@ function resolveEventSymbol(state: GameState, symbol: EventSymbol): GameState {
       const deck = state.decks.event
       if (deck.length === 0) return { ...state, phase: 'production' }
       const eventCardId = deck[deck.length - 1]
-      let s: GameState = {
-        ...state,
-        decks: { ...state.decks, event: [eventCardId, ...deck.slice(0, -1)] },
-        eventLog: [...state.eventLog, { id: nanoid(), timestamp: Date.now(), player: active, type: 'event-card', payload: { cardId: eventCardId } }],
-      }
+      let s: GameState = logEvent(
+        { ...state, decks: { ...state.decks, event: [eventCardId, ...deck.slice(0, -1)] } },
+        active, 'event-card', { cardId: eventCardId },
+      )
       const effect = getCard(eventCardId).customEffect
       if (effect) s = effect(s, active, {}) ?? s
       return { ...s, phase: s.pendingChoices.length > 0 ? 'event-resolution' : 'production' }
@@ -350,11 +367,12 @@ export function applyRoll(state: GameState, roll: DiceRoll): GameState {
 }
 
 function runProduction(state: GameState, roll: ProductionNumber): GameState {
-  return {
-    ...state,
-    players: { host: produceForPlayer(state.players.host, roll), guest: produceForPlayer(state.players.guest, roll) },
-    phase: 'action',
+  const players = { host: produceForPlayer(state.players.host, roll), guest: produceForPlayer(state.players.guest, roll) }
+  const gains = {
+    host: resourceGain(availableResources(state.players.host), availableResources(players.host)),
+    guest: resourceGain(availableResources(state.players.guest), availableResources(players.guest)),
   }
+  return logEvent({ ...state, players, phase: 'action' }, state.activePlayer, 'production', { roll, gains })
 }
 
 /** Once all pending resource choices are resolved, run the paused production step and enter
@@ -760,7 +778,46 @@ export function applyAction(state: GameState, actingPlayer: PlayerId, action: Ga
     default:                   next = state
   }
 
-  return next === state ? state : { ...next, winner: checkVictory(next) }
+  if (next === state) return state
+  return { ...next, eventLog: withActionLogged(state, next, actingPlayer, action), winner: checkVictory(next) }
+}
+
+/** Most recent activity-log entries kept in the state (and so sent to both players). */
+const EVENT_LOG_LIMIT = 50
+
+/** The log after `action`: its own entry goes before whatever the handler logged (production,
+ *  event cards…), so the log reads in the order things happened. */
+function withActionLogged(before: GameState, after: GameState, actingPlayer: PlayerId, action: GameAction): GameEvent[] {
+  const added = after.eventLog.slice(before.eventLog.length)
+  const payload = actionLogPayload(before, after, actingPlayer, action)
+  const own = payload ? [makeEvent(actingPlayer, action.type, payload)] : []
+  return [...before.eventLog, ...own, ...added].slice(-EVENT_LOG_LIMIT)
+}
+
+/** Public details of a successful action for the activity log, or null to leave it out.
+ *  Cards drawn, searched, put back or exchanged stay secret: only stacks and counts. */
+function actionLogPayload(before: GameState, after: GameState, actingPlayer: PlayerId, action: GameAction): Record<string, unknown> | null {
+  switch (action.type) {
+    case 'SWAP_STARTING_REGIONS': return null
+    case 'ROLL_DICE': return { ...after.lastRoll }
+    case 'SEARCH_STACK': return { deck: action.deck, purpose: after.search?.purpose ?? null }
+    case 'TAKE_FROM_SEARCH': return { deck: before.search?.deck ?? null, count: action.cardIds.length }
+    case 'BUILD_SETTLEMENT': return { scout: !!action.scoutRegionIds }
+    case 'PLACE_EXPANSION': return { cardId: action.cardId }
+    case 'PLAY_ACTION_CARD': return { cardId: action.cardId }
+    case 'TRADE_WITH_BANK':
+      return { give: action.give, receive: action.receive, rate: getTradeRate(before.players[actingPlayer], action.give) }
+    case 'CHOOSE_RESOURCE': return { resource: action.resource, reason: before.pendingChoices[0]?.reason ?? null }
+    case 'PROPOSE_TRADE': return { give: action.give, receive: action.receive }
+    case 'ACCEPT_TRADE': return { ...before.pendingTrade, completed: after.players !== before.players }
+    case 'DECLINE_TRADE': return { byProposer: before.pendingTrade?.from === actingPlayer }
+    case 'DEMOLISH':
+      return { cardId: before.players[actingPlayer].principality[action.slotIndex]?.expansionSlots[action.expansionSlotIndex] ?? null }
+    case 'DISCARD_TO_LIMIT': return { count: action.discards.length }
+    case 'DRAW_CARD': return { deck: action.fromDeck }
+    case 'EXCHANGE': return { deck: action.deck, searched: !!action.payWith }
+    default: return {}
+  }
 }
 
 // ─── Projection ───────────────────────────────────────────────────────────────
