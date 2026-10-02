@@ -13,7 +13,7 @@ const EVENTS = [
 
 const STEPS = ['roll', 'action', 'draw', 'exchange'] as const
 
-/** "?" in the header: a short rules overview (GAME_LOGIC.md §1, §5–§9). */
+/** 📖 in the header (not "?", which is the event die's Event face): a short rules overview (GAME_LOGIC.md §1, §5–§9). */
 export default function HelpButton({ vpTarget }: { vpTarget: number }) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
@@ -21,7 +21,7 @@ export default function HelpButton({ vpTarget }: { vpTarget: number }) {
   return (
     <>
       <button className={styles.button} onClick={() => setOpen(true)} aria-label={t('game.help.open')} title={t('game.help.open')}>
-        ?
+        <span aria-hidden="true">📖</span>
       </button>
       {open && (
         <div className={dialog.backdrop} onClick={() => setOpen(false)}>

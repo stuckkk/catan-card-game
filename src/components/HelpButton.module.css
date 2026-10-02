@@ -6,9 +6,7 @@
   border: 1px solid var(--color-border);
   background: var(--sea-mid);
   color: var(--color-text);
-  font-family: var(--font-display);
-  font-size: 17px;
-  font-weight: 800;
+  font-size: 15px;
   line-height: 1;
   flex-shrink: 0;
 }
@@ -23,3 +21,7 @@
 .events { list-style: none; display: flex; flex-direction: column; gap: 6px; }
 .events li { display: flex; gap: 8px; align-items: baseline; }
 .icon { width: 20px; flex-shrink: 0; text-align: center; }
+
+@media (max-width: 380px) {
+  .button { width: 26px; height: 26px; font-size: 13px; }
+}

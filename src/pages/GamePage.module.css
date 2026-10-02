@@ -337,3 +337,11 @@
     padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
   }
 }
+
+/* Very narrow phones: tighten the header so the dice and score fit next to the opponent. */
+@media (max-width: 380px) {
+  .topBar { gap: 6px; padding: 6px 8px; }
+  .headerEnd { gap: 6px; }
+  .myScoreLabel { display: none; }
+  .vp { font-size: 15px; }
+}
