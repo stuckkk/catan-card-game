@@ -98,6 +98,15 @@
 }
 .placingBanner button.secondary { color: var(--ink); border-color: var(--ink); padding: 4px 12px; }
 
+/* Shares the board's grid cell, on top of it; the toasts inside catch their own taps. */
+.toastArea {
+  grid-area: board;
+  position: relative;
+  z-index: 60;
+  align-self: start;
+  pointer-events: none;
+}
+
 /* ---------- Turn panel ---------- */
 
 .turn {

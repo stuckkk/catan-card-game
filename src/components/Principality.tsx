@@ -40,6 +40,8 @@ interface Props {
   resources?: Resources
   /** Development Cards left in the shared supply. */
   supply?: Supply
+  /** The latest production (log id and number rolled), to make the producing regions glow. */
+  production?: { id: string; roll: number } | null
 }
 
 type RegionCell = { region: RegionState; index: number } | undefined
@@ -233,7 +235,7 @@ function SettlementCore({ slot, idx, canBuild, hasScout, regionStack, isReady, o
 
 export default function Principality({
   principality, regions, isMyBoard, phase, isMyTurn, placingCardId, onAction,
-  canArrange = false, hasScout = false, regionStack = [], resources, supply,
+  canArrange = false, hasScout = false, regionStack = [], resources, supply, production,
 }: Props) {
   const { t } = useTranslation()
   const canBuild = isMyBoard && isMyTurn && phase === 'action'
@@ -291,6 +293,7 @@ export default function Principality({
       <RegionCard
         region={cell.region}
         selected={swappable && swapFrom === cell.index}
+        producedKey={production && getRegion(cell.region.regionId).productionNumber === production.roll ? production.id : undefined}
         onClick={swappable ? () => {
           if (swapFrom == null) setSwapFrom(cell.index)
           else {

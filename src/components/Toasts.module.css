@@ -1,0 +1,66 @@
+/* Toasts drop in under the header, over the board. Only the toasts themselves catch taps. */
+.stack {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 60;
+  width: min(440px, calc(100% - 16px));
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  pointer-events: none;
+}
+
+.toast {
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid color-mix(in srgb, var(--ink) 25%, transparent);
+  border-radius: var(--radius-lg);
+  background: var(--sand-light);
+  color: var(--ink);
+  text-align: left;
+  font-size: 14px;
+  box-shadow: var(--shadow-lg);
+  animation: drop-in 220ms ease-out;
+}
+
+.line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  font-weight: 700;
+}
+
+.who {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--sand-light);
+  font-size: 12px;
+}
+
+.detail {
+  font-size: 13px;
+  color: var(--ink-muted);
+}
+
+@keyframes drop-in {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (max-width: 760px) {
+  .stack { top: 4px; gap: 4px; }
+  .toast { padding: 6px 10px; font-size: 13px; gap: 2px; }
+  .detail { font-size: 12px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast { animation: none; }
+}

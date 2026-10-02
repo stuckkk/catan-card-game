@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocation, useNavigate } from 'react-router-dom'
 import {
@@ -25,6 +25,10 @@ import DiceDisplay from '../components/DiceDisplay'
 import OpponentSummary from '../components/OpponentSummary'
 import OpponentVillage from '../components/OpponentVillage'
 import ResourceChoiceModal from '../components/ResourceChoiceModal'
+import Toasts from '../components/Toasts'
+import ActivityFeed from '../components/ActivityFeed'
+import { describeEvent, isToastWorthy } from '../components/activityText'
+import type { ActivityLine } from '../components/activityText'
 import styles from './GamePage.module.css'
 
 type ClientRole = 'host' | 'guest' | 'practice'
@@ -158,6 +162,35 @@ export default function GamePage() {
   const activeChoice = pendingChoices?.[0] ?? null
   const myChoice = activeChoice && (activeChoice.player === myId || isPractice) ? activeChoice : null
 
+  // Activity: everything logged so far as text, the latest production (to make the producing
+  // regions glow), and toasts for what arrives while this screen is open.
+  const eventLog = view?.eventLog
+  const activity = useMemo(
+    () => (eventLog ?? []).map(e => describeEvent(t, e, myId, isPractice)).filter((l): l is ActivityLine => l !== null),
+    [eventLog, t, myId, isPractice],
+  )
+  const lastProduction = eventLog && [...eventLog].reverse().find(e => e.type === 'production')
+  const production = lastProduction ? { id: lastProduction.id, roll: Number(lastProduction.payload?.roll) } : null
+
+  const [toasts, setToasts] = useState<ActivityLine[]>([])
+  // Log ids already seen; null until the first state arrives, so a reconnect doesn't replay history.
+  const seenLog = useRef<Set<string> | null>(null)
+  useEffect(() => {
+    if (!eventLog) return
+    if (!seenLog.current) {
+      seenLog.current = new Set(isPractice ? [] : eventLog.map(e => e.id))
+    }
+    const seen = seenLog.current
+    const fresh = eventLog.filter(e => !seen.has(e.id))
+    fresh.forEach(e => seen.add(e.id))
+    const lines = fresh
+      .filter(e => isToastWorthy(e, myId, isPractice))
+      .map(e => describeEvent(t, e, myId, isPractice))
+      .filter((l): l is ActivityLine => l !== null)
+    if (lines.length > 0) setToasts(prev => [...prev, ...lines].slice(-3))
+  }, [eventLog, myId, isPractice, t])
+  const dismissToast = useCallback((id: string) => setToasts(prev => prev.filter(x => x.id !== id)), [])
+
   // VP for the local player, including the Knight/Windmill tokens (public board state only).
   const myVP = view ? computeVP(view, myId) : 0
 
@@ -238,6 +271,10 @@ export default function GamePage() {
         </div>
       </header>
 
+      <div className={styles.toastArea}>
+        <Toasts toasts={toasts} onDismiss={dismissToast} />
+      </div>
+
       {/* My board: the sea the principality sits on. Sized to fit this area (container query). */}
       <main className={styles.myBoard}>
         {placingCardId && (
@@ -263,6 +300,7 @@ export default function GamePage() {
               regionStack={view.regionStack}
               resources={myResources}
               supply={view.supply}
+              production={production}
             />
           )}
         </div>
@@ -327,6 +365,7 @@ export default function GamePage() {
           />
         )}
 
+        <ActivityFeed lines={activity} />
         </div>
 
         <div className={styles.controls}>

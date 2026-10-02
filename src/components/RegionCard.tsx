@@ -21,9 +21,11 @@ interface Props {
   /** Setup: tap to pick this region for swapping. */
   onClick?: () => void
   selected?: boolean
+  /** Set when this region just produced: the production's log id, so the glow plays once per roll. */
+  producedKey?: string
 }
 
-export default function RegionCard({ region, onClick, selected }: Props) {
+export default function RegionCard({ region, onClick, selected, producedKey }: Props) {
   const { t } = useTranslation()
   const def = getRegion(region.regionId)
   const fill = region.storedResources
@@ -36,6 +38,11 @@ export default function RegionCard({ region, onClick, selected }: Props) {
       style={{ '--rc': RESOURCE_COLOR[def.resourceType] } as React.CSSProperties}
       title={t(def.nameKey)}
     >
+      {producedKey && (
+        <span key={producedKey} className={styles.produced} aria-hidden="true">
+          <span className={styles.gain}>{RESOURCE_ICON[def.resourceType]}</span>
+        </span>
+      )}
       <div className={styles.number}>{def.productionNumber}</div>
       <div className={styles.icon}>{RESOURCE_ICON[def.resourceType]}</div>
       <div className={styles.pips}>
