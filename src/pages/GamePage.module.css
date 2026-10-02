@@ -231,6 +231,26 @@
 
 .winCard h2 { font-size: 32px; }
 
+.finalScore {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 240px;
+}
+.finalScore li {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--ink) 8%, transparent);
+  font-weight: 700;
+}
+.finalScore li.scoreWinner { background: var(--beacon); }
+.scoreTokens { display: flex; gap: 4px; }
+.scoreVP { margin-left: auto; font-family: var(--font-display); font-size: 20px; font-weight: 800; }
+
 /* ---------- Phone and narrow tablets ---------- */
 
 @media (max-width: 760px) {

@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useLocation, useNavigate } from 'react-router-dom'
 import {
   applyAction, computeVP, availableResources, computePlayerStats, projectStateFor, setupChooser,
-  actionCardsUnlocked, searchCost,
+  actionCardsUnlocked, searchCost, tokenHolders,
 } from '../engine/engine'
 import { getCard } from '../engine/cards'
 import type { GameState, GameAction, ProjectedState, PlayerId, PlayerState } from '../engine/types'
@@ -28,7 +28,7 @@ import ResourceChoiceModal from '../components/ResourceChoiceModal'
 import Toasts from '../components/Toasts'
 import ActivityFeed from '../components/ActivityFeed'
 import BuildStrip from '../components/BuildStrip'
-import { describeEvent, isToastWorthy } from '../components/activityText'
+import { describeEvent, isToastWorthy, playerLabel } from '../components/activityText'
 import type { ActivityLine } from '../components/activityText'
 import styles from './GamePage.module.css'
 
@@ -249,6 +249,21 @@ export default function GamePage() {
         <div className={styles.winOverlay}>
           <div className={styles.winCard}>
             <h2>{winner === myId ? t('game.youWin') : t('game.opponentWins')}</h2>
+            <ul className={styles.finalScore}>
+              {(['host', 'guest'] as PlayerId[]).map(pl => {
+                const tokens = tokenHolders(view)
+                return (
+                  <li key={pl} className={pl === winner ? styles.scoreWinner : undefined}>
+                    <span>{playerLabel(t, pl, myId, isPractice)}</span>
+                    <span className={styles.scoreTokens}>
+                      {tokens.knight === pl && <span title={t('advantage.knight')}>⚔</span>}
+                      {tokens.windmill === pl && <span title={t('advantage.windmill')}>⚖</span>}
+                    </span>
+                    <span className={styles.scoreVP}>{t('game.currentVP', { count: computeVP(view, pl) })}</span>
+                  </li>
+                )
+              })}
+            </ul>
             <button className="primary" onClick={leaveGame}>{t('game.backToLobby')}</button>
           </div>
         </div>
