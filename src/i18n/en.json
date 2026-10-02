@@ -206,6 +206,14 @@
       "exchangeSearch": "exchanged a card and searched {{stack}}",
       "skipExchange": "ended the turn",
       "dismiss": "Dismiss"
+    },
+    "build": {
+      "title": "Build",
+      "hint": "Tap a + on your board to build.",
+      "missing": "need {{list}}",
+      "noneLeft": "none left",
+      "noRegions": "no regions left",
+      "ready": "ready"
     }
   },
   "card": {
@@ -215,7 +223,8 @@
     "play": "Play",
     "build": "Build",
     "close": "Close",
-    "notInDeck": "Not in the deck yet (to be implemented)."
+    "notInDeck": "Not in the deck yet (to be implemented).",
+    "missing": "Missing: {{list}}"
   },
   "cardType": {
     "green": "Region Expansion",

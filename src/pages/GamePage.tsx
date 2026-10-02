@@ -27,6 +27,7 @@ import OpponentVillage from '../components/OpponentVillage'
 import ResourceChoiceModal from '../components/ResourceChoiceModal'
 import Toasts from '../components/Toasts'
 import ActivityFeed from '../components/ActivityFeed'
+import BuildStrip from '../components/BuildStrip'
 import { describeEvent, isToastWorthy } from '../components/activityText'
 import type { ActivityLine } from '../components/activityText'
 import styles from './GamePage.module.css'
@@ -327,6 +328,10 @@ export default function GamePage() {
 
         {activeChoice && !myChoice && (
           <div className={styles.choiceWaiting}>{t('game.chooseResource.waiting')}</div>
+        )}
+
+        {phase === 'action' && isMyTurn && myResources && (
+          <BuildStrip resources={myResources} supply={view.supply} regionsLeft={view.regionStack.length} />
         )}
 
         {phase === 'action' && isMyTurn && myResources && myState && (

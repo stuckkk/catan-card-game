@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { getCard } from '../engine/cards'
-import type { DeclarativeEffect, ResourceType } from '../engine/types'
-import { RESOURCE_ORDER } from './resourceMeta'
+import type { DeclarativeEffect, ResourceType, Resources } from '../engine/types'
+import { RESOURCE_ORDER, basket, missingResources } from './resourceMeta'
 import styles from './CardDetail.module.css'
 
 interface Props {
@@ -13,6 +13,8 @@ interface Props {
   affordable?: boolean
   /** Why the card can't be played right now, if relevant. */
   note?: string | null
+  /** The viewer's resources, to say what's missing when a build isn't affordable. */
+  resources?: Resources
   onPlay?: () => void
   onBuild?: () => void
   onClose: () => void
@@ -36,7 +38,7 @@ function useEffectText() {
   }
 }
 
-export default function CardDetail({ cardId, canPlay, canBuild, affordable = true, note, onPlay, onBuild, onClose }: Props) {
+export default function CardDetail({ cardId, canPlay, canBuild, affordable = true, note, resources, onPlay, onBuild, onClose }: Props) {
   const { t } = useTranslation()
   const effectText = useEffectText()
   const def = getCard(cardId)
@@ -81,6 +83,9 @@ export default function CardDetail({ cardId, canPlay, canBuild, affordable = tru
 
         {def.notImplemented && <p className={styles.description}>{t('card.notInDeck')}</p>}
         {note && <p className={styles.description}>{note}</p>}
+        {canBuild && !affordable && resources && def.cost && (
+          <p className={styles.missing}>{t('card.missing', { list: basket(missingResources(def.cost, resources)) })}</p>
+        )}
 
         <div className={styles.actions}>
           {canPlay && onPlay && (

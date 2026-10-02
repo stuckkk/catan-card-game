@@ -206,6 +206,14 @@
       "exchangeSearch": "tauscht eine Karte und durchsucht {{stack}}",
       "skipExchange": "beendet den Zug",
       "dismiss": "Schließen"
+    },
+    "build": {
+      "title": "Bauen",
+      "hint": "Tippe auf ein + in deinem Fürstentum, um zu bauen.",
+      "missing": "fehlt {{list}}",
+      "noneLeft": "keine mehr",
+      "noRegions": "keine Landschaften mehr",
+      "ready": "bereit"
     }
   },
   "card": {
@@ -215,7 +223,8 @@
     "play": "Ausspielen",
     "build": "Bauen",
     "close": "Schließen",
-    "notInDeck": "Noch nicht im Spiel (wird später umgesetzt)."
+    "notInDeck": "Noch nicht im Spiel (wird später umgesetzt).",
+    "missing": "Es fehlt: {{list}}"
   },
   "cardType": {
     "green": "Landschaftsausbau",

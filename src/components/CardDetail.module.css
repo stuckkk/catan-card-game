@@ -68,6 +68,8 @@
 }
 
 .rowLabel { color: var(--ink-muted); }
+
+.missing { color: var(--color-red-card); font-weight: 700; font-size: 14px; }
 .rowValue { font-weight: 700; text-align: right; }
 /* Secondary buttons sit on sand here, so they take the ink colour. */
 .actions :global(button.secondary) { color: var(--ink); border-color: color-mix(in srgb, var(--ink) 35%, transparent); }

@@ -91,6 +91,7 @@ export default function Hand({
           canBuild={canAct && openDef.category === 'expansion'}
           affordable={openDef.category === 'action' ? true : openAffordable}
           note={actionNote}
+          resources={resources}
           onPlay={() => handlePlay(openId)}
           onBuild={() => handleBuild(openId)}
           onClose={() => setOpenIndex(null)}

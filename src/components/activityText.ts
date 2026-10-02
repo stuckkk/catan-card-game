@@ -1,7 +1,7 @@
 import type { TFunction } from 'i18next'
 import { getCard } from '../engine/cards'
 import type { GameEvent, PlayerId, Resources, ResourceType } from '../engine/types'
-import { RESOURCE_ICON, RESOURCE_ORDER } from './resourceMeta'
+import { RESOURCE_ICON, basket } from './resourceMeta'
 
 /** One activity-log entry as shown to a player: who did it (null for things that happen to
  *  both, like production) and what, plus optional longer text (an event card's effect). */
@@ -11,11 +11,6 @@ export interface ActivityLine {
   mine: boolean
   text: string
   detail?: string
-}
-
-/** "2🪵 1🐑" */
-export function basket(r: Partial<Resources>): string {
-  return RESOURCE_ORDER.filter(k => (r[k] ?? 0) > 0).map(k => `${r[k]}${RESOURCE_ICON[k]}`).join(' ')
 }
 
 /** Who a player is from the viewer's seat. Practice is hot-seat, so there it's Player 1/2. */
