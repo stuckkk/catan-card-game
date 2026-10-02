@@ -270,6 +270,9 @@ export default function GamePage() {
         </div>
       )}
 
+      {/* A mandatory pick; kept out of the turn panel so a collapsed phone sheet can't hide it. */}
+      {myChoice && <ResourceChoiceModal choice={myChoice} onAction={dispatchAction} />}
+
       {/* Header: the opponent on the left, the last roll in the middle, my score on the right. */}
       <header className={styles.topBar}>
         <div className={styles.opponent}>
@@ -360,8 +363,6 @@ export default function GamePage() {
         {pendingTrade && (
           <TradeOfferBanner offer={pendingTrade} myId={myId} onAction={dispatchAction} />
         )}
-
-        {myChoice && <ResourceChoiceModal choice={myChoice} onAction={dispatchAction} />}
 
         {activeChoice && !myChoice && (
           <div className={styles.choiceWaiting}>{t('game.chooseResource.waiting')}</div>
