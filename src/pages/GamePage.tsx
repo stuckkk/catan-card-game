@@ -200,6 +200,16 @@ export default function GamePage() {
     if (placingCardId && !(isMyTurn && phase === 'action')) setPlacingCardId(null)
   }, [placingCardId, isMyTurn, phase])
 
+  // Phone: the turn panel's body is a bottom sheet over the board. It opens by itself when the
+  // panel needs the player, stays collapsed otherwise (the board is where building happens),
+  // and collapses while a card is being placed. A manual toggle holds until the situation changes.
+  const panelNeedsMe = !!mySearch || phase === 'setup' || (isMyTurn && (phase === 'draw' || phase === 'exchange'))
+    || (!!pendingTrade && pendingTrade.from !== myId)
+  const sheetKey = `${view?.turn}|${phase}|${mySearch?.deck ?? ''}|${pendingTrade ? 'trade' : ''}`
+  const [sheetOverride, setSheetOverride] = useState<{ key: string; collapsed: boolean } | null>(null)
+  const sheetCollapsed = !!placingCardId
+    || (sheetOverride?.key === sheetKey ? sheetOverride.collapsed : !panelNeedsMe)
+
   // One line telling the player what to do now; phases with their own panel explain themselves.
   const turnHint = !phase || phase === 'setup' || winner ? null
     : !isMyTurn ? t('game.hint.waiting')
@@ -319,7 +329,15 @@ export default function GamePage() {
           {turnHint && <p className={styles.hint}>{turnHint}</p>}
         </div>
 
-        <div className={styles.turnBody}>
+        <div className={`${styles.turnBody} ${sheetCollapsed ? styles.collapsed : ''}`}>
+        <button
+          className={styles.sheetHandle}
+          aria-expanded={!sheetCollapsed}
+          onClick={() => setSheetOverride({ key: sheetKey, collapsed: !sheetCollapsed })}
+        >
+          <span className={styles.grip} aria-hidden="true" />
+          <span>{sheetCollapsed ? t('game.sheet.show') : t('game.sheet.hide')}</span>
+        </button>
         {pendingTrade && (
           <TradeOfferBanner offer={pendingTrade} myId={myId} onAction={dispatchAction} />
         )}

@@ -214,6 +214,10 @@
       "noneLeft": "keine mehr",
       "noRegions": "keine Landschaften mehr",
       "ready": "bereit"
+    },
+    "sheet": {
+      "show": "Optionen zeigen",
+      "hide": "Ausblenden"
     }
   },
   "card": {

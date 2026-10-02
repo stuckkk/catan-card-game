@@ -214,6 +214,10 @@
       "noneLeft": "none left",
       "noRegions": "no regions left",
       "ready": "ready"
+    },
+    "sheet": {
+      "show": "Show options",
+      "hide": "Hide"
     }
   },
   "card": {
