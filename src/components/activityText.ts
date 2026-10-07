@@ -76,6 +76,9 @@ export function describeEvent(t: TFunction, e: GameEvent, viewer: PlayerId, isPr
       const key = p.reason === 'commerce' ? 'game.log.tookResource' : p.reason === 'brigands' ? 'game.log.stoleResource' : 'game.log.choseResource'
       return line(t(key, { resource: res(p.resource) }))
     }
+    case 'CHOOSE_HAND_CARDS':
+      if (p.reason === 'conflict') return line(t('game.log.conflictBuried', { count: Number(p.count), stack: stack(p.deck) }))
+      return line(p.cardId ? t('game.log.spyTook', { card: card(p.cardId) }) : t('game.log.spyNothing'))
     case 'PROPOSE_TRADE':
       return line(t('game.log.proposeTrade', {
         give: basket(p.give as Partial<Resources>), receive: basket(p.receive as Partial<Resources>),

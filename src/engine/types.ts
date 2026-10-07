@@ -285,8 +285,18 @@ export interface PendingAttackRoll {
   countered: boolean
 }
 
+/** Pick from `owner`'s hand, which `player` sees while the prompt is open (projection:
+ *  revealedHand). Spy: 1 Unit or Action card into the picker's hand (none if there is no such
+ *  card). Conflict: 2 cards (fewer if the hand holds fewer) under one stack. */
+export interface PendingHandCardChoice {
+  kind: 'handCard'
+  player: PlayerId
+  owner: PlayerId
+  reason: 'spy' | 'conflict'
+}
+
 export type PendingChoice =
-  PendingResourceChoice | PendingPlacedCardChoice | PendingDiscard | PendingCounter | PendingAttackRoll
+  PendingResourceChoice | PendingPlacedCardChoice | PendingDiscard | PendingCounter | PendingAttackRoll | PendingHandCardChoice
 
 export interface GameEvent {
   id: string
@@ -300,7 +310,7 @@ export interface GameEvent {
 
 /** What one viewer may see: the opponent's hand is a count, every stack is a count, the Region
  *  stack is its (public) composition in sorted order, and an open search reveals that stack to
- *  the searcher only. */
+ *  the searcher only, a Spy/Conflict pick the opponent's hand to the picker. */
 export type ProjectedState = Omit<GameState, 'players' | 'decks' | 'regionStack'> & {
   players: Record<PlayerId, Omit<PlayerState, 'hand'> & { hand: string[] | number }>
   deckSizes: Record<DeckId, number>
@@ -308,6 +318,8 @@ export type ProjectedState = Omit<GameState, 'players' | 'decks' | 'regionStack'
   regionStack: string[]
   /** Contents of the stack the viewer is searching, top = last; null otherwise. */
   searchContents: string[] | null
+  /** The opponent's hand while the viewer picks from it (Spy, Conflict); null otherwise. */
+  revealedHand: string[] | null
 }
 
 // ─── Actions ─────────────────────────────────────────────────────────────────
@@ -336,6 +348,8 @@ export type GameAction =
   | { type: 'ANSWER_ATTACK'; playCounter: boolean }
   /** Attacker rolls the die for the pending attack. */
   | { type: 'ROLL_ATTACK' }
+  /** Submit the pick for the head hand-card choice. Conflict: `toDeck` is the stack they go under. */
+  | { type: 'CHOOSE_HAND_CARDS'; cardIds: string[]; toDeck?: DrawStackId }
   /** Active player offers a resource trade to the opponent. */
   | { type: 'PROPOSE_TRADE'; give: Partial<Resources>; receive: Partial<Resources> }
   /** Opponent accepts the pending trade offer. */

@@ -78,6 +78,19 @@
     "brigands": {
       "noTarget": "Your opponent has no resource you have room for."
     },
+    "handCard": {
+      "spyTitle": "🕵️ Spy: your opponent's hand",
+      "spyHint": "Take 1 Unit or Action card into your hand.",
+      "spyNothing": "No Unit or Action card: the Spy has no effect.",
+      "spyConfirm": "Take card",
+      "spyContinue": "Continue",
+      "conflictTitle": "⚔️ Conflict: your opponent's hand",
+      "conflictHint_one": "Choose {{count}} card to put under a stack.",
+      "conflictHint_other": "Choose {{count}} cards to put under a stack.",
+      "conflictTo": "Put under",
+      "conflictConfirm": "Put under the stack",
+      "waiting": "Opponent is looking at your hand…"
+    },
     "attack": {
       "counterTitle": "⚔️ {{card}} attacks!",
       "counterHint": "Play {{counter}} before they roll: then they win only on 1–2 instead of 1–5.",
@@ -113,7 +126,8 @@
     },
     "vpTarget": "VP Target: {{count}}",
     "currentVP": "{{count}} VP",
-    "handSize": "Hand: {{count}} cards",
+    "handSize_one": "Hand: {{count}} card",
+    "handSize_other": "Hand: {{count}} cards",
     "resources": "Resources",
     "disconnected": "Opponent disconnected. Waiting for reconnect...",
     "opponentVillage": "Opponent's Village",
@@ -231,6 +245,10 @@
       "bankTrade": "traded {{give}} for {{receive}} with the bank",
       "tookResource": "took {{resource}} (Windmill Token)",
       "stoleResource": "stole {{resource}} (Brigands)",
+      "spyTook": "took {{card}} from the opponent's hand (Spy)",
+      "spyNothing": "found nothing to take (Spy)",
+      "conflictBuried_one": "put {{count}} card of the opponent under {{stack}} (Conflict)",
+      "conflictBuried_other": "put {{count}} cards of the opponent under {{stack}} (Conflict)",
       "choseResource": "chose {{resource}}",
       "proposeTrade": "offers {{give}} for {{receive}}",
       "acceptTrade": "accepted the trade",
@@ -517,7 +535,7 @@
     },
     "spy": {
       "name": "Spy",
-      "description": "Search your opponent's hand and take any 1 Unit or Action card."
+      "description": "Look at your opponent's hand and take 1 Unit or Action card of your choice into your hand."
     },
     "eventCivilWar": {
       "name": "Civil War",
@@ -525,7 +543,7 @@
     },
     "eventConflict": {
       "name": "Conflict",
-      "description": "The Knight Token holder puts 2 cards from his opponent's hand under an expansion stack."
+      "description": "The Knight Token holder looks at the opponent's hand and puts 2 of their cards under a stack of their choice."
     },
     "eventMasterBuilder": {
       "name": "Master Builder",

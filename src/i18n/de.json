@@ -55,7 +55,7 @@
       "yearOfPlentyTitle": "Gute Ernte: Wähle deinen Gratis-Rohstoff",
       "tournamentTitle": "Du hast das Turnier gewonnen – wähle deinen Gratis-Rohstoff",
       "progressTitle": "Fortschritt: Wähle einen Gratis-Rohstoff",
-      "brigandsTitle": "Raubritter: Wähle einen Rohstoff, den du dem Gegner stiehlst",
+      "brigandsTitle": "Raubzug: Wähle einen Rohstoff, den du dem Gegner stiehlst",
       "waiting": "Gegner wählt einen Rohstoff…"
     },
     "civilWar": {
@@ -70,13 +70,26 @@
       "noTarget": "Dein Gegner hat keinen Ritter, den du angreifen kannst."
     },
     "arsonist": {
-      "title": "Brandstifter: Wähle, welches Gebäude deines Gegners zurück auf seine Hand geht",
+      "title": "Feuerteufel: Wähle, welches Gebäude deines Gegners zurück auf seine Hand geht",
       "confirm": "Zurück auf die Hand",
       "waiting": "Dein Gegner wählt, welches deiner Gebäude zurück auf deine Hand geht…",
       "noTarget": "Dein Gegner hat kein Gebäude, das du angreifen kannst."
     },
     "brigands": {
       "noTarget": "Dein Gegner hat keinen Rohstoff, für den du Platz hast."
+    },
+    "handCard": {
+      "spyTitle": "🕵️ Spion: die Hand deines Gegners",
+      "spyHint": "Nimm 1 Einheit oder Aktionskarte auf deine Hand.",
+      "spyNothing": "Keine Einheit oder Aktionskarte: der Spion bleibt ohne Wirkung.",
+      "spyConfirm": "Karte nehmen",
+      "spyContinue": "Weiter",
+      "conflictTitle": "⚔️ Konflikt: die Hand deines Gegners",
+      "conflictHint_one": "Wähle {{count}} Karte, die unter einen Stapel kommt.",
+      "conflictHint_other": "Wähle {{count}} Karten, die unter einen Stapel kommen.",
+      "conflictTo": "Unter",
+      "conflictConfirm": "Unter den Stapel legen",
+      "waiting": "Gegner sieht sich deine Handkarten an…"
     },
     "attack": {
       "counterTitle": "⚔️ {{card}} greift an!",
@@ -113,7 +126,8 @@
     },
     "vpTarget": "SP-Ziel: {{count}}",
     "currentVP": "{{count}} SP",
-    "handSize": "Hand: {{count}} Karten",
+    "handSize_one": "Hand: {{count}} Karte",
+    "handSize_other": "Hand: {{count}} Karten",
     "resources": "Rohstoffe",
     "disconnected": "Gegner getrennt. Warte auf Wiederverbindung...",
     "opponentVillage": "Dorf des Gegners",
@@ -165,7 +179,7 @@
     },
     "actionLocked": "Aktionskarten sind erst spielbar, wenn beide Spieler zusammen 7 SP haben.",
     "herbWomanOnlyAsCounter": "Spiele die Kräuterhexe, wenn dein Gegner dich mit dem Schwarzen Ritter angreift.",
-    "bishopOnlyAsCounter": "Spiele den Bischof, wenn dein Gegner dich mit dem Brandstifter oder Raubritter angreift.",
+    "bishopOnlyAsCounter": "Spiele den Bischof, wenn dein Gegner dich mit dem Feuerteufel oder dem Raubzug angreift.",
     "scoutOnlyOnBuild": "Spiele den Kundschafter beim Bau einer Siedlung.",
     "notImplemented": "Diese Karte ist noch nicht umgesetzt.",
     "alchemist": {
@@ -177,7 +191,7 @@
       "receive": "Erhalten"
     },
     "merchant": {
-      "title": "Kaufmann",
+      "title": "Händler",
       "take": "Vom Gegner nehmen (1–2)",
       "give": "Dann 1 zurückgeben"
     },
@@ -230,7 +244,7 @@
       "playCard": "spielt {{card}}",
       "bankTrade": "tauscht {{give}} gegen {{receive}} mit der Bank",
       "tookResource": "nimmt {{resource}} (Windmühlenplättchen)",
-      "stoleResource": "stiehlt {{resource}} (Raubritter)",
+      "stoleResource": "stiehlt {{resource}} (Raubzug)",
       "choseResource": "wählt {{resource}}",
       "proposeTrade": "bietet {{give}} für {{receive}}",
       "acceptTrade": "nimmt den Handel an",
@@ -248,6 +262,10 @@
       "exchange": "tauscht eine Karte bei {{stack}}",
       "exchangeSearch": "tauscht eine Karte und durchsucht {{stack}}",
       "returnedToHand": "{{card}} geht zurück auf die Hand ({{reason}})",
+      "spyTook": "nimmt {{card}} aus der Hand des Gegners (Spion)",
+      "spyNothing": "findet nichts zum Nehmen (Spion)",
+      "conflictBuried_one": "legt {{count}} Karte des Gegners unter {{stack}} (Konflikt)",
+      "conflictBuried_other": "legt {{count}} Karten des Gegners unter {{stack}} (Konflikt)",
       "counterPlayed": "spielt {{card}} gegen den Angriff",
       "counterDeclined": "lässt würfeln",
       "attackWon": "würfelt 🎲 {{die}} ({{card}}): der Angriff gelingt",
@@ -282,7 +300,7 @@
       },
       "eventsTitle": "Ereigniswürfel",
       "event": {
-        "brigand": "Wer mehr als 7 Rohstoffe auf seinen Landschaften hat, verliert alles Erz und alle Wolle. Landschaften neben einer Burg zählen nicht mit. Nicht in den ersten beiden Zügen jedes Spielers.",
+        "brigand": "Wer mehr als 7 Rohstoffe auf seinen Landschaften hat, verliert alles Erz und alle Wolle. Landschaften neben einem Befestigten Lager zählen nicht mit. Nicht in den ersten beiden Zügen jedes Spielers.",
         "commerce": "Wer das Windmühlenplättchen hat, nimmt dem Gegner 1 Rohstoff seiner Wahl.",
         "tournament": "Wer mehr Turnierpunkte hat, erhält 1 Rohstoff seiner Wahl. Bei Gleichstand niemand.",
         "yearOfPlenty": "Jeder Spieler erhält 1 Rohstoff seiner Wahl.",
@@ -292,7 +310,7 @@
       "handLimit": "Handlimit: 3 Karten, +1 für jedes Kloster und jede Bibliothek in deinem Fürstentum.",
       "actionCards": "Aktionskarten dürfen gespielt werden, sobald beide Spieler zusammen mindestens 7 Siegpunkte haben. Den Kundschafter darfst du beim Bau einer Siedlung immer spielen.",
       "tradeTitle": "Handel",
-      "trade": "In deiner Aktionsphase: 3 gleiche Rohstoffe gegen 1 beliebigen von der Bank, oder 2:1 für einen Rohstoff, dessen Handelsflotte du besitzt (Münze: Gold 1:1). Du kannst dem Gegner auch jeden beliebigen Handel anbieten.",
+      "trade": "In deiner Aktionsphase: 3 gleiche Rohstoffe gegen 1 beliebigen von der Bank, oder 2:1 für einen Rohstoff, dessen Handelsflotte du besitzt (Münzgießerei: Gold 1:1). Du kannst dem Gegner auch jeden beliebigen Handel anbieten.",
       "tokensTitle": "Ritter- und Windmühlenplättchen",
       "tokens": "Das Ritterplättchen bekommt, wer mehr Stärkepunkte hat. Das Windmühlenplättchen bekommt, wer mehr Handelspunkte und mindestens eine Stadt hat. Bei Gleichstand hat es niemand."
     }
@@ -372,7 +390,7 @@
       "description": "Du darfst eine Karte mehr auf der Hand halten."
     },
     "garrison": {
-      "name": "Burg",
+      "name": "Befestigtes Lager",
       "description": "Die Rohstoffe der 2 Nachbarlandschaften zählen beim Räuberüberfall nicht."
     },
     "smithy": {
@@ -380,7 +398,7 @@
       "description": "Jeder Ritter in deinem Fürstentum erhält 1 zusätzlichen Stärkepunkt."
     },
     "brickFactory": {
-      "name": "Ziegelei",
+      "name": "Ziegel-Brennerei",
       "description": "Verdoppelt den Lehmertrag des benachbarten Hügellands."
     },
     "foundry": {
@@ -396,11 +414,11 @@
       "description": "Verdoppelt den Holzertrag der benachbarten Wälder."
     },
     "woolenMill": {
-      "name": "Weberei",
+      "name": "Woll-Manufaktur",
       "description": "Verdoppelt den Wollertrag der benachbarten Weiden."
     },
     "knightConrad": {
-      "name": "Konrad der Schnelle",
+      "name": "Konrad der Flinke",
       "description": "Bezwingt Feinde aus der Ferne."
     },
     "knightFalk": {
@@ -436,11 +454,11 @@
       "description": "Gefürchtet bei Freund und Feind."
     },
     "aqueduct": {
-      "name": "Aquädukt",
+      "name": "Wasserversorgung",
       "description": "1 SP. Schützt alle Landschaften deines Fürstentums vor der Seuche."
     },
     "bathHouse": {
-      "name": "Badehaus",
+      "name": "Badhaus",
       "description": "1 SP. Schützt die 4 Landschaften dieser Stadt vor der Seuche."
     },
     "church": {
@@ -448,11 +466,11 @@
       "description": "1 SP. Schützt Ritter und Handelsflotten dieser Stadt vor dem Bürgerkrieg."
     },
     "colossus": {
-      "name": "Koloss von Catan",
+      "name": "Der Koloss von Catan",
       "description": "2 SP. Ruhm und Ehre für den Erbauer."
     },
     "countingHouse": {
-      "name": "Kontor",
+      "name": "Handelskontor",
       "description": "3 Handel. Geld regiert die Welt."
     },
     "harbor": {
@@ -464,15 +482,15 @@
       "description": "1 SP. Du darfst eine Karte mehr auf der Hand halten."
     },
     "marketplace": {
-      "name": "Marktplatz",
+      "name": "Markt",
       "description": "2 Handel. Frisches Gemüse vom Land."
     },
     "merchantGuild": {
-      "name": "Handelsgilde",
+      "name": "Händlerzunft",
       "description": "4 Handel. Nehmen ist seliger denn Geben."
     },
     "mint": {
-      "name": "Münze",
+      "name": "Münzgießerei",
       "description": "1 Handel. Du darfst 1 Gold gegen 1 Rohstoff deiner Wahl tauschen."
     },
     "townHall": {
@@ -484,19 +502,19 @@
       "description": "Vor dem Würfeln spielen: Bestimme das Ergebnis des Ertragswürfels."
     },
     "arsonist": {
-      "name": "Brandstifter",
+      "name": "Feuerteufel",
       "description": "Nur wenn dein Gegner ein Gebäude hat. Würfle: bei 1–5 nimmt dein Gegner ein Gebäude deiner Wahl auf die Hand; bei 6 du eines seiner Wahl. Gegenkarte: Bischof."
     },
     "bishop": {
       "name": "Bischof",
-      "description": "Spiele ihn, wenn du mit dem Raubritter oder Brandstifter angegriffen wirst, vor dem Wurf: der Angreifer verliert dann bei 3–6."
+      "description": "Spiele ihn, wenn du mit dem Raubzug oder dem Feuerteufel angegriffen wirst, vor dem Wurf: der Angreifer verliert dann bei 3–6."
     },
     "blackKnight": {
       "name": "Schwarzer Ritter",
       "description": "Nur wenn dein Gegner einen Ritter hat. Würfle: bei 1–5 nimmt dein Gegner einen Ritter deiner Wahl auf die Hand; bei 6 du einen seiner Wahl. Gegenkarte: Kräuterhexe."
     },
     "brigands": {
-      "name": "Raubritter",
+      "name": "Raubzug",
       "description": "Würfle: bei 1–5 stiehlst du deinem Gegner 2 Rohstoffe deiner Wahl; bei 6 stiehlt er dir 2. Nur Rohstoffe, für die der Dieb Platz hat. Gegenkarte: Bischof."
     },
     "caravan": {
@@ -508,7 +526,7 @@
       "description": "Spiele sie, wenn du mit dem Schwarzen Ritter angegriffen wirst, vor dem Wurf: der Angreifer verliert dann bei 3–6."
     },
     "merchant": {
-      "name": "Kaufmann",
+      "name": "Händler",
       "description": "Nimm deinem Gegner 2 Rohstoffe deiner Wahl und gib ihm 1 Rohstoff deiner Wahl."
     },
     "scout": {
@@ -517,15 +535,15 @@
     },
     "spy": {
       "name": "Spion",
-      "description": "Sieh dir die Hand deines Gegners an und nimm 1 Einheit oder Aktionskarte."
+      "description": "Sieh dir die Hand deines Gegners an und nimm 1 Einheit oder Aktionskarte deiner Wahl auf deine Hand."
     },
     "eventCivilWar": {
       "name": "Bürgerkrieg",
       "description": "Jeder Spieler muss einen Ritter oder eine Flotte zurück auf die Hand nehmen. Der Gegner bestimmt, welche Karte das ist. Gegenkarte: Kirche."
     },
     "eventConflict": {
-      "name": "Streit",
-      "description": "Der Besitzer des Ritterplättchens legt 2 Handkarten des Gegners unter einen Ausbaustapel."
+      "name": "Konflikt",
+      "description": "Der Besitzer des Ritterplättchens sieht sich die Hand des Gegners an und legt 2 seiner Karten unter einen Stapel seiner Wahl."
     },
     "eventMasterBuilder": {
       "name": "Baumeister",
@@ -533,11 +551,11 @@
     },
     "eventPlague": {
       "name": "Seuche",
-      "description": "Jede Landschaft an einer Stadt verliert 1 Rohstoff. Gegenkarten: Badehaus, Aquädukt."
+      "description": "Jede Landschaft an einer Stadt verliert 1 Rohstoff. Gegenkarten: Badhaus, Wasserversorgung."
     },
     "eventProductiveYear": {
-      "name": "Fruchtbares Jahr",
-      "description": "Jede Landschaft an einer Burg erhält 1 zusätzlichen Rohstoff."
+      "name": "Ertragreiches Jahr",
+      "description": "Jede Landschaft an einem Befestigten Lager erhält 1 zusätzlichen Rohstoff."
     },
     "eventProgress": {
       "name": "Fortschritt",
@@ -568,7 +586,7 @@
       "description": "Du darfst 2 Erz gegen 1 Rohstoff deiner Wahl tauschen. 1 Handel."
     },
     "fleetWool": {
-      "name": "Wolle-Handelsflotte",
+      "name": "Woll-Handelsflotte",
       "description": "Du darfst 2 Wolle gegen 1 Rohstoff deiner Wahl tauschen. 1 Handel."
     }
   },
