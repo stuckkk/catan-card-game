@@ -30,6 +30,7 @@ import PlacedCardChoiceModal from '../components/PlacedCardChoiceModal'
 import AttackModal from '../components/AttackModal'
 import HandCardChoiceModal from '../components/HandCardChoiceModal'
 import MasterBuilderModal from '../components/MasterBuilderModal'
+import RegionChoiceBar from '../components/RegionChoiceBar'
 import DiscardPanel from '../components/DiscardPanel'
 import Toasts from '../components/Toasts'
 import ActivityFeed from '../components/ActivityFeed'
@@ -177,6 +178,12 @@ export default function GamePage() {
   const activeChoice = pendingChoices?.[0] ?? null
   const myChoice = activeChoice && (activeChoice.player === myId || isPractice) ? activeChoice : null
 
+  // Region choice: the Regions tapped so far, for this choice only.
+  const regionChoice = myChoice?.kind === 'region' ? myChoice : null
+  const regionKey = regionChoice ? `${view?.eventLog.length}|${JSON.stringify(regionChoice)}` : ''
+  const [regionPicks, setRegionPicks] = useState<{ key: string; picks: number[] }>({ key: '', picks: [] })
+  const picks = regionPicks.key === regionKey ? regionPicks.picks : []
+
   // Activity: everything logged so far as text, the latest production (to make the producing
   // regions glow), and toasts for what arrives while this screen is open.
   const eventLog = view?.eventLog
@@ -222,7 +229,7 @@ export default function GamePage() {
     || (!!pendingTrade && pendingTrade.from !== myId)
   const sheetKey = `${view?.turn}|${phase}|${mySearch?.deck ?? ''}|${pendingTrade ? 'trade' : ''}`
   const [sheetOverride, setSheetOverride] = useState<{ key: string; collapsed: boolean } | null>(null)
-  const sheetCollapsed = !!placingCardId
+  const sheetCollapsed = !!placingCardId || !!regionChoice
     || (sheetOverride?.key === sheetKey ? sheetOverride.collapsed : !panelNeedsMe)
 
   // One line telling the player what to do now; phases with their own panel explain themselves.
@@ -364,6 +371,15 @@ export default function GamePage() {
 
       {/* My board: the sea the principality sits on. Sized to fit this area (container query). */}
       <main className={styles.myBoard}>
+        {regionChoice && myState && (
+          <RegionChoiceBar
+            choice={regionChoice}
+            regions={myState.regions}
+            picks={picks}
+            onReset={() => setRegionPicks({ key: regionKey, picks: [] })}
+            onConfirm={() => { dispatchAction({ type: 'CHOOSE_REGIONS', regionIndices: picks }); setRegionPicks({ key: '', picks: [] }) }}
+          />
+        )}
         {placingCardId && (
           <div className={styles.placingBanner}>
             <span>{t('game.placing', { card: t(getCard(placingCardId).nameKey) })}</span>
@@ -388,6 +404,9 @@ export default function GamePage() {
               resources={myResources}
               supply={view.supply}
               production={production}
+              regionPick={regionChoice
+                ? { choice: regionChoice, picks, onPick: i => setRegionPicks({ key: regionKey, picks: [...picks, i] }) }
+                : undefined}
             />
           )}
         </div>
@@ -426,6 +445,7 @@ export default function GamePage() {
               : activeChoice.kind === 'attackRoll' ? 'game.attack.rollWaiting'
               : activeChoice.kind === 'handCard' ? 'game.handCard.waiting'
               : activeChoice.kind === 'masterBuilder' ? 'game.masterBuilder.waiting'
+              : activeChoice.kind === 'region' ? 'game.regionChoice.waiting'
               : 'game.discardNow.waiting', 'attackCardId' in activeChoice ? { card: t(getCard(activeChoice.attackCardId).nameKey) } : undefined)}
           </div>
         )}
@@ -445,7 +465,7 @@ export default function GamePage() {
 
         {phase === 'setup' && <SetupPanel view={view} myId={myId} onAction={dispatchAction} />}
 
-        {mySearch && mySearch.purpose !== 'masterBuilder' && view.searchContents && (
+        {mySearch && mySearch.purpose !== 'masterBuilder' && !activeChoice && view.searchContents && (
           <SearchPanel key={`${mySearch.deck}-${mySearch.purpose}`} search={mySearch} contents={view.searchContents} onAction={dispatchAction} />
         )}
 

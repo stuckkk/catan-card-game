@@ -793,6 +793,135 @@ describe('player trade', () => {
   })
 })
 
+describe('Region choice', () => {
+  // Board indices: 0 lumber, 1 wool, 2 brick, 3 ore, 4 grain, 5 gold; index 6 is a 2nd Region of one type.
+  const SECOND: Record<ResourceType, string> = {
+    lumber: 'forest-2', wool: 'pasture-1', brick: 'hills-3', ore: 'mountains-4', grain: 'fields-3', gold: 'goldfield-2',
+  }
+  /** The starting board with `a` on its Region of `type` and a 2nd one (index 6) holding `b`. */
+  function twoOf(type: ResourceType, a: number, b: number, over: Partial<Resources> = {}): RegionState[] {
+    const regions = regionsWith(over)
+    regions[BOARD_ORDER.indexOf(type)].storedResources = a
+    return [...regions, { regionId: SECOND[type], storedResources: b }]
+  }
+  const stored = (p: PlayerState) => p.regions.map(r => r.storedResources)
+  const pick = (regionIndices: number[]) => ({ type: 'CHOOSE_REGIONS', regionIndices }) satisfies GameAction
+  const players = (host: Partial<PlayerState>, guest: Partial<PlayerState> = {}) =>
+    ({ host: makePlayer('host', host), guest: makePlayer('guest', guest) })
+  const bankLumber = { type: 'TRADE_WITH_BANK', give: 'ore', receive: 'lumber' } satisfies GameAction
+
+  it('asks where a bank trade’s gain goes when 2 Regions have room, and puts it there', () => {
+    const s = applyAction(makeState({ players: players({ regions: twoOf('lumber', 1, 1, { ore: 3 }) }) }), 'host', bankLumber)
+    expect(s.pendingChoices).toEqual([{ kind: 'region', player: 'host', before: [1, 0, 0, 3, 0, 0, 1], changes: { lumber: 1 } }])
+    expect(stored(s.players.host)).toEqual([2, 0, 0, 0, 0, 0, 1])  // placed automatically until the pick
+    expect(applyAction(s, 'host', { type: 'END_ACTION_PHASE' })).toBe(s)
+    expect(applyAction(s, 'guest', pick([6]))).toBe(s)
+    const done = applyAction(s, 'host', pick([6]))
+    expect(stored(done.players.host)).toEqual([1, 0, 0, 0, 0, 0, 2])
+    expect(done.pendingChoices).toEqual([])
+    expect(done.phase).toBe('action')
+  })
+
+  it('rejects a pick with the wrong count, a wrong type, an index out of range or over the cap', () => {
+    const s = applyAction(makeState({ players: players({ regions: twoOf('lumber', 1, 1, { ore: 3 }) }) }), 'host', bankLumber)
+    for (const bad of [[], [0, 6], [1], [3], [7], [-1], [0.5]]) expect(applyAction(s, 'host', pick(bad))).toBe(s)
+    // Caravan: 2 Lumber into Forests [2, 1]; 2 more on the first would make 4.
+    const base = unlocked()
+    const host = { ...base.players.host, hand: ['caravan'], regions: twoOf('lumber', 2, 1, { ore: 2 }) }
+    const c = applyAction({ ...base, players: { ...base.players, host } }, 'host',
+      { type: 'PLAY_ACTION_CARD', cardId: 'caravan', params: { give: ['ore', 'ore'], receive: ['lumber', 'lumber'] } })
+    expect(c.pendingChoices).toEqual([{ kind: 'region', player: 'host', before: [2, 0, 0, 2, 0, 0, 1], changes: { lumber: 2 } }])
+    expect(applyAction(c, 'host', pick([0, 0]))).toBe(c)
+    expect(stored(applyAction(c, 'host', pick([6, 6])).players.host)).toEqual([2, 0, 0, 0, 0, 0, 3])
+  })
+
+  it('does not ask when only 1 Region has room or the gain fills every Region', () => {
+    const one = applyAction(makeState({ players: players({ regions: twoOf('lumber', 3, 2, { ore: 3 }) }) }), 'host', bankLumber)
+    expect(one.pendingChoices).toEqual([])
+    expect(stored(one.players.host)[6]).toBe(3)
+    const base = unlocked()
+    const host = { ...base.players.host, hand: ['caravan'], regions: twoOf('lumber', 2, 2, { ore: 2 }) }
+    const full = applyAction({ ...base, players: { ...base.players, host } }, 'host',
+      { type: 'PLAY_ACTION_CARD', cardId: 'caravan', params: { give: ['ore', 'ore'], receive: ['lumber', 'lumber'] } })
+    expect(full.pendingChoices).toEqual([])
+    expect(stored(full.players.host)).toEqual([3, 0, 0, 0, 0, 0, 3])
+  })
+
+  it('asks which Hills pay for a Road when there is a choice, not when all of it goes', () => {
+    const road = { type: 'BUILD_ROAD', side: 'right' } satisfies GameAction
+    const s = applyAction(makeState({ players: players({ regions: twoOf('brick', 2, 1, { lumber: 1 }) }) }), 'host', road)
+    expect(s.pendingChoices).toEqual([{ kind: 'region', player: 'host', before: [1, 0, 2, 0, 0, 0, 1], changes: { brick: -2 } }])
+    expect(applyAction(s, 'host', pick([6, 6]))).toBe(s)  // only 1 there
+    expect(stored(applyAction(s, 'host', pick([2, 6])).players.host)).toEqual([0, 0, 1, 0, 0, 0, 0])
+    const all = applyAction(makeState({ players: players({ regions: twoOf('brick', 1, 1, { lumber: 1 }) }) }), 'host', road)
+    expect(all.pendingChoices).toEqual([])
+  })
+
+  it('does not offer a new Settlement’s Regions for its own payment', () => {
+    const principality = [settlementA(), road(), settlementB(), road(), { kind: 'empty-settlement' as const, cardId: null, regionIndices: [], expansionSlots: [] }]
+    const host = { principality, playedCards: playedFor(principality), regions: regionsWith({ lumber: 2, brick: 1, wool: 1, grain: 1 }) }
+    const s = applyAction(makeState({ players: players(host), regionStack: ['forest-2', 'hills-3'] }), 'host', { type: 'BUILD_SETTLEMENT', slotIndex: 4 })
+    expect(s.players.host.principality[4].kind).toBe('settlement')
+    expect(s.pendingChoices).toEqual([])
+  })
+
+  it('lets the Windmill holder place the stolen resource and the victim pick where it came from, then produces', () => {
+    const city = [settlementA([null, null, null, null]), road(), settlementB()]
+    const host = { principality: city, playedCards: playedFor(city, ['marketplace']), regions: twoOf('ore', 0, 0) }
+    let s = applyRoll(makeState({ phase: 'roll', players: players(host, { regions: twoOf('ore', 1, 1) }) }), roll('commerce', 6))
+    s = applyAction(s, 'host', { type: 'CHOOSE_RESOURCE', resource: 'ore' })
+    expect(s.pendingChoices.map(c => [c.kind, c.player])).toEqual([['region', 'host'], ['region', 'guest']])
+    expect(s.pendingChoices[1]).toMatchObject({ changes: { ore: -1 } })
+    expect(s.phase).toBe('event-resolution')
+    s = applyAction(s, 'host', pick([6]))
+    s = applyAction(s, 'guest', pick([6]))
+    expect(stored(s.players.host)).toEqual([0, 0, 0, 0, 0, 1, 1])   // + gold produced
+    expect(stored(s.players.guest)).toEqual([0, 0, 0, 1, 0, 1, 0])
+    expect(s.phase).toBe('action')
+  })
+
+  it('asks both players after an accepted trade, and holds the accept while a pick is open', () => {
+    const state = makeState({ players: players({ regions: twoOf('ore', 1, 1, { lumber: 3 }) }, { regions: twoOf('ore', 0, 0, { wool: 1 }) }) })
+    let s = applyAction(state, 'host', { type: 'PROPOSE_TRADE', give: { ore: 1 }, receive: { wool: 1 } })
+    const picking = applyAction(s, 'host', { type: 'TRADE_WITH_BANK', give: 'lumber', receive: 'ore' })
+    expect(picking.pendingChoices[0]).toMatchObject({ kind: 'region', player: 'host', changes: { ore: 1 } })
+    expect(applyAction(picking, 'guest', { type: 'ACCEPT_TRADE' })).toBe(picking)
+
+    s = applyAction(s, 'guest', { type: 'ACCEPT_TRADE' })
+    expect(s.pendingChoices).toEqual([
+      { kind: 'region', player: 'guest', before: [0, 1, 0, 0, 0, 0, 0], changes: { ore: 1 } },
+      { kind: 'region', player: 'host', before: [3, 0, 0, 1, 0, 0, 1], changes: { ore: -1 } },
+    ])
+    s = applyAction(s, 'guest', pick([6]))
+    s = applyAction(s, 'host', pick([6]))
+    expect(stored(s.players.guest)).toEqual([0, 0, 0, 0, 0, 0, 1])
+    expect(stored(s.players.host)).toEqual([3, 1, 0, 1, 0, 0, 0])
+  })
+
+  it('uses the net change for a Merchant', () => {
+    const base = unlocked()
+    const host = { ...base.players.host, hand: ['merchant'], regions: twoOf('ore', 0, 0) }
+    const guest = { ...base.players.guest, regions: twoOf('ore', 2, 1) }
+    const s = applyAction({ ...base, players: { host, guest } }, 'host',
+      { type: 'PLAY_ACTION_CARD', cardId: 'merchant', params: { take: ['ore', 'ore'], give: ['ore'] } })
+    expect(s.pendingChoices).toEqual([
+      { kind: 'region', player: 'host', before: [0, 0, 0, 0, 0, 0, 0], changes: { ore: 1 } },
+      { kind: 'region', player: 'guest', before: [0, 0, 0, 2, 0, 0, 1], changes: { ore: -1 } },
+    ])
+  })
+
+  it('asks before a paid Search can be taken from', () => {
+    const host = { hand: ['harbor'], regions: twoOf('lumber', 2, 1) }
+    let s = applyAction(makeState({ players: players(host), decks: { ...emptyDecks(), 'stack-1': ['mint'] } }), 'host', { type: 'END_ACTION_PHASE' })
+    s = applyAction(s, 'host', { type: 'SEARCH_STACK', deck: 'stack-1', payWith: ['lumber', 'lumber'] })
+    expect(s.pendingChoices[0]).toMatchObject({ kind: 'region', changes: { lumber: -2 } })
+    expect(applyAction(s, 'host', { type: 'TAKE_FROM_SEARCH', cardIds: ['mint'] })).toBe(s)
+    s = applyAction(s, 'host', pick([0, 6]))
+    s = applyAction(s, 'host', { type: 'TAKE_FROM_SEARCH', cardIds: ['mint'] })
+    expect(s.players.host.hand).toContain('mint')
+  })
+})
+
 // ─── Action Cards ────────────────────────────────────────────────────────────
 
 describe('action cards', () => {

@@ -103,6 +103,11 @@
       "takeNothing": "Take nothing",
       "waiting": "Opponent is looking through a stack (Master Builder)…"
     },
+    "regionChoice": {
+      "prompt": "Choose the Regions: tap one per resource.",
+      "reset": "Reset",
+      "waiting": "Opponent is choosing Regions for their resources…"
+    },
     "attack": {
       "counterTitle": "⚔️ {{card}} attacks!",
       "counterHint": "Play {{counter}} before they roll: then they win only on 1–2 instead of 1–5.",

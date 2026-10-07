@@ -103,6 +103,11 @@
       "takeNothing": "Nichts nehmen",
       "waiting": "Gegner sieht einen Stapel durch (Baumeister)…"
     },
+    "regionChoice": {
+      "prompt": "Wähle die Landschaften: Tippe je Rohstoff eine an.",
+      "reset": "Zurücksetzen",
+      "waiting": "Der Gegner wählt die Landschaften für seine Rohstoffe…"
+    },
     "attack": {
       "counterTitle": "⚔️ {{card}} greift an!",
       "counterHint": "Spiele {{counter}} vor dem Wurf: dann gewinnt dein Gegner nur bei 1–2 statt 1–5.",

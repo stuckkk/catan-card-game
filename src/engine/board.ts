@@ -76,6 +76,22 @@ export function addToRegions(player: PlayerState, gain: Partial<Resources>): Pla
   return { ...player, regions }
 }
 
+/** The net change from `before` to `after` per resource type, for the types where the player has a
+ *  choice of Regions (DE p.4): a gain that fits into 2+ Regions with room but does not fill them
+ *  all, or a loss from 2+ Regions that hold some and not all of it. Only `before`'s Regions count
+ *  (a new Settlement's Regions start empty). Null if there is nothing to choose. */
+export function regionChoices(before: PlayerState, after: PlayerState): Partial<Resources> | null {
+  const out: Partial<Resources> = {}
+  for (const type of ALL_RESOURCE_TYPES) {
+    const held = before.regions.flatMap((r, i) => (getRegion(r.regionId).resourceType === type ? [i] : []))
+    const n = held.reduce((sum, i) => sum + after.regions[i].storedResources - before.regions[i].storedResources, 0)
+    // Per Region: the room for a gain, the stock for a loss.
+    const fits = held.map(i => (n > 0 ? 3 - before.regions[i].storedResources : before.regions[i].storedResources))
+    if (n !== 0 && fits.filter(f => f > 0).length >= 2 && Math.abs(n) < fits.reduce((a, b) => a + b, 0)) out[type] = n
+  }
+  return Object.keys(out).length > 0 ? out : null
+}
+
 export function shuffle<T>(arr: T[], rng: () => number = Math.random): T[] {
   const a = [...arr]
   for (let i = a.length - 1; i > 0; i--) {

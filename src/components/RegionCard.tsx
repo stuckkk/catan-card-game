@@ -15,14 +15,16 @@ const RESOURCE_COLOR: Record<string, string> = {
 
 interface Props {
   region: RegionState
-  /** Setup: tap to pick this region for swapping. */
+  /** Setup: tap to pick this region for swapping. Region choice: tap to put/take 1 here. */
   onClick?: () => void
   selected?: boolean
+  /** Region choice: what was put here (+n) or taken from here (−n). */
+  badge?: string
   /** Set when this region just produced: the production's log id, so the glow plays once per roll. */
   producedKey?: string
 }
 
-export default function RegionCard({ region, onClick, selected, producedKey }: Props) {
+export default function RegionCard({ region, onClick, selected, producedKey, badge }: Props) {
   const { t } = useTranslation()
   const def = getRegion(region.regionId)
   const fill = region.storedResources
@@ -40,6 +42,7 @@ export default function RegionCard({ region, onClick, selected, producedKey }: P
           <span className={styles.gain}>{RESOURCE_ICON[def.resourceType]}</span>
         </span>
       )}
+      {badge && <span className={styles.badge}>{badge}</span>}
       <div className={styles.number}>{def.productionNumber}</div>
       <div className={styles.icon}>{RESOURCE_ICON[def.resourceType]}</div>
       <div className={styles.pips}>

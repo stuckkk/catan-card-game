@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type {
-  CentralSlot, RegionState, GameAction, TurnPhase, ExpansionColor, Resources, Supply,
+  CentralSlot, RegionState, GameAction, TurnPhase, ExpansionColor, Resources, Supply, PendingRegionChoice,
 } from '../engine/types'
 import { getCard } from '../engine/cards'
 import { canAfford } from '../engine/board'
@@ -42,6 +42,9 @@ interface Props {
   supply?: Supply
   /** The latest production (log id and number rolled), to make the producing regions glow. */
   production?: { id: string; roll: number } | null
+  /** Region choice in progress: the Regions show `before` plus the picks so far, and a tap on one
+   *  that can still take a pick adds it. */
+  regionPick?: { choice: PendingRegionChoice; picks: number[]; onPick: (index: number) => void }
 }
 
 type RegionCell = { region: RegionState; index: number } | undefined
@@ -235,7 +238,7 @@ function SettlementCore({ slot, idx, canBuild, hasScout, regionStack, isReady, o
 
 export default function Principality({
   principality, regions, isMyBoard, phase, isMyTurn, placingCardId, onAction,
-  canArrange = false, hasScout = false, regionStack = [], resources, supply, production,
+  canArrange = false, hasScout = false, regionStack = [], resources, supply, production, regionPick,
 }: Props) {
   const { t } = useTranslation()
   const canBuild = isMyBoard && isMyTurn && phase === 'action'
@@ -286,7 +289,29 @@ export default function Principality({
 
   const canExtend = (slot: CentralSlot | undefined) => canBuild && !!slot && (slot.kind === 'settlement' || slot.kind === 'city')
 
+  const typeOf = (index: number) => getRegion(regions[index].regionId).resourceType
+
+  /** A Region of a type being re-placed: shown as before ± its picks; tappable while it still fits. */
+  function pickedRegionCard(cell: NonNullable<RegionCell>, pick: NonNullable<Props['regionPick']>) {
+    const n = pick.choice.changes[typeOf(cell.index)]!
+    const here = pick.picks.filter(i => i === cell.index).length
+    const left = Math.abs(n) - pick.picks.filter(i => typeOf(i) === typeOf(cell.index)).length
+    const stored = pick.choice.before[cell.index] + Math.sign(n) * here
+    const fits = left > 0 && (n > 0 ? stored < 3 : stored > 0)
+    return (
+      <RegionCard
+        region={{ ...cell.region, storedResources: stored }}
+        selected={here > 0}
+        badge={here > 0 ? `${n > 0 ? '+' : '−'}${here}` : undefined}
+        onClick={fits ? () => pick.onPick(cell.index) : undefined}
+      />
+    )
+  }
+
   function regionCard(cell: NonNullable<RegionCell>) {
+    if (regionPick && cell.index < regionPick.choice.before.length && regionPick.choice.changes[typeOf(cell.index)]) {
+      return pickedRegionCard(cell, regionPick)
+    }
     // Only the 6 starting regions are arranged during setup.
     const swappable = canArrange && cell.index < 6
     return (

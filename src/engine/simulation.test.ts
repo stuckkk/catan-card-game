@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { applyAction, createInitialState, availableResources, computePlayerStats, searchCost, setupChooser } from './engine'
-import { ALL_DRAW_CARDS, COUNTER_CARD, DRAW_STACK_IDS, getCard, isSpyTarget } from './cards'
+import { ALL_DRAW_CARDS, COUNTER_CARD, DRAW_STACK_IDS, getCard, getRegion, isSpyTarget } from './cards'
 import { ALL_RESOURCE_TYPES } from './board'
 import type { GameAction, GameState, PlayerId, ResourceType } from './types'
 
@@ -100,6 +100,22 @@ function step(s: GameState, rng: () => number): GameState {
     return s
   }
 
+  const head = s.pendingChoices[0]
+  if (head?.kind === 'region') {
+    // Put each resource on (or take it from) a random Region of its type that still fits.
+    const stored = [...head.before]
+    const regionIndices: number[] = []
+    for (const [r, n] of Object.entries(head.changes) as [ResourceType, number][]) {
+      for (let k = 0; k < Math.abs(n); k++) {
+        const fits = stored.flatMap((v, i) =>
+          getRegion(me.regions[i].regionId).resourceType === r && (n > 0 ? v < 3 : v > 0) ? [i] : [])
+        const i = fits[Math.floor(rng() * fits.length)]
+        stored[i] += Math.sign(n)
+        regionIndices.push(i)
+      }
+    }
+    return applyAction(s, p, { type: 'CHOOSE_REGIONS', regionIndices })
+  }
   if (s.search?.purpose === 'masterBuilder') {
     const contents = s.decks[s.search.deck]
     if (rng() < 0.5) return applyAction(s, p, { type: 'TAKE_FROM_SEARCH', cardIds: [] })
