@@ -2,9 +2,13 @@
 
 This is the **rulebook** for the app: the single source of truth for how the game behaves.
 
-**Upstream source:** the official rulebook *Catan Card Game* (Mayfair Games, 2005), kept locally as
-`rules.pdf` in the repo root (untracked: copyrighted). Page references below (`p.N`) point into it.
-Everything here follows the PDF unless it is listed in **§12 Deviations & Additions**. Rules or cards
+**Upstream source:** the German rulebook *Die Siedler von Catan – Das Kartenspiel* (Kosmos, Regelstand
+Herbst 2005), kept locally as `rules_german_original.pdf` in the repo root (untracked: copyrighted; a scan
+without a text layer). It matches the project owner's physical copy and is **authoritative**. References to
+it are written `DE p.N`. The English rulebook *Catan Card Game* (Mayfair Games, 2005, local `rules.pdf`) is
+a translation aid only; the older references `p.N` point into it. Where the two disagree, the German one
+wins. Cards in the German text that belong to theme sets (Cannon, University, Metropolis) do not exist here.
+Everything here follows the rulebook unless it is listed in **§12 Deviations & Additions**. Rules or cards
 the engine does not support yet are listed in **§13 Not Yet Implemented**.
 
 ---
@@ -151,6 +155,8 @@ back to the middle (nobody holds it).
 * Cards gained during the turn are not played until a later turn (the turn ends after step 4).
 * **Outside your turn:** if an effect raises your hand above your limit, immediately put the excess under
   stack(s) of your choice. Losing an Abbey/Library likewise forces an immediate discard down.
+* **Civil War** (DE p.6): after it resolves, **both** players — the roller too — immediately put any cards
+  above their limit under stack(s) of their choice (roller first).
 * If every expansion stack is empty, drawing stops.
 
 ---
@@ -191,7 +197,7 @@ icons and confirmed by the project owner against the physical cards. "Impl." = i
 ### Event Cards (blue, 10)
 | Card | # | Effect | Impl. |
 | :--- | :-: | :--- | :-: |
-| Civil War | 1 | Each player returns a Knight or Fleet to hand (Church protects those in its City). | ✘ |
+| Civil War | 1 | Each player returns 1 Knight or Fleet to hand; **the opponent chooses which** (roller chooses first). Units in a City with a Church cannot be chosen. No eligible unit → unaffected; exactly 1 → it returns without a choice. Then both players discard down to their hand limit immediately (§8). The returned card is an ordinary hand card and may be rebuilt (DE p.6, p.13). | ✔ |
 | Conflict | 1 | Knight Token holder takes 2 cards from the opponent's hand and puts them under a stack. | ✘ |
 | Master Builder | 1 | Each player may swap 1 hand card for any card of a chosen stack (roller chooses first; different stacks). | ✘ |
 | Plague | 2 | Every Region bordering a City loses 1 resource (once, even if it borders 2 Cities). Counter: Bath House, Aqueduct. | ✔ |
@@ -232,7 +238,7 @@ Buildings vs Units: Knights and Fleets are **Units**; everything else is a **Bui
 | :--- | :-: | :--- | :--- | :--- |
 | Aqueduct | 2 | 2L 2O 2B | 1 VP | All your Regions are immune to Plague. |
 | Bath House | 2 | 2B O W | 1 VP | The 4 Regions bordering its City are immune to Plague (also a Region shared with a neighbouring City). |
-| Church | 2 | 2O 2G B | 1 VP | Knights/Fleets in its City are immune to Civil War. |
+| Church | 2 | 2O 2G B | 1 VP | Knights/Fleets on its City's building sites cannot be chosen for Civil War (DE p.15). |
 | The Colossus of Catan | 1 | 3O 3B 3G | 2 VP | – |
 | Counting House | 1 | 2W G B | 3 Commerce | – |
 | Harbor | 1 | O W B | 1 Commerce | Each of your Trade Fleets gives +1 Commerce. |
@@ -278,11 +284,11 @@ Buildings vs Units: Knights and Fleets are **Units**; everything else is a **Bui
 ## 13. Not Yet Implemented
 
 These cards are defined but **kept out of the decks** until implemented, so no dead cards appear in play.
-Until then the expansion stacks hold 49 of 62 cards and the event deck 7 of 10.
+Until then the expansion stacks hold 49 of 62 cards and the event deck 8 of 10.
 
 * Action Cards: **Arsonist, Bishop, Black Knight, Brigands, Herb Woman, Spy** (dice duels, reactions on
   the opponent's turn, hidden-hand inspection).
-* Event Cards: **Civil War, Conflict, Master Builder** (interactive hand/board choices for both players).
-* Consequences: the off-turn hand-limit discard (§8) and losing an Abbey/Library outside your own turn
-  cannot occur yet; the Church's Civil War protection has no effect yet.
+* Event Cards: **Conflict, Master Builder** (interactive hand choices for both players).
+* Consequences: the off-turn hand-limit discard (§8) only occurs through Civil War so far; losing an
+  Abbey/Library outside your own turn cannot occur yet.
 * Player-to-player trades are offered by the active player only.

@@ -57,6 +57,14 @@
       "progressTitle": "Fortschritt: Wähle einen Gratis-Rohstoff",
       "waiting": "Gegner wählt einen Rohstoff…"
     },
+    "civilWar": {
+      "title": "Bürgerkrieg: Wähle, welche Einheit deines Gegners zurück auf die Hand geht",
+      "confirm": "Zurück auf die Hand",
+      "waiting": "Gegner wählt, welche deiner Einheiten zurück auf deine Hand geht…"
+    },
+    "discardNow": {
+      "waiting": "Gegner legt Karten bis zu seinem Handkartenlimit ab…"
+    },
     "deckCount": "{{count}}",
     "deckName": {
       "stack-1": "Stapel 1",
@@ -207,6 +215,7 @@
       "discard_other": "legt {{count}} Karten unter Stapel",
       "exchange": "tauscht eine Karte bei {{stack}}",
       "exchangeSearch": "tauscht eine Karte und durchsucht {{stack}}",
+      "returnedToHand": "{{card}} geht zurück auf die Hand (Bürgerkrieg)",
       "skipExchange": "beendet den Zug",
       "dismiss": "Schließen"
     },
@@ -476,7 +485,7 @@
     },
     "eventCivilWar": {
       "name": "Bürgerkrieg",
-      "description": "Jeder Spieler muss einen Ritter oder eine Flotte auf die Hand nehmen. Gegenkarte: Kirche."
+      "description": "Jeder Spieler muss einen Ritter oder eine Flotte zurück auf die Hand nehmen. Der Gegner bestimmt, welche Karte das ist. Gegenkarte: Kirche."
     },
     "eventConflict": {
       "name": "Streit",
@@ -537,6 +546,7 @@
     "commercePerFleet": "+{{amount}} Handel pro Handelsflotte",
     "searchDiscount": "Stapel durchsuchen kostet nur 1 Rohstoff",
     "plaguePrincipality": "Alle deine Landschaften sind vor der Seuche geschützt",
-    "plagueCity": "Die 4 Landschaften dieser Stadt sind vor der Seuche geschützt"
+    "plagueCity": "Die 4 Landschaften dieser Stadt sind vor der Seuche geschützt",
+    "civilWarProtection": "Ritter und Flotten dieser Stadt sind vor dem Bürgerkrieg geschützt"
   }
 }

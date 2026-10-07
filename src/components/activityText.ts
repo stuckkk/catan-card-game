@@ -54,6 +54,7 @@ export function describeEvent(t: TFunction, e: GameEvent, viewer: PlayerId, isPr
       const def = typeof p.cardId === 'string' ? getCard(p.cardId) : null
       return global(t('game.log.eventCard', { card: card(p.cardId) }), def ? t(def.descriptionKey) : undefined)
     }
+    case 'returned-to-hand': return line(t('game.log.returnedToHand', { card: card(p.cardId) }))
     case 'BUILD_ROAD': return line(t('game.log.buildRoad'))
     case 'BUILD_SETTLEMENT': return line(t(p.scout ? 'game.log.buildSettlementScout' : 'game.log.buildSettlement'))
     case 'BUILD_CITY': return line(t('game.log.buildCity'))
@@ -87,7 +88,7 @@ export function describeEvent(t: TFunction, e: GameEvent, viewer: PlayerId, isPr
 /** Entries that pop up as a toast when they arrive: what happens to both players always,
  *  and online also the opponent's moves (their trade offers have their own banner). */
 export function isToastWorthy(e: GameEvent, viewer: PlayerId, isPractice: boolean): boolean {
-  if (e.type === 'production' || e.type === 'brigand' || e.type === 'event-card') return true
+  if (e.type === 'production' || e.type === 'brigand' || e.type === 'event-card' || e.type === 'returned-to-hand') return true
   if (isPractice || e.player === viewer) return false
   return !['ROLL_DICE', 'END_ACTION_PHASE', 'PROPOSE_TRADE'].includes(e.type)
 }

@@ -34,6 +34,7 @@ function useEffectText() {
       case 'COMMERCE_PER_FLEET': return t('effects.commercePerFleet', { amount: e.amount })
       case 'SEARCH_DISCOUNT': return t('effects.searchDiscount')
       case 'PLAGUE_PROTECTION': return t(e.scope === 'city' ? 'effects.plagueCity' : 'effects.plaguePrincipality')
+      case 'CIVIL_WAR_PROTECTION': return t('effects.civilWarProtection')
     }
   }
 }

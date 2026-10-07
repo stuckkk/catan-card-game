@@ -123,10 +123,11 @@ describe('card catalogue', () => {
     expect(ALL_DRAW_CARDS.every(id => !getCard(id).notImplemented)).toBe(true)
   })
 
-  it('builds the event deck from the 7 implemented of the 10 event cards', () => {
-    expect(DEFAULT_EVENT_DECK).toHaveLength(7)
+  it('builds the event deck from the 8 implemented of the 10 event cards', () => {
+    expect(DEFAULT_EVENT_DECK).toHaveLength(8)
     expect(DEFAULT_EVENT_DECK.filter(c => c === 'event-plague')).toHaveLength(2)
-    expect(DEFAULT_EVENT_DECK).not.toContain('event-civil-war')
+    expect(DEFAULT_EVENT_DECK.filter(c => c === 'event-civil-war')).toHaveLength(1)
+    expect(DEFAULT_EVENT_DECK).not.toContain('event-conflict')
   })
 
   it('has 11 regions in the Region stack: 2 of each resource and 1 Gold Field', () => {
@@ -257,7 +258,7 @@ describe('createInitialState', () => {
     expect(s.turn).toBe(0)
     const stacked = (['stack-1', 'stack-2', 'stack-3', 'stack-4', 'stack-5'] as const).flatMap(d => s.decks[d])
     expect(stacked.sort()).toEqual([...ALL_DRAW_CARDS].sort())
-    expect(s.decks.event).toHaveLength(7)
+    expect(s.decks.event).toHaveLength(8)
     expect(s.regionStack).toHaveLength(11)
     expect(s.supply).toEqual({ road: 7, settlement: 5, city: 7 })
     expect(s.activePlayer).toBe(s.setup.firstPlayer)
@@ -411,7 +412,7 @@ describe('Commerce event (Windmill Token)', () => {
     const host = makePlayer('host', { principality: cityBoard(), playedCards: playedFor(cityBoard(), ['marketplace']) })
     const guest = makePlayer('guest', { regions: regionsWith({ ore: 2 }) })
     let s = applyRoll(makeState({ phase: 'roll', players: { host, guest } }), roll('commerce', 6))
-    expect(s.pendingChoices[0]).toEqual({ player: 'host', reason: 'commerce', options: ['ore'], takeFrom: 'guest' })
+    expect(s.pendingChoices[0]).toEqual({ kind: 'resource', player: 'host', reason: 'commerce', options: ['ore'], takeFrom: 'guest' })
     s = applyAction(s, 'host', { type: 'CHOOSE_RESOURCE', resource: 'ore' })
     expect(res(s.players.guest).ore).toBe(1)
     expect(res(s.players.host).ore).toBe(1)
@@ -510,7 +511,7 @@ describe('event cards', () => {
     const guest = makePlayer('guest', { playedCards: ['settlement', 'abbey'] })
     let s = applyRoll(withEvent('event-progress', { players: { host, guest } }), roll('event', 6))
     expect(s.phase).toBe('event-resolution')
-    expect(s.pendingChoices.map(c => [c.player, c.reason])).toEqual([['host', 'progress'], ['host', 'progress'], ['guest', 'progress']])
+    expect(s.pendingChoices.map(c => [c.player, c.kind === 'resource' && c.reason])).toEqual([['host', 'progress'], ['host', 'progress'], ['guest', 'progress']])
     s = applyAction(s, 'host', { type: 'CHOOSE_RESOURCE', resource: 'ore' })
     s = applyAction(s, 'host', { type: 'CHOOSE_RESOURCE', resource: 'ore' })
     s = applyAction(s, 'guest', { type: 'CHOOSE_RESOURCE', resource: 'brick' })
@@ -522,6 +523,114 @@ describe('event cards', () => {
   it('Year End: reshuffles the whole event deck, itself included', () => {
     const s = applyRoll(makeState({ phase: 'roll', decks: { ...emptyDecks(), event: ['event-plague', 'event-progress', 'event-year-end'] } }), roll('event', 6))
     expect([...s.decks.event].sort()).toEqual(['event-plague', 'event-progress', 'event-year-end'])
+  })
+})
+
+describe('Civil War', () => {
+  /** Host rolls Civil War (production 6: only the Gold Fields produce). */
+  const civilWar = (host: PlayerState, guest: PlayerState, over: Partial<GameState> = {}) =>
+    applyRoll(makeState({ phase: 'roll', players: { host, guest }, decks: { ...emptyDecks(), event: ['event-civil-war'] }, ...over }), roll('event', 6))
+  const withBoard = (id: PlayerId, board: CentralSlot[] = [settlementA(), road(), settlementB()], over: Partial<PlayerState> = {}) =>
+    makePlayer(id, { principality: board, playedCards: playedFor(board), ...over })
+  const site = (slotIndex: number, expansionSlotIndex: number) => ({ slotIndex, expansionSlotIndex })
+  const pick = (slotIndex: number, expansionSlotIndex: number) => ({ type: 'CHOOSE_PLACED_CARD' as const, slotIndex, expansionSlotIndex })
+
+  it('makes the roller pick the opponent’s unit first, then the opponent picks the roller’s', () => {
+    const host = withBoard('host', [settlementA(['knight-conrad', 'fleet-ore']), road(), settlementB()])
+    const guest = withBoard('guest', [settlementA(['knight-karl', null]), road(), settlementB(['fleet-wool', null])])
+    let s = civilWar(host, guest)
+    expect(s.phase).toBe('event-resolution')
+    expect(s.pendingChoices[0]).toEqual({ kind: 'placedCard', player: 'host', owner: 'guest', reason: 'civilWar', options: [site(0, 0), site(2, 0)] })
+
+    s = applyAction(s, 'host', pick(2, 0))
+    expect(s.players.guest.hand).toEqual(['fleet-wool'])
+    expect(s.players.guest.principality[2].expansionSlots).toEqual([null, null])
+    expect(s.players.guest.playedCards).not.toContain('fleet-wool')
+    expect(s.pendingChoices[0]).toEqual({ kind: 'placedCard', player: 'guest', owner: 'host', reason: 'civilWar', options: [site(0, 0), site(0, 1)] })
+
+    s = applyAction(s, 'guest', pick(0, 0))
+    expect(s.players.host.hand).toEqual(['knight-conrad'])
+    expect(s.players.host.playedCards).toContain('fleet-ore')
+    expect(s.pendingChoices).toEqual([])
+    expect(s.phase).toBe('action')
+    expect(res(s.players.host).gold).toBe(1)  // production ran after the picks
+    expect(s.eventLog.filter(e => e.type === 'returned-to-hand').map(e => [e.player, e.payload?.cardId]))
+      .toEqual([['guest', 'fleet-wool'], ['host', 'knight-conrad']])
+  })
+
+  it('rejects a pick by the wrong player or of a card that is not an option', () => {
+    const host = withBoard('host', [settlementA(['knight-conrad', null]), road(), settlementB()])
+    const guest = withBoard('guest', [settlementA(['knight-karl', 'abbey']), road(), settlementB(['fleet-wool', null])])
+    const s = civilWar(host, guest)
+    expect(applyAction(s, 'guest', pick(0, 0))).toBe(s)
+    expect(applyAction(s, 'host', pick(0, 1))).toBe(s)   // the Abbey is a Building
+    expect(applyAction(s, 'host', pick(2, 1))).toBe(s)   // empty site
+    expect(applyAction(s, 'host', { type: 'CHOOSE_RESOURCE', resource: 'ore' })).toBe(s)
+  })
+
+  it('returns a player’s only unit without asking and leaves a player without units alone', () => {
+    const host = withBoard('host', [settlementA(['knight-conrad', null]), road(), settlementB()])
+    const guest = withBoard('guest')
+    const s = civilWar(host, guest)
+    expect(s.pendingChoices).toEqual([])
+    expect(s.phase).toBe('action')
+    expect(s.players.host.hand).toEqual(['knight-conrad'])
+    expect(s.players.host.principality[0].expansionSlots).toEqual([null, null])
+    expect(s.players.guest).toEqual({ ...guest, regions: s.players.guest.regions })
+  })
+
+  it('protects the units in a City with a Church, but not units elsewhere', () => {
+    const guest = withBoard('guest', [settlementA(['church', 'knight-karl', null, null]), road(), settlementB(['fleet-wool', null])])
+    const s = civilWar(withBoard('host'), guest)
+    expect(s.players.guest.hand).toEqual(['fleet-wool'])
+    expect(s.players.guest.playedCards).toContain('knight-karl')
+  })
+
+  it('leaves a player alone whose units are all in a City with a Church', () => {
+    const guest = withBoard('guest', [settlementA(['church', 'knight-karl', 'fleet-wool', null]), road(), settlementB()])
+    const s = civilWar(withBoard('host'), guest)
+    expect(s.players.guest.hand).toEqual([])
+    expect(s.phase).toBe('action')
+  })
+
+  it('makes both players over the limit discard right away, roller first, before production', () => {
+    const host = withBoard('host', [settlementA(['knight-conrad', null]), road(), settlementB()], { hand: ['abbey', 'smithy', 'mint'] })
+    const guest = withBoard('guest', [settlementA(['fleet-wool', null]), road(), settlementB()], { hand: ['abbey', 'smithy', 'mint'] })
+    let s = civilWar(host, guest, { decks: { ...emptyDecks(), event: ['event-civil-war'], 'stack-2': ['library'] } })
+    expect(s.phase).toBe('event-resolution')
+    expect(s.pendingChoices).toEqual([{ kind: 'discard', player: 'host' }, { kind: 'discard', player: 'guest' }])
+    expect(res(s.players.host).gold).toBe(0)
+
+    const discard = (cardId: string) => ({ type: 'DISCARD_TO_LIMIT' as const, discards: [{ cardId, toDeck: 'stack-2' as const }] })
+    expect(applyAction(s, 'guest', discard('fleet-wool'))).toBe(s)
+    expect(applyAction(s, 'host', { type: 'DISCARD_TO_LIMIT', discards: [] })).toBe(s)
+    s = applyAction(s, 'host', discard('knight-conrad'))
+    expect(s.players.host.hand).toEqual(['abbey', 'smithy', 'mint'])
+    expect(s.decks['stack-2']).toEqual(['knight-conrad', 'library'])
+    expect(s.phase).toBe('event-resolution')
+
+    s = applyAction(s, 'guest', discard('abbey'))
+    expect(s.players.guest.hand).toEqual(['smithy', 'mint', 'fleet-wool'])
+    expect(s.decks['stack-2']).toEqual(['abbey', 'knight-conrad', 'library'])
+    expect(s.pendingChoices).toEqual([])
+    expect(s.phase).toBe('action')
+    expect(res(s.players.host).gold).toBe(1)
+  })
+
+  it('moves the Knight Token when the Knight goes back to hand', () => {
+    const host = withBoard('host', [settlementA(['knight-karl', null]), road(), settlementB()])
+    expect(tokenHolders({ players: { host, guest: withBoard('guest') } }).knight).toBe('host')
+    const s = civilWar(host, withBoard('guest'))
+    expect(tokenHolders(s).knight).toBeNull()
+  })
+
+  it('lets the roller rebuild the returned unit the same turn', () => {
+    const host = withBoard('host', [settlementA(['knight-conrad', null]), road(), settlementB()], { regions: regionsWith({ grain: 1, ore: 1 }) })
+    let s = civilWar(host, withBoard('guest'))
+    expect(s.players.host.hand).toEqual(['knight-conrad'])
+    s = applyAction(s, 'host', { type: 'PLACE_EXPANSION', cardId: 'knight-conrad', slotIndex: 0, expansionSlotIndex: 0 })
+    expect(s.players.host.principality[0].expansionSlots).toEqual(['knight-conrad', null])
+    expect(s.players.host.hand).toEqual([])
   })
 })
 
