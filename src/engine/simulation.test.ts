@@ -31,7 +31,7 @@ function expansionCardsInPlay(s: GameState): string[] {
 
 function checkInvariants(s: GameState) {
   expect(sorted(expansionCardsInPlay(s))).toEqual(sorted(ALL_DRAW_CARDS))
-  expect(s.decks.event).toHaveLength(9)
+  expect(s.decks.event).toHaveLength(10)
   for (const p of ['host', 'guest'] as PlayerId[]) {
     const player = s.players[p]
     for (const r of player.regions) expect(r.storedResources).toBeGreaterThanOrEqual(0)
@@ -100,6 +100,14 @@ function step(s: GameState, rng: () => number): GameState {
     return s
   }
 
+  if (s.search?.purpose === 'masterBuilder') {
+    const contents = s.decks[s.search.deck]
+    if (rng() < 0.5) return applyAction(s, p, { type: 'TAKE_FROM_SEARCH', cardIds: [] })
+    const taken = contents[Math.floor(rng() * contents.length)]
+    const hand = [...me.hand, taken]
+    const giveBack = { cardId: hand[Math.floor(rng() * hand.length)], toDeck: DRAW_STACK_IDS[Math.floor(rng() * 5)] }
+    return applyAction(s, p, { type: 'TAKE_FROM_SEARCH', cardIds: [taken], giveBack })
+  }
   if (s.search) {
     const contents = s.decks[s.search.deck]
     const n = s.search.purpose === 'setup' ? Math.min(3, contents.length) : 1
@@ -118,6 +126,10 @@ function step(s: GameState, rng: () => number): GameState {
   }
   if (choice?.kind === 'counter') {
     return applyAction(s, p, { type: 'ANSWER_ATTACK', playCounter: me.hand.includes(COUNTER_CARD[choice.attackCardId]) && rng() < 0.7 })
+  }
+  if (choice?.kind === 'masterBuilder') {
+    const deck = DRAW_STACK_IDS.find(d => d !== choice.excludeDeck && s.decks[d].length > 0)!
+    return applyAction(s, p, { type: 'SEARCH_STACK', deck })
   }
   if (choice?.kind === 'attackRoll') return applyAction(s, p, { type: 'ROLL_ATTACK' })
   if (choice?.kind === 'handCard') {

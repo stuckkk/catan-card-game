@@ -28,7 +28,8 @@ Woman and a full hand), `arsonist-brigands` (action phase: host holds Arsonist, 
 Merchant with full Ore; guest has Library + Abbey + Knight placed, full Wool, a Bishop and a full hand),
 `spy` (action phase: host holds a Spy; guest's hand has a Knight, a Fleet, a Herb Woman and a Mint),
 `conflict` / `conflict-offturn` (Conflict just revealed; the host / the guest holds the Knight Token and
-picks 2 of the other's 3 cards plus a stack).
+picks 2 of the other's 3 cards plus a stack), `master-builder` (Master Builder just revealed: the host,
+then the guest looks through a stack and may swap 1 card).
 `midGame` alone is 6 VP combined: Action Card scenarios add a VP (e.g. a placed Knight = Knight Token).
 Optional 2nd arg = RNG seed. Unknown name → prints the list.
 To test a new mechanic, add a scenario to `SCENARIOS` using the helpers in the file (`midGame`,

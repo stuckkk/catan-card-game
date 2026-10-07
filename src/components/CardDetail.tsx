@@ -82,7 +82,6 @@ export default function CardDetail({ cardId, canPlay, canBuild, affordable = tru
           </div>
         ))}
 
-        {def.notImplemented && <p className={styles.description}>{t('card.notInDeck')}</p>}
         {note && <p className={styles.description}>{note}</p>}
         {canBuild && !affordable && resources && def.cost && (
           <p className={styles.missing}>

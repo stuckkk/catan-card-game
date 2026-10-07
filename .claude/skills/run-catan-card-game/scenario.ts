@@ -147,6 +147,13 @@ const SCENARIOS: Record<string, (seed: number) => GameState> = {
     s = update(s, 'guest', pl => hand(['abbey'])(place({ 0: ['knight-conrad', null, null, null] })(pl)))
     return roll(eventOnTop(s, 'event-conflict'), 'event', 6)
   },
+  /** Master Builder just revealed (production 6) on the host's roll: the host looks through a stack
+   *  and may swap 1 card, then the guest with a different stack. */
+  'master-builder': seed => {
+    let s = update(midGame(seed), 'host', hand(['abbey', 'smithy']))
+    s = update(s, 'guest', hand(['library', 'mint', 'spy']))
+    return roll(eventOnTop(s, 'event-master-builder'), 'event', 6)
+  },
 }
 
 const isMain = process.argv[1]?.endsWith('scenario.ts')

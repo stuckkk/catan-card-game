@@ -81,8 +81,6 @@ export interface CardDefinition {
   customEffect?: (state: GameState, actingPlayer: PlayerId, params: ActionCardParams) => GameState | null
   /** VP directly granted by this card (Settlements, Cities, some City Expansions). */
   directVP?: number
-  /** Defined in the catalogue but not implemented yet: kept out of the decks (GAME_LOGIC.md §13). */
-  notImplemented?: true
 }
 
 export interface RegionDefinition {
@@ -179,8 +177,9 @@ export interface SetupState {
 export interface StackSearch {
   player: PlayerId
   deck: DrawStackId
-  /** setup: take 3 starting cards. draw: take 1 toward the hand limit. exchange: take 1 replacement. */
-  purpose: 'setup' | 'draw' | 'exchange'
+  /** setup: take 3 starting cards. draw: take 1 toward the hand limit. exchange: take 1 replacement.
+   *  masterBuilder: take 0 or 1, giving 1 hand card back. */
+  purpose: 'setup' | 'draw' | 'exchange' | 'masterBuilder'
 }
 
 export interface GameState {
@@ -295,8 +294,17 @@ export interface PendingHandCardChoice {
   reason: 'spy' | 'conflict'
 }
 
+/** Master Builder: `player` must look through a non-empty stack other than `excludeDeck` (the
+ *  roller's stack; null for the roller), then may swap 1 card (SEARCH_STACK, TAKE_FROM_SEARCH). */
+export interface PendingMasterBuilderChoice {
+  kind: 'masterBuilder'
+  player: PlayerId
+  excludeDeck: DrawStackId | null
+}
+
 export type PendingChoice =
-  PendingResourceChoice | PendingPlacedCardChoice | PendingDiscard | PendingCounter | PendingAttackRoll | PendingHandCardChoice
+  | PendingResourceChoice | PendingPlacedCardChoice | PendingDiscard | PendingCounter | PendingAttackRoll
+  | PendingHandCardChoice | PendingMasterBuilderChoice
 
 export interface GameEvent {
   id: string
@@ -329,8 +337,9 @@ export type GameAction =
   | { type: 'SWAP_STARTING_REGIONS'; a: number; b: number }
   /** Open a stack to look through. Setup: free. Draw phase: a paid Search (`payWith`). */
   | { type: 'SEARCH_STACK'; deck: DrawStackId; payWith?: ResourceType[] }
-  /** Take card(s) from the open search: 3 in setup, otherwise 1. */
-  | { type: 'TAKE_FROM_SEARCH'; cardIds: string[] }
+  /** Take card(s) from the open search: 3 in setup, otherwise 1. Master Builder: 0, or 1 plus
+   *  `giveBack`, a hand card (may be the one taken) to put under `toDeck`. */
+  | { type: 'TAKE_FROM_SEARCH'; cardIds: string[]; giveBack?: { cardId: string; toDeck: DrawStackId } }
   | { type: 'ROLL_DICE' }
   | { type: 'BUILD_ROAD'; side: 'left' | 'right' }
   /** Build on an empty settlement site. `scoutRegionIds` plays a Scout from hand: [above, below]. */

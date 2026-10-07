@@ -47,7 +47,10 @@ Gaining rotates up, spending rotates down. A resource that would exceed 3 is **l
 never be moved to another region of the same type (p.10–11). Resources spent or gained may come from /
 go to any region(s) of the matching type.
 
-Each Region carries a **production number** (1–6). The PDF does not list them; the app uses the set in §12.
+Each Region carries a **production number** (1–6). The two starting sets differ (read from the picture on
+DE p.2): Player A (white-red crest, the host) Fields 1, Mountains 2, Pasture 3, Forest 4, Hills 5, Gold
+Field 6; Player B (black-red crest, the guest) Fields 2, Mountains 3, Pasture 4, Forest 5, Hills 6, Gold
+Field 1. The PDF does not list the Region stack's numbers; the app uses the set in §12.
 
 ### Card supply (p.2–3)
 * **Starting set** (one per player, 9 cards): 1 Road, 2 Settlements, 6 Regions (one of each resource).
@@ -167,7 +170,8 @@ back to the middle (nobody holds it).
 
 * **Bank trade:** pay 3 of one resource for 1 of your choice. **Trade Fleet:** 2:1 for its resource (a
   second copy adds nothing). **Mint:** Gold 1:1. Paid resources may come from several regions.
-* **Trade with the opponent:** any terms both agree on.
+* **Trade with the opponent:** any terms both agree on. Only the active player offers trades, at any time
+  during their turn (DE p.10).
 * **Action Cards** (yellow) cost nothing to play and go to the discard pile afterwards.
   * They can only be played once the **combined VP of both players is at least 7**.
     *Exception:* Scout may always be played when building a Settlement.
@@ -186,8 +190,8 @@ back to the middle (nobody holds it).
 ## 10. Card Almanac (p.19–30)
 
 Costs: L = Lumber, W = Wool, B = Brick, O = Ore, G = Grain, Au = Gold. Costs were read from the card
-icons and confirmed by the project owner against the physical cards. "Impl." = implemented in the engine
-(see §13 for the rest).
+icons and confirmed by the project owner against the physical cards. The counts (#) were checked against
+DE p.2, p.12–16. "Impl." = implemented in the engine.
 
 ### Action Cards (yellow, no cost, 20)
 | Card | # | Effect | Impl. |
@@ -208,7 +212,7 @@ icons and confirmed by the project owner against the physical cards. "Impl." = i
 | :--- | :-: | :--- | :-: |
 | Civil War | 1 | Each player returns 1 Knight or Fleet to hand; **the opponent chooses which** (roller chooses first). Units in a City with a Church cannot be chosen. No eligible unit → unaffected; exactly 1 → it returns without a choice. Then both players discard down to their hand limit immediately (§8). The returned card is an ordinary hand card and may be rebuilt (DE p.6, p.13). | ✔ |
 | Conflict | 1 | The Knight Token holder looks at the opponent's hand, picks 2 cards (fewer if they hold fewer) and puts both under one stack of their choice. No Token holder → no effect. The victim refills only at the end of their own turn (§8) (DE p.14). | ✔ |
-| Master Builder | 1 | Each player may swap 1 hand card for any card of a chosen stack (roller chooses first; different stacks). | ✘ |
+| Master Builder | 1 | The roller, then the opponent, must look through one non-empty stack (free, order unchanged; the opponent's must differ from the roller's). Each may take 1 card from it and then put 1 hand card (possibly the one just taken) face down under any stack, or take nothing. The hand size never changes. No eligible stack → that player is skipped (DE p.13). | ✔ |
 | Plague | 2 | Every Region bordering a City loses 1 resource (once, even if it borders 2 Cities). Counter: Bath House, Aqueduct. | ✔ |
 | Productive Year | 2 | Every Region bordering a Garrison gains 1 resource per bordering Garrison (cap 3). | ✔ |
 | Progress | 2 | Each player gains 1 resource of their choice per Abbey and Library they own (roller chooses first). | ✔ |
@@ -278,9 +282,8 @@ Buildings vs Units: Knights and Fleets are **Units**; everything else is a **Bui
 * **VP target** configurable in the lobby (7 / 12 / 13, default 12).
 * **First player** is chosen at random instead of by a die roll.
 * **Event die:** the `?` face appears twice (the PDF lists five events but not the face distribution).
-* **Region production numbers** (the PDF does not list them):
-  * Starting set (identical for both players): Fields 1, Mountains 2, Pasture 3, Forest 4, Hills 5, Gold Field 6.
-  * Region stack (11): Fields 3 & 5, Mountains 4 & 6, Pasture 1 & 5, Forest 2 & 6, Hills 3 & 4, Gold Field 2.
+* **Region stack production numbers** (the PDF does not list them; the starting sets are in §2):
+  Fields 3 & 5, Mountains 4 & 6, Pasture 1 & 5, Forest 2 & 6, Hills 3 & 4, Gold Field 2.
 * **Harbor:** follows the card text (Harbor 1 Commerce + 1 per Fleet); the almanac example (3 Fleets +
   Harbor = 6) omits the Harbor's own point.
 * **Garrison** gives 1 Commerce Point (windmill icon on the card; not mentioned in the almanac text).
@@ -292,10 +295,5 @@ Buildings vs Units: Knights and Fleets are **Units**; everything else is a **Bui
 
 ## 13. Not Yet Implemented
 
-These cards are defined but **kept out of the decks** until implemented, so no dead cards appear in play.
-Until then the event deck holds 9 of 10 cards.
-
-* Event Cards: **Master Builder** (interactive hand choices for both players).
-* Player-to-player trades are offered by the active player only.
-* Player can choose which resource field to put resources not gained by the resource dice
-* Check if there are icons indicating the knight and fleet tokens
+* The player cannot yet choose which Region receives or gives up resources that do not come from the
+  Production Die; the engine uses the first matching Region.

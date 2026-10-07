@@ -202,8 +202,8 @@ export function isSpyTarget(cardId: string): boolean {
 
 // ─── Event Cards (blue) ───────────────────────────────────────────────────────
 
-const event = (id: string, customEffect?: CardDefinition['customEffect'], notImplemented?: true) =>
-  card(`event-${id}`, { category: 'event', effects: [], customEffect, ...(notImplemented ? { notImplemented } : {}) })
+const event = (id: string, customEffect?: CardDefinition['customEffect']) =>
+  card(`event-${id}`, { category: 'event', effects: [], customEffect })
 
 const hasEffect = (cardId: string, type: DeclarativeEffect['type']) =>
   getCard(cardId).effects.some(e => e.type === type)
@@ -293,7 +293,11 @@ export function buildingSites(player: PlayerState): SiteRef[] {
 
 /** Resolved by the engine, which knows the Knight Token holder (engine.ts, resolveConflict). */
 export const EVENT_CONFLICT = event('conflict')
-export const EVENT_MASTER_BUILDER = event('master-builder', undefined, true)
+/** The roller, then the opponent, looks through a stack and may swap 1 card (the engine queues
+ *  the opponent's turn with the roller's stack excluded). */
+export const EVENT_MASTER_BUILDER = event('master-builder', (state, roller) => ({
+  ...state, pendingChoices: [...state.pendingChoices, { kind: 'masterBuilder', player: roller, excludeDeck: null }],
+}))
 
 // ─── Card Registry ────────────────────────────────────────────────────────────
 
@@ -332,9 +336,9 @@ const EVENT_COUNTS: [CardDefinition, number][] = [
   [EVENT_PLAGUE, 2], [EVENT_PRODUCTIVE_YEAR, 2], [EVENT_PROGRESS, 2], [EVENT_YEAR_END, 1],
 ]
 
-/** Expand counts into a deck, leaving out cards that are not implemented yet (GAME_LOGIC.md §13). */
+/** Expand counts into a deck. */
 function deckOf(counts: [CardDefinition, number][]): string[] {
-  return counts.filter(([c]) => !c.notImplemented).flatMap(([c, n]) => Array<string>(n).fill(c.id))
+  return counts.flatMap(([c, n]) => Array<string>(n).fill(c.id))
 }
 
 /** Every Expansion Card in play: shuffled together and split into the 5 expansion stacks. */
