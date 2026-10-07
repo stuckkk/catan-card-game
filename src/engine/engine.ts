@@ -1,7 +1,7 @@
 import type {
   GameState, PlayerState, PlayerId, ResourceType, Resources, GameAction, ProjectedState,
   DiceRoll, EventSymbol, ProductionNumber, DeckId, DrawStackId, CentralSlot, PlayerStats,
-  ActionCardParams, DeclarativeEffect, GameEvent, PendingChoice, PendingPlacedCardChoice, SiteRef,
+  ActionCardParams, DeclarativeEffect, GameEvent, PendingChoice, PendingMasterBuilderChoice, PendingPlacedCardChoice, SiteRef,
 } from './types'
 import {
   getCard, CARD_REGISTRY, ALL_DRAW_CARDS, DRAW_STACK_IDS, DEFAULT_EVENT_DECK, SCOUT, COUNTER_CARD, knightSites, buildingSites,
@@ -193,7 +193,7 @@ function makeInitialPlayer(id: PlayerId, rng: () => number): PlayerState {
   // The 6 starting Regions, one per resource, in a random initial arrangement the player may
   // rearrange during setup. Indices 0–2 are the top row (spaces 1–3), 3–5 the bottom (4–6).
   // Each starts with 1 resource.
-  const regions = shuffle(STARTING_REGIONS, rng).map(rd => ({ regionId: rd.id, storedResources: 1 }))
+  const regions = shuffle(STARTING_REGIONS[id], rng).map(rd => ({ regionId: rd.id, storedResources: 1 }))
   const principality: CentralSlot[] = [
     { kind: 'settlement', cardId: 'settlement', regionIndices: [0, 3, 1, 4], expansionSlots: [null, null] },
     { kind: 'road', cardId: 'road', regionIndices: [], expansionSlots: [] },
@@ -392,8 +392,9 @@ function handExcess(player: PlayerState): number {
 }
 
 /** Resolve prompts that need no input from the head of the queue: a discard with nothing above
- *  the limit and a placed-card pick without options are dropped, one with a single option is
- *  carried out. A Brigands pick gets its options from the current resources (dropped if none). */
+ *  the limit, a placed-card pick without options and a Master Builder turn without a stack to look
+ *  through are dropped, a placed-card pick with a single option is carried out. A Brigands pick
+ *  gets its options from the current resources (dropped if none). */
 function settleChoices(state: GameState): GameState {
   let s = state
   for (;;) {
@@ -405,12 +406,19 @@ function settleChoices(state: GameState): GameState {
       s = { ...s, pendingChoices: rest }
     } else if (head?.kind === 'discard' && handExcess(s.players[head.player]) === 0) {
       s = { ...s, pendingChoices: s.pendingChoices.slice(1) }
+    } else if (head?.kind === 'masterBuilder' && !DRAW_STACK_IDS.some(d => masterBuilderMayLook(s, head, d))) {
+      s = { ...s, pendingChoices: s.pendingChoices.slice(1) }
     } else if (head?.kind === 'placedCard' && head.options.length <= 1) {
       s = head.options.length === 0 ? { ...s, pendingChoices: s.pendingChoices.slice(1) } : resolvePlacedCard(s, head.options[0])
     } else {
       return s
     }
   }
+}
+
+/** Master Builder: a non-empty stack other than the roller's. */
+function masterBuilderMayLook(state: GameState, choice: PendingMasterBuilderChoice, deck: DrawStackId): boolean {
+  return deck !== choice.excludeDeck && state.decks[deck].length > 0
 }
 
 /** Carry out the head placed-card pick: Civil War sends the card back to its owner's hand. */
@@ -689,7 +697,7 @@ function applyDemolish(state: GameState, actingPlayer: PlayerId, slotIndex: numb
 function applyPlayActionCard(state: GameState, actingPlayer: PlayerId, cardId: string, params: ActionCardParams): GameState {
   const player = state.players[actingPlayer]
   const card = CARD_REGISTRY[cardId]
-  if (!card || card.category !== 'action' || card.notImplemented || !card.customEffect) return state
+  if (!card || card.category !== 'action' || !card.customEffect) return state
   if (!player.hand.includes(cardId)) return state
   if (!actionCardsUnlocked(state)) return state
   // Alchemist is played before the roll; everything else after the dice are resolved.
@@ -808,9 +816,15 @@ function applyDrawCard(state: GameState, actingPlayer: PlayerId, fromDeck: DrawS
   })
 }
 
-/** Open a stack: free in setup (starting cards), paid in the draw phase. */
+/** Open a stack: free in setup (starting cards) and for Master Builder, paid in the draw phase. */
 function applySearchStack(state: GameState, actingPlayer: PlayerId, deck: DrawStackId, payWith?: ResourceType[]): GameState {
   if (state.search || !isDrawStack(deck) || state.decks[deck].length === 0) return state
+
+  const head = state.pendingChoices[0]
+  if (head?.kind === 'masterBuilder') {
+    if (head.player !== actingPlayer || !masterBuilderMayLook(state, head, deck)) return state
+    return { ...state, search: { player: actingPlayer, deck, purpose: 'masterBuilder' } }
+  }
 
   if (state.phase === 'setup') {
     if (setupChooser(state) !== actingPlayer) return state
@@ -826,7 +840,33 @@ function applySearchStack(state: GameState, actingPlayer: PlayerId, deck: DrawSt
   return { ...withPlayer(state, actingPlayer, paid), search: { player: actingPlayer, deck, purpose: 'draw' } }
 }
 
-function applyTakeFromSearch(state: GameState, actingPlayer: PlayerId, cardIds: string[]): GameState {
+/** Master Builder: take nothing, or take 1 card and put 1 hand card (may be the one taken) under
+ *  `giveBack.toDeck`. After the roller, the opponent looks through a different stack. */
+function finishMasterBuilder(
+  state: GameState, actingPlayer: PlayerId, cardIds: string[], giveBack: { cardId: string; toDeck: DrawStackId } | undefined,
+): GameState {
+  const search = state.search!
+  const choice = state.pendingChoices[0] as PendingMasterBuilderChoice
+  if (cardIds.length > 1 || (cardIds.length === 1) !== !!giveBack) return state
+  const rest = removeAll(state.decks[search.deck], cardIds)
+  if (!rest) return state
+  const player = state.players[actingPlayer]
+  let s: GameState = { ...state, decks: { ...state.decks, [search.deck]: rest }, search: null }
+  if (giveBack) {
+    if (!isDrawStack(giveBack.toDeck)) return state
+    const hand = removeAll([...player.hand, ...cardIds], [giveBack.cardId])
+    if (!hand) return state
+    s = { ...withPlayer(s, actingPlayer, { ...player, hand }), decks: { ...s.decks, [giveBack.toDeck]: [giveBack.cardId, ...s.decks[giveBack.toDeck]] } }
+  }
+  const next: PendingChoice[] = choice.excludeDeck === null
+    ? [{ kind: 'masterBuilder', player: opponent(actingPlayer), excludeDeck: search.deck }]
+    : []
+  return resumeAfterChoices({ ...s, pendingChoices: [...next, ...state.pendingChoices.slice(1)] })
+}
+
+function applyTakeFromSearch(
+  state: GameState, actingPlayer: PlayerId, cardIds: string[], giveBack?: { cardId: string; toDeck: DrawStackId },
+): GameState {
   const search = state.search
   if (!search || search.player !== actingPlayer) return state
 
@@ -835,6 +875,7 @@ function applyTakeFromSearch(state: GameState, actingPlayer: PlayerId, cardIds: 
     if (cardIds.length !== needed) return state
     return finishSetupPick(state, actingPlayer, search.deck, cardIds) ?? state
   }
+  if (search.purpose === 'masterBuilder') return finishMasterBuilder(state, actingPlayer, cardIds, giveBack)
 
   if (cardIds.length !== 1) return state
   const rest = removeAll(state.decks[search.deck], cardIds)
@@ -886,11 +927,14 @@ function mayAct(state: GameState, actingPlayer: PlayerId, action: GameAction): b
     case 'ROLL_ATTACK': return state.pendingChoices[0]?.player === actingPlayer
     case 'ACCEPT_TRADE':
     case 'DECLINE_TRADE': return true
-    case 'TAKE_FROM_SEARCH': return state.search?.player === actingPlayer
+    case 'TAKE_FROM_SEARCH':
+      return state.search?.player === actingPlayer && (state.pendingChoices.length === 0 || state.search.purpose === 'masterBuilder')
     case 'DISCARD_TO_LIMIT':
       if (state.pendingChoices[0]?.kind === 'discard') return state.pendingChoices[0].player === actingPlayer
       return state.phase !== 'setup' && state.activePlayer === actingPlayer
-    case 'SEARCH_STACK': return state.phase === 'setup' || state.activePlayer === actingPlayer
+    case 'SEARCH_STACK':
+      if (state.pendingChoices[0]?.kind === 'masterBuilder') return state.pendingChoices[0].player === actingPlayer
+      return state.phase === 'setup' || state.activePlayer === actingPlayer
     // While a prompt is open (e.g. an attack), the active player can do nothing else.
     default: return state.phase !== 'setup' && state.activePlayer === actingPlayer && state.pendingChoices.length === 0
   }
@@ -903,7 +947,7 @@ export function applyAction(state: GameState, actingPlayer: PlayerId, action: Ga
   switch (action.type) {
     case 'SWAP_STARTING_REGIONS': next = applySwapStartingRegions(state, actingPlayer, action.a, action.b); break
     case 'SEARCH_STACK':       next = applySearchStack(state, actingPlayer, action.deck, action.payWith); break
-    case 'TAKE_FROM_SEARCH':   next = applyTakeFromSearch(state, actingPlayer, action.cardIds); break
+    case 'TAKE_FROM_SEARCH':   next = applyTakeFromSearch(state, actingPlayer, action.cardIds, action.giveBack); break
     case 'ROLL_DICE':          next = applyRoll(state, rollDice()); break
     case 'BUILD_ROAD':         next = applyBuildRoad(state, actingPlayer, action.side); break
     case 'BUILD_SETTLEMENT':   next = applyBuildSettlement(state, actingPlayer, action.slotIndex, action.scoutRegionIds); break
@@ -951,7 +995,10 @@ function actionLogPayload(before: GameState, after: GameState, actingPlayer: Pla
     case 'SWAP_STARTING_REGIONS': return null
     case 'ROLL_DICE': return { ...after.lastRoll }
     case 'SEARCH_STACK': return { deck: action.deck, purpose: after.search?.purpose ?? null }
-    case 'TAKE_FROM_SEARCH': return { deck: before.search?.deck ?? null, count: action.cardIds.length }
+    case 'TAKE_FROM_SEARCH':
+      return before.search?.purpose === 'masterBuilder'
+        ? { deck: before.search.deck, count: action.cardIds.length, purpose: 'masterBuilder', giveBackDeck: action.giveBack?.toDeck ?? null }
+        : { deck: before.search?.deck ?? null, count: action.cardIds.length }
     case 'BUILD_SETTLEMENT': return { scout: !!action.scoutRegionIds }
     case 'PLACE_EXPANSION': return { cardId: action.cardId }
     case 'PLAY_ACTION_CARD': return { cardId: action.cardId }

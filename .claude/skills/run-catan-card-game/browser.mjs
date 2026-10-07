@@ -54,7 +54,7 @@ const commands = {
     await page.locator('header').first().waitFor()
   },
   card: async n => {
-    await (await scope()).locator('[data-testid=search-card]').nth(Number(n)).locator('> *').first().click()
+    await (await scope()).locator('[data-testid=search-card]').nth(Number(n)).locator('> button').first().click()
   },
   button: async (...words) => {
     const name = new RegExp(words.join(' '), 'i')

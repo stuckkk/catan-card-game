@@ -3,10 +3,10 @@ import {
   applyAction, applyRoll, resolveAttackRoll, rollDice, computePlayerStats, computeVP, projectStateFor,
   availableResources, getTradeRate, tokenHolders, createInitialState, searchCost, setupChooser,
 } from './engine'
-import { ALL_DRAW_CARDS, DEFAULT_EVENT_DECK, CARD_REGISTRY, getCard } from './cards'
+import { ALL_DRAW_CARDS, DEFAULT_EVENT_DECK, CARD_REGISTRY } from './cards'
 import { STACK_REGIONS, getRegion } from './regions'
 import type {
-  GameState, PlayerState, PlayerId, Resources, ResourceType, RegionState, DiceRoll, DeckId, DrawStackId, CentralSlot,
+  GameAction, GameState, PlayerState, PlayerId, Resources, ResourceType, RegionState, DiceRoll, DeckId, DrawStackId, CentralSlot,
 } from './types'
 
 // ─── Test builders (deterministic, no RNG) ──────────────────────────────────
@@ -119,15 +119,14 @@ describe('card catalogue', () => {
     expect(count('town-hall')).toBe(2)
     expect(count('scout')).toBe(2)
     expect(count('spy')).toBe(3)
-    expect(ALL_DRAW_CARDS.every(id => !getCard(id).notImplemented)).toBe(true)
   })
 
-  it('builds the event deck from the 9 implemented of the 10 event cards', () => {
-    expect(DEFAULT_EVENT_DECK).toHaveLength(9)
+  it('builds the event deck from the 10 event cards', () => {
+    expect(DEFAULT_EVENT_DECK).toHaveLength(10)
     expect(DEFAULT_EVENT_DECK.filter(c => c === 'event-plague')).toHaveLength(2)
     expect(DEFAULT_EVENT_DECK.filter(c => c === 'event-civil-war')).toHaveLength(1)
     expect(DEFAULT_EVENT_DECK.filter(c => c === 'event-conflict')).toHaveLength(1)
-    expect(DEFAULT_EVENT_DECK).not.toContain('event-master-builder')
+    expect(DEFAULT_EVENT_DECK.filter(c => c === 'event-master-builder')).toHaveLength(1)
   })
 
   it('has 11 regions in the Region stack: 2 of each resource and 1 Gold Field', () => {
@@ -258,7 +257,7 @@ describe('createInitialState', () => {
     expect(s.turn).toBe(0)
     const stacked = (['stack-1', 'stack-2', 'stack-3', 'stack-4', 'stack-5'] as const).flatMap(d => s.decks[d])
     expect(stacked.sort()).toEqual([...ALL_DRAW_CARDS].sort())
-    expect(s.decks.event).toHaveLength(9)
+    expect(s.decks.event).toHaveLength(10)
     expect(s.regionStack).toHaveLength(11)
     expect(s.supply).toEqual({ road: 7, settlement: 5, city: 7 })
     expect(s.activePlayer).toBe(s.setup.firstPlayer)
@@ -272,6 +271,12 @@ describe('createInitialState', () => {
       expect(p.hand).toEqual([])
       expect(computeVP(s, p.id)).toBe(2)
     }
+  })
+
+  it('gives the host and the guest different production numbers (DE p.2: guest = host + 1, 6 → 1)', () => {
+    const numbers = (p: PlayerState) => Object.fromEntries(p.regions.map(r => [getRegion(r.regionId).resourceType, getRegion(r.regionId).productionNumber]))
+    expect(numbers(s.players.host)).toEqual({ grain: 1, ore: 2, wool: 3, lumber: 4, brick: 5, gold: 6 })
+    expect(numbers(s.players.guest)).toEqual({ grain: 2, ore: 3, wool: 4, lumber: 5, brick: 6, gold: 1 })
   })
 })
 
@@ -1296,6 +1301,93 @@ describe('Spy and Conflict', () => {
     const s = conflict(player('host', cities(['knight-karl'])), player('guest', cities(), { hand: ['mint', 'smithy'] }))
     const conflictLog = applyAction(s, 'host', bury('stack-2', 'mint', 'smithy')).eventLog.find(e => e.type === 'CHOOSE_HAND_CARDS')
     expect(conflictLog?.payload).toEqual({ reason: 'conflict', count: 2, deck: 'stack-2' })
+  })
+})
+
+describe('Master Builder', () => {
+  const look = (deck: DrawStackId) => ({ type: 'SEARCH_STACK', deck }) as const
+  const swap = (cardId: string, giveBack: string, toDeck: DrawStackId) =>
+    ({ type: 'TAKE_FROM_SEARCH', cardIds: [cardId], giveBack: { cardId: giveBack, toDeck } }) satisfies GameAction
+  const nothing = { type: 'TAKE_FROM_SEARCH', cardIds: [] } satisfies GameAction
+  /** The host rolls Master Builder (production 6: only the Gold Fields produce). */
+  const built = (stacks: Partial<Record<DrawStackId, string[]>> = { 'stack-1': ['abbey', 'mint'], 'stack-2': ['smithy', 'library'] }) =>
+    applyRoll(makeState({
+      phase: 'roll',
+      players: { host: makePlayer('host', { hand: ['harbor'] }), guest: makePlayer('guest', { hand: ['church', 'spy'] }) },
+      decks: { ...emptyDecks(), ...stacks, event: ['event-master-builder'] },
+    }), roll('event', 6))
+
+  it('the roller must look through a non-empty stack first; nothing else goes on', () => {
+    const s = built()
+    expect(s.phase).toBe('event-resolution')
+    expect(s.pendingChoices).toEqual([{ kind: 'masterBuilder', player: 'host', excludeDeck: null }])
+    expect(applyAction(s, 'host', look('stack-3'))).toBe(s)
+    expect(applyAction(s, 'guest', look('stack-1'))).toBe(s)
+    expect(applyAction(s, 'host', { type: 'END_ACTION_PHASE' })).toBe(s)
+    const open = applyAction(s, 'host', look('stack-1'))
+    expect(open.search).toEqual({ player: 'host', deck: 'stack-1', purpose: 'masterBuilder' })
+    expect(res(open.players.host)).toEqual(res(s.players.host))  // free
+    expect(projectStateFor(open, 'host').searchContents).toEqual(['abbey', 'mint'])
+    expect(projectStateFor(open, 'guest').searchContents).toBeNull()
+  })
+
+  it('a swap takes 1 card and puts 1 hand card under any stack; the hand size stays', () => {
+    const open = applyAction(built(), 'host', look('stack-1'))
+    for (const bad of [
+      { type: 'TAKE_FROM_SEARCH', cardIds: ['abbey'] },
+      { type: 'TAKE_FROM_SEARCH', cardIds: [], giveBack: { cardId: 'harbor', toDeck: 'stack-1' } },
+      swap('abbey', 'church', 'stack-2'), swap('abbey', 'harbor', 'event' as DrawStackId), swap('smithy', 'harbor', 'stack-2'),
+      { type: 'TAKE_FROM_SEARCH', cardIds: ['abbey', 'mint'], giveBack: { cardId: 'harbor', toDeck: 'stack-2' } },
+    ] satisfies GameAction[]) expect(applyAction(open, 'host', bad)).toBe(open)
+
+    const s = applyAction(open, 'host', swap('abbey', 'harbor', 'stack-2'))
+    expect(s.players.host.hand).toEqual(['abbey'])
+    expect(s.decks['stack-1']).toEqual(['mint'])
+    expect(s.decks['stack-2']).toEqual(['harbor', 'smithy', 'library'])
+    expect(s.search).toBeNull()
+  })
+
+  it('the card given back may be the one just taken; taking nothing changes nothing', () => {
+    const open = applyAction(built(), 'host', look('stack-1'))
+    const back = applyAction(open, 'host', swap('mint', 'mint', 'stack-1'))
+    expect(back.players.host.hand).toEqual(['harbor'])
+    expect(back.decks['stack-1']).toEqual(['mint', 'abbey'])
+    const none = applyAction(open, 'host', nothing)
+    expect(none.players.host.hand).toEqual(['harbor'])
+    expect(none.decks).toEqual(open.decks)
+  })
+
+  it('then the opponent looks through a different stack, off-turn; production runs after both', () => {
+    let s = applyAction(applyAction(built(), 'host', look('stack-1')), 'host', nothing)
+    expect(s.pendingChoices).toEqual([{ kind: 'masterBuilder', player: 'guest', excludeDeck: 'stack-1' }])
+    expect(s.phase).toBe('event-resolution')
+    expect(applyAction(s, 'guest', look('stack-1'))).toBe(s)
+    expect(applyAction(s, 'host', look('stack-2'))).toBe(s)
+    s = applyAction(s, 'guest', look('stack-2'))
+    expect(projectStateFor(s, 'guest').searchContents).toEqual(['smithy', 'library'])
+    expect(projectStateFor(s, 'host').searchContents).toBeNull()
+    expect(applyAction(s, 'host', nothing)).toBe(s)
+    s = applyAction(s, 'guest', swap('library', 'spy', 'stack-5'))
+    expect(s.players.guest.hand).toEqual(['church', 'library'])
+    expect(s.decks['stack-5']).toEqual(['spy'])
+    expect(s.pendingChoices).toEqual([])
+    expect(s.phase).toBe('action')
+    expect(res(s.players.host).gold).toBe(1)
+  })
+
+  it('skips a player without a stack to look through', () => {
+    const one = applyAction(applyAction(built({ 'stack-3': ['mint'] }), 'host', look('stack-3')), 'host', nothing)
+    expect(one.pendingChoices).toEqual([])
+    expect(one.phase).toBe('action')
+    const none = built({})
+    expect(none.pendingChoices).toEqual([])
+    expect(none.phase).toBe('action')
+  })
+
+  it('logs the stacks, not the cards', () => {
+    const s = applyAction(applyAction(built(), 'host', look('stack-1')), 'host', swap('abbey', 'harbor', 'stack-2'))
+    expect(s.eventLog.find(e => e.type === 'SEARCH_STACK')?.payload).toEqual({ deck: 'stack-1', purpose: 'masterBuilder' })
+    expect(s.eventLog.find(e => e.type === 'TAKE_FROM_SEARCH')?.payload).toEqual({ deck: 'stack-1', count: 1, purpose: 'masterBuilder', giveBackDeck: 'stack-2' })
   })
 })
 

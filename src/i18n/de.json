@@ -91,6 +91,18 @@
       "conflictConfirm": "Unter den Stapel legen",
       "waiting": "Gegner sieht sich deine Handkarten an…"
     },
+    "masterBuilder": {
+      "title": "🏗️ Baumeister",
+      "pickStack": "Wähle einen Stapel zum Durchsehen.",
+      "pickStackOther": "Wähle einen Stapel zum Durchsehen (nicht {{stack}}, den deines Gegners).",
+      "look": "Durchsehen",
+      "takeHint": "Du darfst 1 Karte nehmen. Dann schiebst du 1 Handkarte (auch die eben genommene) unter einen Stapel.",
+      "giveBack": "Zurückgeben",
+      "giveBackTo": "Unter",
+      "swap": "Tauschen",
+      "takeNothing": "Nichts nehmen",
+      "waiting": "Gegner sieht einen Stapel durch (Baumeister)…"
+    },
     "attack": {
       "counterTitle": "⚔️ {{card}} greift an!",
       "counterHint": "Spiele {{counter}} vor dem Wurf: dann gewinnt dein Gegner nur bei 1–2 statt 1–5.",
@@ -181,7 +193,6 @@
     "herbWomanOnlyAsCounter": "Spiele die Kräuterhexe, wenn dein Gegner dich mit dem Schwarzen Ritter angreift.",
     "bishopOnlyAsCounter": "Spiele den Bischof, wenn dein Gegner dich mit dem Feuerteufel oder dem Raubzug angreift.",
     "scoutOnlyOnBuild": "Spiele den Kundschafter beim Bau einer Siedlung.",
-    "notImplemented": "Diese Karte ist noch nicht umgesetzt.",
     "alchemist": {
       "title": "Alchemist: Wähle das Ergebnis des Ertragswürfels"
     },
@@ -271,7 +282,10 @@
       "attackWon": "würfelt 🎲 {{die}} ({{card}}): der Angriff gelingt",
       "attackLost": "würfelt 🎲 {{die}} ({{card}}): der Angriff scheitert",
       "skipExchange": "beendet den Zug",
-      "dismiss": "Schließen"
+      "dismiss": "Schließen",
+      "masterBuilderSearch": "sieht {{stack}} durch (Baumeister)",
+      "masterBuilderNothing": "hat nichts aus {{stack}} genommen (Baumeister)",
+      "masterBuilderSwap": "hat eine Karte aus {{stack}} genommen und eine unter {{to}} geschoben (Baumeister)"
     },
     "build": {
       "title": "Bauen",
@@ -322,7 +336,6 @@
     "play": "Ausspielen",
     "build": "Bauen",
     "close": "Schließen",
-    "notInDeck": "Noch nicht im Spiel (wird später umgesetzt).",
     "missing": "Es fehlt:"
   },
   "cardType": {
@@ -547,7 +560,7 @@
     },
     "eventMasterBuilder": {
       "name": "Baumeister",
-      "description": "Jeder Spieler darf 1 Handkarte gegen 1 Karte seiner Wahl aus einem Ausbaustapel tauschen."
+      "description": "Erst der Würfelnde, dann sein Gegner sieht einen Ausbaustapel seiner Wahl durch (der Gegner einen anderen) und darf 1 Karte daraus nehmen; dafür schiebt er 1 Handkarte (auch die eben genommene) unter einen beliebigen Stapel."
     },
     "eventPlague": {
       "name": "Seuche",

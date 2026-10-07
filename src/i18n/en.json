@@ -91,6 +91,18 @@
       "conflictConfirm": "Put under the stack",
       "waiting": "Opponent is looking at your hand…"
     },
+    "masterBuilder": {
+      "title": "🏗️ Master Builder",
+      "pickStack": "Choose a stack to look through.",
+      "pickStackOther": "Choose a stack to look through (not {{stack}}, your opponent's).",
+      "look": "Look through",
+      "takeHint": "You may take 1 card. Then you put 1 hand card (it may be the one you took) under a stack.",
+      "giveBack": "Give back",
+      "giveBackTo": "Put under",
+      "swap": "Swap",
+      "takeNothing": "Take nothing",
+      "waiting": "Opponent is looking through a stack (Master Builder)…"
+    },
     "attack": {
       "counterTitle": "⚔️ {{card}} attacks!",
       "counterHint": "Play {{counter}} before they roll: then they win only on 1–2 instead of 1–5.",
@@ -181,7 +193,6 @@
     "herbWomanOnlyAsCounter": "Play the Herb Woman when your opponent attacks you with the Black Knight.",
     "bishopOnlyAsCounter": "Play the Bishop when your opponent attacks you with the Arsonist or Brigands.",
     "scoutOnlyOnBuild": "Play the Scout when building a Settlement.",
-    "notImplemented": "This card is not implemented yet.",
     "alchemist": {
       "title": "Alchemist: choose the Production Die result"
     },
@@ -271,7 +282,10 @@
       "attackWon": "rolled 🎲 {{die}} for the {{card}}: the attack succeeds",
       "attackLost": "rolled 🎲 {{die}} for the {{card}}: the attack fails",
       "skipExchange": "ended the turn",
-      "dismiss": "Dismiss"
+      "dismiss": "Dismiss",
+      "masterBuilderSearch": "looks through {{stack}} (Master Builder)",
+      "masterBuilderNothing": "took nothing from {{stack}} (Master Builder)",
+      "masterBuilderSwap": "took a card from {{stack}} and put one under {{to}} (Master Builder)"
     },
     "build": {
       "title": "Build",
@@ -322,7 +336,6 @@
     "play": "Play",
     "build": "Build",
     "close": "Close",
-    "notInDeck": "Not in the deck yet (to be implemented).",
     "missing": "Missing:"
   },
   "cardType": {
@@ -547,7 +560,7 @@
     },
     "eventMasterBuilder": {
       "name": "Master Builder",
-      "description": "Each player may trade 1 hand card for 1 card of his choice from an expansion stack."
+      "description": "The roller, then the opponent, looks through an expansion stack of their choice (the opponent a different one) and may take 1 card from it, then puts 1 hand card (possibly the one just taken) under any stack."
     },
     "eventPlague": {
       "name": "Plague",

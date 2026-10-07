@@ -58,8 +58,7 @@ export default function Hand({
   let canPlay = false
   if (openDef?.category === 'action') {
     const timingOk = isMyTurn && (openDef.id === 'alchemist' ? phase === 'roll' : phase === 'action')
-    if (openDef.notImplemented) actionNote = t('game.notImplemented')
-    else if (openDef.id === 'scout') actionNote = t('game.scoutOnlyOnBuild')
+    if (openDef.id === 'scout') actionNote = t('game.scoutOnlyOnBuild')
     else if (openDef.id === 'herb-woman') actionNote = t('game.herbWomanOnlyAsCounter')
     else if (openDef.id === 'bishop') actionNote = t('game.bishopOnlyAsCounter')
     else if (!actionsUnlocked) actionNote = t('game.actionLocked')

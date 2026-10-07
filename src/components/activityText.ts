@@ -86,9 +86,17 @@ export function describeEvent(t: TFunction, e: GameEvent, viewer: PlayerId, isPr
     case 'ACCEPT_TRADE': return line(t(p.completed ? 'game.log.acceptTrade' : 'game.log.tradeFailed'))
     case 'DECLINE_TRADE': return line(t(p.byProposer ? 'game.log.withdrawTrade' : 'game.log.declineTrade'))
     case 'END_ACTION_PHASE': return line(t('game.log.endAction'))
-    case 'SEARCH_STACK':
-      return line(t(p.purpose === 'setup' ? 'game.log.setupSearch' : 'game.log.search', { stack: stack(p.deck) }))
-    case 'TAKE_FROM_SEARCH': return line(t('game.log.takeFromSearch', { count: Number(p.count), stack: stack(p.deck) }))
+    case 'SEARCH_STACK': {
+      const key = p.purpose === 'setup' ? 'setupSearch' : p.purpose === 'masterBuilder' ? 'masterBuilderSearch' : 'search'
+      return line(t(`game.log.${key}`, { stack: stack(p.deck) }))
+    }
+    case 'TAKE_FROM_SEARCH':
+      if (p.purpose === 'masterBuilder') {
+        return line(p.count
+          ? t('game.log.masterBuilderSwap', { stack: stack(p.deck), to: stack(p.giveBackDeck) })
+          : t('game.log.masterBuilderNothing', { stack: stack(p.deck) }))
+      }
+      return line(t('game.log.takeFromSearch', { count: Number(p.count), stack: stack(p.deck) }))
     case 'DRAW_CARD': return line(t('game.log.drawCard', { stack: stack(p.deck) }))
     case 'DISCARD_TO_LIMIT': return line(t('game.log.discard', { count: Number(p.count) }))
     case 'EXCHANGE': return line(t(p.searched ? 'game.log.exchangeSearch' : 'game.log.exchange', { stack: stack(p.deck) }))

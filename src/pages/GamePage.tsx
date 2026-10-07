@@ -29,6 +29,7 @@ import ResourceChoiceModal from '../components/ResourceChoiceModal'
 import PlacedCardChoiceModal from '../components/PlacedCardChoiceModal'
 import AttackModal from '../components/AttackModal'
 import HandCardChoiceModal from '../components/HandCardChoiceModal'
+import MasterBuilderModal from '../components/MasterBuilderModal'
 import DiscardPanel from '../components/DiscardPanel'
 import Toasts from '../components/Toasts'
 import ActivityFeed from '../components/ActivityFeed'
@@ -207,6 +208,7 @@ export default function GamePage() {
 
   // VP for the local player, including the Knight/Windmill tokens (public board state only).
   const myVP = view ? computeVP(view, myId) : 0
+  const myTokens = view ? tokenHolders(view) : { knight: null, windmill: null }
 
   // Placement is only valid during my own action phase; abandon it otherwise.
   useEffect(() => {
@@ -216,7 +218,7 @@ export default function GamePage() {
   // Phone: the turn panel's body is a bottom sheet over the board. It opens by itself when the
   // panel needs the player, stays collapsed otherwise (the board is where building happens),
   // and collapses while a card is being placed. A manual toggle holds until the situation changes.
-  const panelNeedsMe = !!mySearch || phase === 'setup' || (isMyTurn && (phase === 'draw' || phase === 'exchange'))
+  const panelNeedsMe = (!!mySearch && mySearch.purpose !== 'masterBuilder') || phase === 'setup' || (isMyTurn && (phase === 'draw' || phase === 'exchange'))
     || (!!pendingTrade && pendingTrade.from !== myId)
   const sheetKey = `${view?.turn}|${phase}|${mySearch?.deck ?? ''}|${pendingTrade ? 'trade' : ''}`
   const [sheetOverride, setSheetOverride] = useState<{ key: string; collapsed: boolean } | null>(null)
@@ -298,6 +300,16 @@ export default function GamePage() {
       {myChoice?.kind === 'handCard' && view.revealedHand && (
         <HandCardChoiceModal key={view.eventLog.length} choice={myChoice} hand={view.revealedHand} onAction={dispatchAction} />
       )}
+      {myChoice?.kind === 'masterBuilder' && deckSizes && (
+        <MasterBuilderModal
+          key={view.eventLog.length}
+          choice={myChoice}
+          deckSizes={deckSizes}
+          contents={mySearch?.purpose === 'masterBuilder' ? view.searchContents : null}
+          hand={myHand}
+          onAction={dispatchAction}
+        />
+      )}
       {myChoice?.kind === 'discard' && myFullState && (
         <div className={dialog.backdrop} role="dialog" aria-modal="true">
           <div className={dialog.sheet}>
@@ -336,7 +348,11 @@ export default function GamePage() {
         <div className={styles.headerEnd}>
           <HelpButton vpTarget={view.config.vpTarget} />
           <div className={styles.myScore}>
-            <span className={styles.myScoreLabel}>{t('game.you')}</span>
+            <span className={styles.myScoreLabel}>
+              {myTokens.knight === myId && <span title={t('advantage.knight')}>⚔️ </span>}
+              {myTokens.windmill === myId && <span title={t('advantage.windmill')}>⚖️ </span>}
+              {t('game.you')}
+            </span>
             <span className={styles.vp}>{t('game.vpOfTarget', { count: myVP, target: view.config.vpTarget })}</span>
           </div>
         </div>
@@ -409,6 +425,7 @@ export default function GamePage() {
               : activeChoice.kind === 'counter' ? 'game.attack.counterWaiting'
               : activeChoice.kind === 'attackRoll' ? 'game.attack.rollWaiting'
               : activeChoice.kind === 'handCard' ? 'game.handCard.waiting'
+              : activeChoice.kind === 'masterBuilder' ? 'game.masterBuilder.waiting'
               : 'game.discardNow.waiting', 'attackCardId' in activeChoice ? { card: t(getCard(activeChoice.attackCardId).nameKey) } : undefined)}
           </div>
         )}
@@ -428,7 +445,7 @@ export default function GamePage() {
 
         {phase === 'setup' && <SetupPanel view={view} myId={myId} onAction={dispatchAction} />}
 
-        {mySearch && view.searchContents && (
+        {mySearch && mySearch.purpose !== 'masterBuilder' && view.searchContents && (
           <SearchPanel key={`${mySearch.deck}-${mySearch.purpose}`} search={mySearch} contents={view.searchContents} onAction={dispatchAction} />
         )}
 
