@@ -301,4 +301,3 @@ Until then the expansion stacks hold 54 of 62 cards and the event deck 8 of 10.
   Abbey/Library outside your own turn cannot occur yet.
 * Player-to-player trades are offered by the active player only.
 * Player can choose which resource field to put resources not gained by the resource dice
-* Caravan is not trading with the opponent but with the bank (resources arent deducted from opponent but player can choose which one he wants)
