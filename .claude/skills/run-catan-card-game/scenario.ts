@@ -118,6 +118,15 @@ const SCENARIOS: Record<string, (seed: number) => GameState> = {
     s = update(s, 'host', pl => hand(['black-knight', 'abbey'])(place({ 0: ['knight-conrad', null, null, null] })(pl)))
     return update(s, 'guest', pl => hand(['herb-woman', 'smithy', 'mint'])(place({ 0: ['knight-karl', null, null, null], 2: ['knight-otto', null] })(pl)))
   },
+  /** Action phase, host holds Arsonist, Brigands and Merchant and has full Ore; guest has a
+   *  Library, an Abbey and a Knight placed, full Wool, a Bishop and a hand at the limit (5), so a
+   *  burnt Library forces discarding 2. */
+  'arsonist-brigands': seed => {
+    let s: GameState = { ...midGame(seed), phase: 'action' }
+    s = update(s, 'host', pl => stock({ ore: 3 })(hand(['arsonist', 'brigands', 'merchant'])(pl)))
+    return update(s, 'guest', pl => stock({ wool: 3 })(hand(['bishop', 'smithy', 'mint', 'church', 'garrison'])(
+      place({ 0: ['library', null, 'knight-karl', null], 2: ['abbey', null] })(pl))))
+  },
 }
 
 const isMain = process.argv[1]?.endsWith('scenario.ts')

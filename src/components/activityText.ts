@@ -20,7 +20,7 @@ export function playerLabel(t: TFunction, player: PlayerId, viewer: PlayerId, is
 }
 
 /** The card behind a 'returned-to-hand' reason, named in the log line. */
-const RETURN_REASON_CARD: Record<string, string> = { civilWar: 'event-civil-war', blackKnight: 'black-knight' }
+const RETURN_REASON_CARD: Record<string, string> = { civilWar: 'event-civil-war', blackKnight: 'black-knight', arsonist: 'arsonist' }
 
 /** Text for a log entry, or null for entries not worth showing. */
 export function describeEvent(t: TFunction, e: GameEvent, viewer: PlayerId, isPractice: boolean): ActivityLine | null {
@@ -72,8 +72,10 @@ export function describeEvent(t: TFunction, e: GameEvent, viewer: PlayerId, isPr
       return line(t('game.log.bankTrade', {
         give: `${p.rate}${RESOURCE_ICON[p.give as ResourceType]}`, receive: `1${RESOURCE_ICON[p.receive as ResourceType]}`,
       }))
-    case 'CHOOSE_RESOURCE':
-      return line(t(p.reason === 'commerce' ? 'game.log.tookResource' : 'game.log.choseResource', { resource: res(p.resource) }))
+    case 'CHOOSE_RESOURCE': {
+      const key = p.reason === 'commerce' ? 'game.log.tookResource' : p.reason === 'brigands' ? 'game.log.stoleResource' : 'game.log.choseResource'
+      return line(t(key, { resource: res(p.resource) }))
+    }
     case 'PROPOSE_TRADE':
       return line(t('game.log.proposeTrade', {
         give: basket(p.give as Partial<Resources>), receive: basket(p.receive as Partial<Resources>),

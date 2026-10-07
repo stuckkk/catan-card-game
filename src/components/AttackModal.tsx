@@ -11,7 +11,10 @@ interface Props {
   onAction: (a: GameAction) => void
 }
 
-/** Attack duel (Black Knight): first the defender may play the counter card, then the attacker
+/** Shown on the counter card's button. */
+const COUNTER_ICON: Record<string, string> = { 'herb-woman': '🌿', bishop: '⛪' }
+
+/** Attack duel (Black Knight, Arsonist, Brigands): first the defender may play the counter card, then the attacker
  *  rolls. No cancel — the attack has to be resolved before the turn goes on. */
 export default function AttackModal({ choice, hand, onAction }: Props) {
   const { t } = useTranslation()
@@ -37,7 +40,7 @@ export default function AttackModal({ choice, hand, onAction }: Props) {
                 {t('game.attack.letRoll')}
               </button>
               <button className="primary" disabled={!hasCounter} onClick={() => onAction({ type: 'ANSWER_ATTACK', playCounter: true })}>
-                {t('game.attack.playCounter', { counter })}
+                {t('game.attack.playCounter', { counter })} {COUNTER_ICON[counterId]}
               </button>
             </div>
           </>

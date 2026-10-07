@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { GameAction, ProductionNumber, ResourceType, Resources } from '../engine/types'
 import ResourcePicker from './ResourcePicker'
+import { RESOURCE_ORDER } from './resourceMeta'
 import styles from './Dialog.module.css'
 import panel from './Panel.module.css'
 
@@ -9,12 +10,15 @@ interface Props {
   cardId: 'alchemist' | 'caravan' | 'merchant'
   myResources: Resources
   opponentResources: Resources
+  /** Free Region room per type: the Merchant only moves resources the receiver has room for. */
+  myRoom: Resources
+  opponentRoom: Resources
   onAction: (a: GameAction) => void
   onClose: () => void
 }
 
 /** Collects the choices an Action Card needs before it is played. */
-export default function ActionCardDialog({ cardId, myResources, opponentResources, onAction, onClose }: Props) {
+export default function ActionCardDialog({ cardId, myResources, opponentResources, myRoom, opponentRoom, onAction, onClose }: Props) {
   const { t } = useTranslation()
   const [first, setFirst] = useState<ResourceType[]>([])
   const [second, setSecond] = useState<ResourceType[]>([])
@@ -24,9 +28,15 @@ export default function ActionCardDialog({ cardId, myResources, opponentResource
     onClose()
   }
 
-  // What the Merchant player could give back: their own resources plus what they take.
-  const afterTake: Resources = { ...myResources }
-  for (const r of first) afterTake[r] += 1
+  // Merchant: take what the opponent holds and I have room for; give back what I hold after the
+  // take and the opponent has room for (the take frees room on their side).
+  const takeable = { ...opponentResources }
+  const givable = { ...myResources }
+  for (const r of RESOURCE_ORDER) {
+    const taken = first.filter(x => x === r).length
+    takeable[r] = Math.min(opponentResources[r], myRoom[r])
+    givable[r] = Math.min(myResources[r] + taken, opponentRoom[r] + taken)
+  }
 
   return (
     <div className={styles.backdrop} onClick={onClose}>
@@ -53,9 +63,9 @@ export default function ActionCardDialog({ cardId, myResources, opponentResource
         {cardId === 'merchant' && (
           <>
             <div className={styles.title}>{t('game.merchant.title')}</div>
-            <ResourcePicker label={t('game.merchant.take')} max={2} available={opponentResources} value={first}
+            <ResourcePicker label={t('game.merchant.take')} max={2} available={takeable} value={first}
               onChange={v => { setFirst(v); setSecond([]) }} />
-            <ResourcePicker label={t('game.merchant.give')} max={1} available={afterTake} value={second} onChange={setSecond} />
+            <ResourcePicker label={t('game.merchant.give')} max={1} available={givable} value={second} onChange={setSecond} />
           </>
         )}
 
