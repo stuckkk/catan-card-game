@@ -44,8 +44,14 @@ the engine does not support yet are listed in **§13 Not Yet Implemented**.
 
 A **Region** card is its own resource counter: it stores **0–3** resources (rotated to show the count).
 Gaining rotates up, spending rotates down. A resource that would exceed 3 is **lost** (Overflow); it can
-never be moved to another region of the same type (p.10–11). Resources spent or gained may come from /
-go to any region(s) of the matching type.
+never be moved to another region of the same type (p.10–11). Resources that do not come from the
+Production Die go to / come from region(s) of the matching type **of the owner's choice** (DE p.4, p.10):
+gains (trades, Caravan, Merchant, Brigands, Windmill, Tournament, Year of Plenty, Progress), payments
+(building, Search, bank and player trades) and losses (stolen or taken: the **victim** chooses). Production
+and the events that name their regions stay automatic: Brigand Attack (all Ore and Wool), Plague,
+Productive Year. The app asks only when there is a choice: a gain that fits into 2+ regions with room
+but does not fill them all, or a loss from 2+ regions that hold some and not all of it. Merchant and
+Caravan count the net change per resource. A new Settlement's regions are not offered for its own payment.
 
 Each Region carries a **production number** (1–6). The two starting sets differ (read from the picture on
 DE p.2): Player A (white-red crest, the host) Fields 1, Mountains 2, Pasture 3, Forest 4, Hills 5, Gold
@@ -269,6 +275,9 @@ Buildings vs Units: Knights and Fleets are **Units**; everything else is a **Bui
 
 * Event Cards are resolved by the engine for both players; resource choices are queued as pending choices,
   the roller's first.
+* Region choice (§2): the engine places a change automatically, then queues a pick for each player who
+  has a choice (the acting player's first) at the front of the queue; the pick re-places it from the
+  regions as they were before. Nothing else happens until it is made (a pending trade can't be accepted).
 * Hidden information: each viewer receives a projection with the opponent's hand as a count, every stack
   as a count, and the Region stack as its sorted composition; a stack being searched is revealed to the
   searcher only, and the opponent's hand to the player picking from it (Spy, Conflict).
@@ -295,5 +304,6 @@ Buildings vs Units: Knights and Fleets are **Units**; everything else is a **Bui
 
 ## 13. Not Yet Implemented
 
-* The player cannot yet choose which Region receives or gives up resources that do not come from the
-  Production Die; the engine uses the first matching Region.
+* Check code base architecture/desgin/refactoring opportunities
+* Run ultrareview
+* Make marker for own tokens more prominent (hint or text displayed)

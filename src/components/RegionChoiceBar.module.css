@@ -1,0 +1,37 @@
+/* Sits at the top of the board like the placing banner, wrapping on a phone. */
+.bar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 6px 12px;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 auto 8px;
+  padding: 8px 12px;
+  border-radius: 16px;
+  background: var(--beacon);
+  color: var(--ink);
+  font-weight: 700;
+  box-shadow: var(--shadow-lg);
+}
+
+.prompt { text-align: center; }
+
+.counts { display: flex; gap: 8px; }
+
+.count {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--sand-light) 70%, transparent);
+  white-space: nowrap;
+}
+
+.count small { font-weight: 600; opacity: 0.75; }
+
+.buttons { display: flex; gap: 8px; }
+.buttons button { padding: 4px 12px; }
+.buttons button.secondary { color: var(--ink); border-color: var(--ink); }

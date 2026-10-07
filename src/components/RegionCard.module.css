@@ -64,6 +64,24 @@
 .selected,
 .selected:hover { box-shadow: 0 0 0 4px var(--beacon), var(--shadow-lg); transform: translateY(-3px); }
 
+/* Region choice: how many were put here / taken from here. */
+.badge {
+  position: absolute;
+  top: calc(var(--w) * -0.12);
+  right: calc(var(--w) * -0.12);
+  z-index: 1;
+  min-width: calc(var(--w) * 0.34);
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: var(--beacon);
+  color: var(--ink);
+  font-weight: 800;
+  font-size: calc(var(--w) * 0.2);
+  line-height: 1.3;
+  text-align: center;
+  box-shadow: var(--shadow);
+}
+
 /* Just produced: a glow around the region and its resource floating up, once per roll. */
 .produced {
   position: absolute;

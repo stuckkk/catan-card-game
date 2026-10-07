@@ -10,7 +10,7 @@ import {
 import { getRegion, STARTING_REGIONS, STACK_REGIONS } from './regions'
 import {
   ALL_RESOURCE_TYPES, availableResources, canAfford, countResources, spendFromRegions, addToRegions,
-  shuffle, isSettlementLike, regionsBorderingCards, returnToHand, stealableTypes,
+  shuffle, isSettlementLike, regionsBorderingCards, returnToHand, stealableTypes, regionChoices,
 } from './board'
 
 export { availableResources } from './board'
@@ -456,7 +456,50 @@ function applyChooseResource(state: GameState, actingPlayer: PlayerId, resource:
   }
   players = { ...players, [choice.player]: addToRegions(players[choice.player], { [resource]: 1 }) }
 
-  return resumeAfterChoices({ ...state, players, pendingChoices: state.pendingChoices.slice(1) })
+  return resumeAfterChoices(withRegionChoices(state, { ...state, players, pendingChoices: state.pendingChoices.slice(1) }, actingPlayer))
+}
+
+// ─── Region choice (GAME_LOGIC.md §2) ─────────────────────────────────────────
+
+/** Actions whose resource changes the players place themselves. Production and the events that
+ *  name their Regions (Brigand Attack, Plague, Productive Year) stay automatic; CHOOSE_RESOURCE
+ *  queues its own picks before production resumes. */
+const REGION_CHOICE_ACTIONS = new Set<GameAction['type']>([
+  'BUILD_ROAD', 'BUILD_SETTLEMENT', 'BUILD_CITY', 'PLACE_EXPANSION', 'PLAY_ACTION_CARD',
+  'TRADE_WITH_BANK', 'ACCEPT_TRADE', 'SEARCH_STACK', 'EXCHANGE',
+])
+
+/** After `after` placed resources automatically, let each player who has a choice of Regions
+ *  re-place them (`first` picks first). The picks go to the front of the queue, so nothing touches
+ *  those Regions before they are made. */
+function withRegionChoices(before: GameState, after: GameState, first: PlayerId): GameState {
+  const picks = [first, opponent(first)].flatMap((player): PendingChoice[] => {
+    const changes = regionChoices(before.players[player], after.players[player])
+    return changes ? [{ kind: 'region', player, before: before.players[player].regions.map(r => r.storedResources), changes }] : []
+  })
+  return picks.length > 0 ? { ...after, pendingChoices: [...picks, ...after.pendingChoices] } : after
+}
+
+/** Re-place the head Region choice, starting from the Regions as they were before the change:
+ *  each index puts 1 resource on (gain) or takes 1 from (loss) that Region. */
+function applyChooseRegions(state: GameState, actingPlayer: PlayerId, regionIndices: number[]): GameState {
+  const choice = state.pendingChoices[0]
+  if (choice?.kind !== 'region' || choice.player !== actingPlayer) return state
+  const player = state.players[actingPlayer]
+  const typeOf = (i: number) => getRegion(player.regions[i].regionId).resourceType
+  const regions = player.regions.map((r, i) =>
+    i < choice.before.length && choice.changes[typeOf(i)] ? { ...r, storedResources: choice.before[i] } : r)
+  for (const i of regionIndices) {
+    if (!Number.isInteger(i) || i < 0 || i >= choice.before.length) return state
+    const n = choice.changes[typeOf(i)]
+    if (!n) return state
+    const stored = regions[i].storedResources + Math.sign(n)
+    if (stored < 0 || stored > 3) return state
+    regions[i] = { ...regions[i], storedResources: stored }
+  }
+  const counts = countResources(regionIndices.map(typeOf))
+  if (!(Object.entries(choice.changes) as [ResourceType, number][]).every(([r, n]) => (counts[r] ?? 0) === Math.abs(n))) return state
+  return resumeAfterChoices({ ...withPlayer(state, actingPlayer, { ...player, regions }), pendingChoices: state.pendingChoices.slice(1) })
 }
 
 /** Submit the pick for the head placed-card choice: one of its options, by its owner's picker. */
@@ -923,9 +966,11 @@ function mayAct(state: GameState, actingPlayer: PlayerId, action: GameAction): b
     case 'CHOOSE_RESOURCE':
     case 'CHOOSE_PLACED_CARD':
     case 'CHOOSE_HAND_CARDS':
+    case 'CHOOSE_REGIONS':
     case 'ANSWER_ATTACK':
     case 'ROLL_ATTACK': return state.pendingChoices[0]?.player === actingPlayer
-    case 'ACCEPT_TRADE':
+    // Not while a Region pick is open: it holds a snapshot of the Regions.
+    case 'ACCEPT_TRADE': return !state.pendingChoices.some(c => c.kind === 'region')
     case 'DECLINE_TRADE': return true
     case 'TAKE_FROM_SEARCH':
       return state.search?.player === actingPlayer && (state.pendingChoices.length === 0 || state.search.purpose === 'masterBuilder')
@@ -958,6 +1003,7 @@ export function applyAction(state: GameState, actingPlayer: PlayerId, action: Ga
     case 'CHOOSE_RESOURCE':    next = applyChooseResource(state, actingPlayer, action.resource); break
     case 'CHOOSE_PLACED_CARD': next = applyChoosePlacedCard(state, actingPlayer, action); break
     case 'CHOOSE_HAND_CARDS':  next = applyChooseHandCards(state, actingPlayer, action.cardIds, action.toDeck); break
+    case 'CHOOSE_REGIONS':     next = applyChooseRegions(state, actingPlayer, action.regionIndices); break
     case 'ANSWER_ATTACK':      next = applyAnswerAttack(state, actingPlayer, action.playCounter); break
     case 'ROLL_ATTACK':        next = resolveAttackRoll(state, rollDie()); break
     case 'PROPOSE_TRADE':      next = applyProposeTrade(state, actingPlayer, action.give, action.receive); break
@@ -972,6 +1018,7 @@ export function applyAction(state: GameState, actingPlayer: PlayerId, action: Ga
     default:                   next = state
   }
 
+  if (REGION_CHOICE_ACTIONS.has(action.type)) next = withRegionChoices(state, next, actingPlayer)
   if (next === state) return state
   return { ...next, eventLog: withActionLogged(state, next, actingPlayer, action), winner: checkVictory(next) }
 }
@@ -1009,6 +1056,7 @@ function actionLogPayload(before: GameState, after: GameState, actingPlayer: Pla
       return { resource: action.resource, reason: choice?.kind === 'resource' ? choice.reason : null }
     }
     case 'CHOOSE_PLACED_CARD': return null  // the return itself is logged ('returned-to-hand')
+    case 'CHOOSE_REGIONS': return null  // the Regions are public
     case 'CHOOSE_HAND_CARDS': {
       // Both players know the cards; the log names the one the Spy took, and only how many
       // cards Conflict put under which stack.

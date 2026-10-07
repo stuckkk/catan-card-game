@@ -302,9 +302,21 @@ export interface PendingMasterBuilderChoice {
   excludeDeck: DrawStackId | null
 }
 
+/** Resources that did not come from the Production Die go to (or leave) Regions of the player's
+ *  choice (DE p.4, p.10). The engine has already placed them automatically; `player` may re-place
+ *  them (CHOOSE_REGIONS). Only asked for resource types where there is a real choice. */
+export interface PendingRegionChoice {
+  kind: 'region'
+  player: PlayerId
+  /** storedResources per Region index before the change. */
+  before: number[]
+  /** Net change per resource type (gain > 0, loss < 0), only the types with a choice. */
+  changes: Partial<Resources>
+}
+
 export type PendingChoice =
   | PendingResourceChoice | PendingPlacedCardChoice | PendingDiscard | PendingCounter | PendingAttackRoll
-  | PendingHandCardChoice | PendingMasterBuilderChoice
+  | PendingHandCardChoice | PendingMasterBuilderChoice | PendingRegionChoice
 
 export interface GameEvent {
   id: string
@@ -359,6 +371,9 @@ export type GameAction =
   | { type: 'ROLL_ATTACK' }
   /** Submit the pick for the head hand-card choice. Conflict: `toDeck` is the stack they go under. */
   | { type: 'CHOOSE_HAND_CARDS'; cardIds: string[]; toDeck?: DrawStackId }
+  /** Re-place the head Region choice: one Region index per resource unit (gain: put 1 there,
+   *  loss: take 1 from there). */
+  | { type: 'CHOOSE_REGIONS'; regionIndices: number[] }
   /** Active player offers a resource trade to the opponent. */
   | { type: 'PROPOSE_TRADE'; give: Partial<Resources>; receive: Partial<Resources> }
   /** Opponent accepts the pending trade offer. */

@@ -154,6 +154,17 @@ const SCENARIOS: Record<string, (seed: number) => GameState> = {
     s = update(s, 'guest', hand(['library', 'mint', 'spy']))
     return roll(eventOnTop(s, 'event-master-builder'), 'event', 6)
   },
+  /** Action phase, host has a 3rd Settlement (Regions Forest 2, Hills 3), so 2 Forests holding 1
+   *  each and 2 Hills holding 2 each, plus full Ore: a bank trade for Lumber or a Road asks where. */
+  'region-choice': seed => {
+    const base = midGame(seed)
+    const top = ['hills-3', 'forest-2']
+    let s: GameState = { ...base, phase: 'action', regionStack: [...base.regionStack.filter(id => !top.includes(id)), ...top] }
+    s = update(s, 'host', stock({ brick: 3 }))
+    s = applyAction(s, 'host', { type: 'BUILD_ROAD', side: 'right' })
+    s = applyAction(s, 'host', { type: 'BUILD_SETTLEMENT', slotIndex: 4 })
+    return update(s, 'host', stock({ lumber: 1, brick: 2, ore: 3 }))
+  },
 }
 
 const isMain = process.argv[1]?.endsWith('scenario.ts')
