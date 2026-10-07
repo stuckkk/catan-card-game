@@ -100,8 +100,8 @@ export const TOWN_HALL = expansion('town-hall', 'red', 'building', { wool: 2, or
 
 // ─── Action Cards (yellow) ────────────────────────────────────────────────────
 
-const action = (id: string, customEffect?: CardDefinition['customEffect'], notImplemented?: true) =>
-  card(id, { category: 'action', effects: [], customEffect, ...(notImplemented ? { notImplemented } : {}) })
+const action = (id: string, customEffect?: CardDefinition['customEffect']) =>
+  card(id, { category: 'action', effects: [], customEffect })
 
 /** Play before the roll: fix the Production Die result (the engine reads alchemistNumber). */
 export const ALCHEMIST = action('alchemist', (state, _player, params) => {
@@ -185,7 +185,20 @@ export const HERB_WOMAN = action('herb-woman')
 
 /** The counter card the defender may play against an attack card. */
 export const COUNTER_CARD: Record<string, string> = { 'black-knight': HERB_WOMAN.id, arsonist: BISHOP.id, brigands: BISHOP.id }
-export const SPY = action('spy', undefined, true)
+
+/** The opponent shows their hand; the Spy takes 1 Unit or Action card from it (CHOOSE_HAND_CARDS).
+ *  An empty hand has nothing to show: the Spy is used up. */
+export const SPY = action('spy', (state, player) => {
+  const owner = opponentOf(player)
+  if (state.players[owner].hand.length === 0) return state
+  return { ...state, pendingChoices: [...state.pendingChoices, { kind: 'handCard', player, owner, reason: 'spy' }] }
+})
+
+/** What the Spy may take: a Unit (Knight, Fleet) or an Action card. */
+export function isSpyTarget(cardId: string): boolean {
+  const def = getCard(cardId)
+  return def.category === 'action' || def.expansionKind === 'knight' || def.expansionKind === 'fleet'
+}
 
 // ─── Event Cards (blue) ───────────────────────────────────────────────────────
 
@@ -278,7 +291,8 @@ export function buildingSites(player: PlayerState): SiteRef[] {
   return sitesOf(player, 'building')
 }
 
-export const EVENT_CONFLICT = event('conflict', undefined, true)
+/** Resolved by the engine, which knows the Knight Token holder (engine.ts, resolveConflict). */
+export const EVENT_CONFLICT = event('conflict')
 export const EVENT_MASTER_BUILDER = event('master-builder', undefined, true)
 
 // ─── Card Registry ────────────────────────────────────────────────────────────

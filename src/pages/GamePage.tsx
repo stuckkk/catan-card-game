@@ -28,6 +28,7 @@ import OpponentVillage from '../components/OpponentVillage'
 import ResourceChoiceModal from '../components/ResourceChoiceModal'
 import PlacedCardChoiceModal from '../components/PlacedCardChoiceModal'
 import AttackModal from '../components/AttackModal'
+import HandCardChoiceModal from '../components/HandCardChoiceModal'
 import DiscardPanel from '../components/DiscardPanel'
 import Toasts from '../components/Toasts'
 import ActivityFeed from '../components/ActivityFeed'
@@ -294,6 +295,9 @@ export default function GamePage() {
       {(myChoice?.kind === 'counter' || myChoice?.kind === 'attackRoll') && (
         <AttackModal choice={myChoice} hand={myHand} onAction={dispatchAction} />
       )}
+      {myChoice?.kind === 'handCard' && view.revealedHand && (
+        <HandCardChoiceModal key={view.eventLog.length} choice={myChoice} hand={view.revealedHand} onAction={dispatchAction} />
+      )}
       {myChoice?.kind === 'discard' && myFullState && (
         <div className={dialog.backdrop} role="dialog" aria-modal="true">
           <div className={dialog.sheet}>
@@ -404,6 +408,7 @@ export default function GamePage() {
               : activeChoice.kind === 'placedCard' ? `game.${activeChoice.reason}.waiting`
               : activeChoice.kind === 'counter' ? 'game.attack.counterWaiting'
               : activeChoice.kind === 'attackRoll' ? 'game.attack.rollWaiting'
+              : activeChoice.kind === 'handCard' ? 'game.handCard.waiting'
               : 'game.discardNow.waiting', 'attackCardId' in activeChoice ? { card: t(getCard(activeChoice.attackCardId).nameKey) } : undefined)}
           </div>
         )}

@@ -5,6 +5,7 @@ import type {
 } from './types'
 import {
   getCard, CARD_REGISTRY, ALL_DRAW_CARDS, DRAW_STACK_IDS, DEFAULT_EVENT_DECK, SCOUT, COUNTER_CARD, knightSites, buildingSites,
+  EVENT_CONFLICT, isSpyTarget,
 } from './cards'
 import { getRegion, STARTING_REGIONS, STACK_REGIONS } from './regions'
 import {
@@ -340,11 +341,19 @@ function resolveEventSymbol(state: GameState, symbol: EventSymbol): GameState {
         { ...state, decks: { ...state.decks, event: [eventCardId, ...deck.slice(0, -1)] } },
         active, 'event-card', { cardId: eventCardId },
       )
-      const effect = getCard(eventCardId).customEffect
+      const effect = eventCardId === EVENT_CONFLICT.id ? resolveConflict : getCard(eventCardId).customEffect
       if (effect) s = settleChoices(effect(s, active, {}) ?? s)
       return { ...s, phase: s.pendingChoices.length > 0 ? 'event-resolution' : 'production' }
     }
   }
+}
+
+/** Conflict: the Knight Token holder picks 2 cards from the opponent's hand to put under a stack
+ *  (CHOOSE_HAND_CARDS). No holder or an empty hand → no effect. */
+function resolveConflict(state: GameState): GameState {
+  const holder = tokenHolders(state).knight
+  if (holder === null || state.players[opponent(holder)].hand.length === 0) return state
+  return { ...state, pendingChoices: [...state.pendingChoices, { kind: 'handCard', player: holder, owner: opponent(holder), reason: 'conflict' }] }
 }
 
 /** Roll both dice. RNG is injectable so tests can pin the outcome. */
@@ -448,6 +457,29 @@ function applyChoosePlacedCard(state: GameState, actingPlayer: PlayerId, site: S
   if (choice?.kind !== 'placedCard' || choice.player !== actingPlayer) return state
   if (!choice.options.some(o => o.slotIndex === site.slotIndex && o.expansionSlotIndex === site.expansionSlotIndex)) return state
   return resumeAfterChoices(resolvePlacedCard(state, site))
+}
+
+/** Submit the pick from the opponent's revealed hand. Spy: exactly 1 Unit or Action card goes to
+ *  the picker's hand (none if the hand holds no such card). Conflict: exactly 2 cards (all, if
+ *  fewer) go under the stack `toDeck`. */
+function applyChooseHandCards(state: GameState, actingPlayer: PlayerId, cardIds: string[], toDeck: DrawStackId | undefined): GameState {
+  const choice = state.pendingChoices[0]
+  if (choice?.kind !== 'handCard' || choice.player !== actingPlayer) return state
+  const owner = state.players[choice.owner]
+  const hand = removeAll(owner.hand, cardIds)
+  if (!hand) return state
+  let s = withPlayer(state, choice.owner, { ...owner, hand })
+
+  if (choice.reason === 'spy') {
+    const count = owner.hand.some(isSpyTarget) ? 1 : 0
+    if (cardIds.length !== count || !cardIds.every(isSpyTarget)) return state
+    const picker = s.players[actingPlayer]
+    s = withPlayer(s, actingPlayer, { ...picker, hand: [...picker.hand, ...cardIds] })
+  } else {
+    if (cardIds.length !== Math.min(2, owner.hand.length) || !toDeck || !isDrawStack(toDeck)) return state
+    s = { ...s, decks: { ...s.decks, [toDeck]: [...cardIds, ...s.decks[toDeck]] } }
+  }
+  return resumeAfterChoices({ ...s, pendingChoices: state.pendingChoices.slice(1) })
 }
 
 // ─── Attacks (Black Knight, Arsonist, Brigands; GAME_LOGIC.md §9) ─────────────
@@ -849,6 +881,7 @@ function mayAct(state: GameState, actingPlayer: PlayerId, action: GameAction): b
     case 'SWAP_STARTING_REGIONS': return true
     case 'CHOOSE_RESOURCE':
     case 'CHOOSE_PLACED_CARD':
+    case 'CHOOSE_HAND_CARDS':
     case 'ANSWER_ATTACK':
     case 'ROLL_ATTACK': return state.pendingChoices[0]?.player === actingPlayer
     case 'ACCEPT_TRADE':
@@ -880,6 +913,7 @@ export function applyAction(state: GameState, actingPlayer: PlayerId, action: Ga
     case 'TRADE_WITH_BANK':    next = applyTradeWithBank(state, actingPlayer, action.give, action.receive); break
     case 'CHOOSE_RESOURCE':    next = applyChooseResource(state, actingPlayer, action.resource); break
     case 'CHOOSE_PLACED_CARD': next = applyChoosePlacedCard(state, actingPlayer, action); break
+    case 'CHOOSE_HAND_CARDS':  next = applyChooseHandCards(state, actingPlayer, action.cardIds, action.toDeck); break
     case 'ANSWER_ATTACK':      next = applyAnswerAttack(state, actingPlayer, action.playCounter); break
     case 'ROLL_ATTACK':        next = resolveAttackRoll(state, rollDie()); break
     case 'PROPOSE_TRADE':      next = applyProposeTrade(state, actingPlayer, action.give, action.receive); break
@@ -928,6 +962,14 @@ function actionLogPayload(before: GameState, after: GameState, actingPlayer: Pla
       return { resource: action.resource, reason: choice?.kind === 'resource' ? choice.reason : null }
     }
     case 'CHOOSE_PLACED_CARD': return null  // the return itself is logged ('returned-to-hand')
+    case 'CHOOSE_HAND_CARDS': {
+      // Both players know the cards; the log names the one the Spy took, and only how many
+      // cards Conflict put under which stack.
+      const choice = before.pendingChoices[0]
+      return choice?.kind === 'handCard' && choice.reason === 'conflict'
+        ? { reason: 'conflict', count: action.cardIds.length, deck: action.toDeck }
+        : { reason: 'spy', cardId: action.cardIds[0] ?? null }
+    }
     case 'ANSWER_ATTACK': {
       const choice = before.pendingChoices[0]
       return { playCounter: action.playCounter, cardId: choice?.kind === 'counter' ? COUNTER_CARD[choice.attackCardId] : null }
@@ -948,9 +990,11 @@ function actionLogPayload(before: GameState, after: GameState, actingPlayer: Pla
 // ─── Projection ───────────────────────────────────────────────────────────────
 
 /** What `viewer` may see: the opponent's hand and every stack become counts, the Region stack
- *  becomes its sorted composition, and an open search is revealed to the searcher only. */
+ *  becomes its sorted composition, an open search is revealed to the searcher only, and the
+ *  opponent's hand to the player picking from it (Spy, Conflict). */
 export function projectStateFor(state: GameState, viewer: PlayerId): ProjectedState {
   const other = opponent(viewer)
+  const head = state.pendingChoices[0]
   const { decks, regionStack, ...rest } = state
   const deckSizes = Object.fromEntries(Object.entries(decks).map(([id, cards]) => [id, cards.length])) as Record<DeckId, number>
   return {
@@ -962,5 +1006,6 @@ export function projectStateFor(state: GameState, viewer: PlayerId): ProjectedSt
     deckSizes,
     regionStack: [...regionStack].sort(),
     searchContents: state.search?.player === viewer ? [...decks[state.search.deck]] : null,
+    revealedHand: head?.kind === 'handCard' && head.player === viewer ? [...state.players[head.owner].hand] : null,
   }
 }

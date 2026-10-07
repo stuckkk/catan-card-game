@@ -127,6 +127,26 @@ const SCENARIOS: Record<string, (seed: number) => GameState> = {
     return update(s, 'guest', pl => stock({ wool: 3 })(hand(['bishop', 'smithy', 'mint', 'church', 'garrison'])(
       place({ 0: ['library', null, 'knight-karl', null], 2: ['abbey', null] })(pl))))
   },
+  /** Action phase, host holds a Spy, a placed Knight (Knight Token: 7 VP combined) and 2 of
+   *  everything (enough to build a stolen Knight); guest has an Abbey (limit 4) and a hand of a
+   *  Knight, a Fleet, a Herb Woman and a Mint. */
+  spy: seed => {
+    const s: GameState = update({ ...midGame(seed), phase: 'action' }, 'host', pl => hand(['spy'])(place({ 0: ['knight-conrad', null, null, null] })(pl)))
+    return update(s, 'guest', pl => hand(['knight-hagen', 'fleet-gold', 'herb-woman', 'mint'])(place({ 2: ['abbey', null] })(pl)))
+  },
+  /** Conflict just revealed (production 6) on the host's roll; the host holds the Knight Token and
+   *  must pick 2 of the guest's 3 cards and a stack. */
+  conflict: seed => {
+    let s = update(midGame(seed), 'host', pl => hand(['abbey'])(place({ 0: ['knight-conrad', null, null, null] })(pl)))
+    s = update(s, 'guest', hand(['library', 'smithy', 'black-knight']))
+    return roll(eventOnTop(s, 'event-conflict'), 'event', 6)
+  },
+  /** Like `conflict`, but the guest holds the Knight Token: they pick from the roller's hand. */
+  'conflict-offturn': seed => {
+    let s = update(midGame(seed), 'host', hand(['library', 'smithy', 'black-knight']))
+    s = update(s, 'guest', pl => hand(['abbey'])(place({ 0: ['knight-conrad', null, null, null] })(pl)))
+    return roll(eventOnTop(s, 'event-conflict'), 'event', 6)
+  },
 }
 
 const isMain = process.argv[1]?.endsWith('scenario.ts')

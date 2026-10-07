@@ -6,7 +6,7 @@ import {
 import { ALL_DRAW_CARDS, DEFAULT_EVENT_DECK, CARD_REGISTRY, getCard } from './cards'
 import { STACK_REGIONS, getRegion } from './regions'
 import type {
-  GameState, PlayerState, PlayerId, Resources, ResourceType, RegionState, DiceRoll, DeckId, CentralSlot,
+  GameState, PlayerState, PlayerId, Resources, ResourceType, RegionState, DiceRoll, DeckId, DrawStackId, CentralSlot,
 } from './types'
 
 // ─── Test builders (deterministic, no RNG) ──────────────────────────────────
@@ -112,21 +112,22 @@ const roll = (eventSymbol: DiceRoll['eventSymbol'], productionNumber: DiceRoll['
 // ─── Catalogue ───────────────────────────────────────────────────────────────
 
 describe('card catalogue', () => {
-  it('builds the expansion stacks from the 59 implemented of the 62 rulebook cards', () => {
-    expect(ALL_DRAW_CARDS).toHaveLength(59)
+  it('builds the expansion stacks from all 62 rulebook cards', () => {
+    expect(ALL_DRAW_CARDS).toHaveLength(62)
     const count = (id: string) => ALL_DRAW_CARDS.filter(c => c === id).length
     expect(count('garrison')).toBe(3)
     expect(count('town-hall')).toBe(2)
     expect(count('scout')).toBe(2)
-    expect(count('spy')).toBe(0)           // not implemented → kept out
+    expect(count('spy')).toBe(3)
     expect(ALL_DRAW_CARDS.every(id => !getCard(id).notImplemented)).toBe(true)
   })
 
-  it('builds the event deck from the 8 implemented of the 10 event cards', () => {
-    expect(DEFAULT_EVENT_DECK).toHaveLength(8)
+  it('builds the event deck from the 9 implemented of the 10 event cards', () => {
+    expect(DEFAULT_EVENT_DECK).toHaveLength(9)
     expect(DEFAULT_EVENT_DECK.filter(c => c === 'event-plague')).toHaveLength(2)
     expect(DEFAULT_EVENT_DECK.filter(c => c === 'event-civil-war')).toHaveLength(1)
-    expect(DEFAULT_EVENT_DECK).not.toContain('event-conflict')
+    expect(DEFAULT_EVENT_DECK.filter(c => c === 'event-conflict')).toHaveLength(1)
+    expect(DEFAULT_EVENT_DECK).not.toContain('event-master-builder')
   })
 
   it('has 11 regions in the Region stack: 2 of each resource and 1 Gold Field', () => {
@@ -257,7 +258,7 @@ describe('createInitialState', () => {
     expect(s.turn).toBe(0)
     const stacked = (['stack-1', 'stack-2', 'stack-3', 'stack-4', 'stack-5'] as const).flatMap(d => s.decks[d])
     expect(stacked.sort()).toEqual([...ALL_DRAW_CARDS].sort())
-    expect(s.decks.event).toHaveLength(8)
+    expect(s.decks.event).toHaveLength(9)
     expect(s.regionStack).toHaveLength(11)
     expect(s.supply).toEqual({ road: 7, settlement: 5, city: 7 })
     expect(s.activePlayer).toBe(s.setup.firstPlayer)
@@ -864,11 +865,10 @@ describe('action cards', () => {
     expect(applyAction(s, 'host', { type: 'PLAY_ACTION_CARD', cardId: 'alchemist', params: { productionNumber: 5 } })).toBe(s)
   })
 
-  it('Scout cannot be played on its own, and unimplemented cards cannot be played', () => {
+  it('Scout cannot be played on its own', () => {
     const base = unlocked()
-    const s = { ...base, players: { ...base.players, host: { ...base.players.host, hand: ['scout', 'spy'] } } }
+    const s = { ...base, players: { ...base.players, host: { ...base.players.host, hand: ['scout'] } } }
     expect(applyAction(s, 'host', { type: 'PLAY_ACTION_CARD', cardId: 'scout' })).toBe(s)
-    expect(applyAction(s, 'host', { type: 'PLAY_ACTION_CARD', cardId: 'spy' })).toBe(s)
   })
 })
 
@@ -1167,6 +1167,135 @@ describe('Arsonist, Brigands and Bishop', () => {
     const broke = resolveAttackRoll(toRoll('brigands', player('host', cities()), guest), 6)
     expect(broke.pendingChoices).toEqual([])
     expect(broke.phase).toBe('action')
+  })
+})
+
+describe('Spy and Conflict', () => {
+  const spy = { type: 'PLAY_ACTION_CARD', cardId: 'spy' } as const
+  const take = (...cardIds: string[]) => ({ type: 'CHOOSE_HAND_CARDS', cardIds }) as const
+  const bury = (toDeck: DrawStackId | undefined, ...cardIds: string[]) => ({ type: 'CHOOSE_HAND_CARDS', cardIds, toDeck }) as const
+  /** The host (holding a Spy plus `host.hand`) plays it against the guest holding `guestHand`. */
+  const spied = (guestHand: string[], host: Partial<PlayerState> = {}) =>
+    applyAction(makeState({
+      players: {
+        host: player('host', cities(), { ...host, hand: ['spy', ...(host.hand ?? [])] }),
+        guest: player('guest', cities(), { hand: guestHand }),
+      },
+    }), 'host', spy)
+  /** The host rolls Conflict (production 6: only the Gold Fields produce). */
+  const conflict = (host: PlayerState, guest: PlayerState) =>
+    applyRoll(makeState({
+      phase: 'roll', players: { host, guest }, decks: { ...emptyDecks(), event: ['event-conflict'], 'stack-2': ['library'] },
+    }), roll('event', 6))
+
+  it('is in the decks: 3 Spies and 1 Conflict', () => {
+    expect(ALL_DRAW_CARDS.filter(c => c === 'spy')).toHaveLength(3)
+    expect(DEFAULT_EVENT_DECK.filter(c => c === 'event-conflict')).toHaveLength(1)
+  })
+
+  it('Spy: playable from 7 VP, even when the opponent has nothing to take', () => {
+    const small = [settlementA(), road(), settlementB()]
+    const locked = makeState({ players: { host: player('host', small, { hand: ['spy'] }), guest: player('guest', small, { hand: ['knight-karl'] }) } })
+    expect(applyAction(locked, 'host', spy)).toBe(locked)
+
+    const s = spied(['abbey', 'mint'])
+    expect(s.players.host.hand).toEqual([])
+    expect(s.discardPile).toEqual(['spy'])
+    expect(s.pendingChoices).toEqual([{ kind: 'handCard', player: 'host', owner: 'guest', reason: 'spy' }])
+  })
+
+  it('Spy: shows the opponent’s whole hand to the attacker only, while the pick is open', () => {
+    const s = spied(['abbey', 'knight-karl'])
+    expect(projectStateFor(s, 'host').revealedHand).toEqual(['abbey', 'knight-karl'])
+    expect(projectStateFor(s, 'host').players.guest.hand).toBe(2)
+    expect(projectStateFor(s, 'guest').revealedHand).toBeNull()
+    expect(projectStateFor(applyAction(s, 'host', take('knight-karl')), 'host').revealedHand).toBeNull()
+  })
+
+  it('Spy: takes 1 Knight, Fleet or Action card into the attacker’s hand, never a Building', () => {
+    const guestHand = ['abbey', 'knight-karl', 'fleet-ore', 'herb-woman']
+    const s = spied(guestHand, { hand: ['mint'] })
+    for (const bad of [take('abbey'), take(), take('knight-karl', 'fleet-ore'), take('knight-conrad')]) {
+      expect(applyAction(s, 'host', bad)).toBe(s)
+    }
+    expect(applyAction(s, 'guest', take('knight-karl'))).toBe(s)
+    for (const id of ['knight-karl', 'fleet-ore', 'herb-woman']) {
+      const t = applyAction(s, 'host', take(id))
+      expect(t.players.host.hand).toEqual(['mint', id])
+      expect(t.players.guest.hand).toEqual(guestHand.filter(c => c !== id))
+      expect(t.pendingChoices).toEqual([])
+    }
+  })
+
+  it('Spy: without a Unit or Action card the attacker confirms empty-handed; an empty hand asks nothing', () => {
+    const s = spied(['abbey', 'mint'])
+    expect(applyAction(s, 'host', take('abbey'))).toBe(s)
+    const done = applyAction(s, 'host', take())
+    expect(done.players.guest.hand).toEqual(['abbey', 'mint'])
+    expect(done.players.host.hand).toEqual([])
+    expect(done.pendingChoices).toEqual([])
+    expect(spied([]).pendingChoices).toEqual([])
+  })
+
+  it('Spy: the attacker is locked until the pick, then may build the stolen Knight at once', () => {
+    const s = spied(['knight-conrad'], { regions: regionsWith({ grain: 1, ore: 1 }) })
+    const build = { type: 'PLACE_EXPANSION', cardId: 'knight-conrad', slotIndex: 0, expansionSlotIndex: 0 } as const
+    expect(applyAction(s, 'host', build)).toBe(s)
+    expect(applyAction(s, 'host', { type: 'END_ACTION_PHASE' })).toBe(s)
+    const built = applyAction(applyAction(s, 'host', take('knight-conrad')), 'host', build)
+    expect(built.players.host.principality[0].expansionSlots[0]).toBe('knight-conrad')
+  })
+
+  it('Conflict: without a Knight Token holder nothing happens and production runs', () => {
+    const s = conflict(player('host', cities(), { hand: ['abbey'] }), player('guest', cities(), { hand: ['mint', 'smithy'] }))
+    expect(s.pendingChoices).toEqual([])
+    expect(s.phase).toBe('action')
+    expect(s.players.guest.hand).toEqual(['mint', 'smithy'])
+  })
+
+  it('Conflict: the Token holder puts 2 of the opponent’s cards under one stack, then production runs', () => {
+    const guestHand = ['mint', 'smithy', 'abbey']
+    let s = conflict(player('host', cities(['knight-karl'])), player('guest', cities(), { hand: guestHand }))
+    expect(s.phase).toBe('event-resolution')
+    expect(s.pendingChoices).toEqual([{ kind: 'handCard', player: 'host', owner: 'guest', reason: 'conflict' }])
+    expect(projectStateFor(s, 'host').revealedHand).toEqual(guestHand)
+    expect(projectStateFor(s, 'guest').revealedHand).toBeNull()
+    const bad = [
+      bury('stack-2', 'mint'), bury(undefined, 'mint', 'smithy'), bury('event' as DrawStackId, 'mint', 'smithy'),
+      bury('stack-2', 'mint', 'mint'), bury('stack-2', 'mint', 'smithy', 'abbey'),
+    ]
+    for (const a of bad) expect(applyAction(s, 'host', a)).toBe(s)
+    expect(applyAction(s, 'guest', bury('stack-2', 'mint', 'smithy'))).toBe(s)
+
+    s = applyAction(s, 'host', bury('stack-2', 'mint', 'smithy'))
+    expect(s.players.guest.hand).toEqual(['abbey'])
+    expect(s.decks['stack-2']).toEqual(['mint', 'smithy', 'library'])  // under = bottom = front
+    expect(s.pendingChoices).toEqual([])
+    expect(s.phase).toBe('action')
+    expect(res(s.players.host).gold).toBe(1)
+  })
+
+  it('Conflict: the roller’s opponent may hold the Token; a hand of 1 loses that card and is not refilled yet', () => {
+    let s = conflict(player('host', cities(), { hand: ['abbey'] }), player('guest', cities(['knight-karl'])))
+    expect(s.pendingChoices).toEqual([{ kind: 'handCard', player: 'guest', owner: 'host', reason: 'conflict' }])
+    expect(applyAction(s, 'host', bury('stack-1', 'abbey'))).toBe(s)
+    expect(applyAction(s, 'guest', bury('stack-1'))).toBe(s)
+    s = applyAction(s, 'guest', bury('stack-1', 'abbey'))
+    expect(s.players.host.hand).toEqual([])
+    expect(s.decks['stack-1']).toEqual(['abbey'])
+    expect(s.phase).toBe('action')
+
+    const empty = conflict(player('host', cities(['knight-karl'])), player('guest', cities()))
+    expect(empty.pendingChoices).toEqual([])
+    expect(empty.phase).toBe('action')
+  })
+
+  it('logs the card the Spy took, and how many cards Conflict put under which stack', () => {
+    const spyLog = applyAction(spied(['knight-karl']), 'host', take('knight-karl')).eventLog.find(e => e.type === 'CHOOSE_HAND_CARDS')
+    expect(spyLog).toMatchObject({ player: 'host', type: 'CHOOSE_HAND_CARDS', payload: { reason: 'spy', cardId: 'knight-karl' } })
+    const s = conflict(player('host', cities(['knight-karl'])), player('guest', cities(), { hand: ['mint', 'smithy'] }))
+    const conflictLog = applyAction(s, 'host', bury('stack-2', 'mint', 'smithy')).eventLog.find(e => e.type === 'CHOOSE_HAND_CARDS')
+    expect(conflictLog?.payload).toEqual({ reason: 'conflict', count: 2, deck: 'stack-2' })
   })
 })
 

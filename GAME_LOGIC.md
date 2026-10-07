@@ -201,13 +201,13 @@ icons and confirmed by the project owner against the physical cards. "Impl." = i
 | Herb Woman | 2 | Counter vs. Black Knight, played when attacked, before the roll: the attacker now loses on 3–6. Cannot be played otherwise (DE p.12). | ✔ |
 | Merchant | 2 | Take up to 2 resources of your choice from the opponent, then give them 1 resource of your choice (may be one just taken). Both players need room on their Regions for what they receive (DE p.12). | ✔ |
 | Scout | 2 | Play when building a Settlement: choose its 2 Regions from the Region stack, then reshuffle the stack. Playable below 7 combined VP. | ✔ |
-| Spy | 3 | Look at the opponent's hand; take 1 Unit or Action card (add to hand or play immediately). | ✘ |
+| Spy | 3 | The opponent shows you their whole hand; take 1 Unit (Knight/Fleet) or Action card of your choice into your hand. You may build or play it in the same action phase (paying as usual) or keep it. Always playable (the hand is hidden); with no Unit or Action card in it the Spy is used up without effect. No counter card, no roll (DE p.13). | ✔ |
 
 ### Event Cards (blue, 10)
 | Card | # | Effect | Impl. |
 | :--- | :-: | :--- | :-: |
 | Civil War | 1 | Each player returns 1 Knight or Fleet to hand; **the opponent chooses which** (roller chooses first). Units in a City with a Church cannot be chosen. No eligible unit → unaffected; exactly 1 → it returns without a choice. Then both players discard down to their hand limit immediately (§8). The returned card is an ordinary hand card and may be rebuilt (DE p.6, p.13). | ✔ |
-| Conflict | 1 | Knight Token holder takes 2 cards from the opponent's hand and puts them under a stack. | ✘ |
+| Conflict | 1 | The Knight Token holder looks at the opponent's hand, picks 2 cards (fewer if they hold fewer) and puts both under one stack of their choice. No Token holder → no effect. The victim refills only at the end of their own turn (§8) (DE p.14). | ✔ |
 | Master Builder | 1 | Each player may swap 1 hand card for any card of a chosen stack (roller chooses first; different stacks). | ✘ |
 | Plague | 2 | Every Region bordering a City loses 1 resource (once, even if it borders 2 Cities). Counter: Bath House, Aqueduct. | ✔ |
 | Productive Year | 2 | Every Region bordering a Garrison gains 1 resource per bordering Garrison (cap 3). | ✔ |
@@ -267,7 +267,7 @@ Buildings vs Units: Knights and Fleets are **Units**; everything else is a **Bui
   the roller's first.
 * Hidden information: each viewer receives a projection with the opponent's hand as a count, every stack
   as a count, and the Region stack as its sorted composition; a stack being searched is revealed to the
-  searcher only.
+  searcher only, and the opponent's hand to the player picking from it (Spy, Conflict).
 * Region adjacency is explicit: each Settlement/City lists its 4 corner Regions as
   `[topLeft, bottomLeft, topRight, bottomRight]`; neighbours share the corners between them.
 
@@ -293,10 +293,9 @@ Buildings vs Units: Knights and Fleets are **Units**; everything else is a **Bui
 ## 13. Not Yet Implemented
 
 These cards are defined but **kept out of the decks** until implemented, so no dead cards appear in play.
-Until then the expansion stacks hold 59 of 62 cards and the event deck 8 of 10.
+Until then the event deck holds 9 of 10 cards.
 
-* Action Cards: **Spy** (hidden-hand inspection).
-* Event Cards: **Conflict, Master Builder** (interactive hand choices for both players).
+* Event Cards: **Master Builder** (interactive hand choices for both players).
 * Player-to-player trades are offered by the active player only.
 * Player can choose which resource field to put resources not gained by the resource dice
-* Check if there are icons indicating the knight and fleet stones
+* Check if there are icons indicating the knight and fleet tokens

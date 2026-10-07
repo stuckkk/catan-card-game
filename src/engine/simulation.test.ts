@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { applyAction, createInitialState, availableResources, computePlayerStats, searchCost, setupChooser } from './engine'
-import { ALL_DRAW_CARDS, COUNTER_CARD, DRAW_STACK_IDS, getCard } from './cards'
+import { ALL_DRAW_CARDS, COUNTER_CARD, DRAW_STACK_IDS, getCard, isSpyTarget } from './cards'
 import { ALL_RESOURCE_TYPES } from './board'
 import type { GameAction, GameState, PlayerId, ResourceType } from './types'
 
@@ -31,7 +31,7 @@ function expansionCardsInPlay(s: GameState): string[] {
 
 function checkInvariants(s: GameState) {
   expect(sorted(expansionCardsInPlay(s))).toEqual(sorted(ALL_DRAW_CARDS))
-  expect(s.decks.event).toHaveLength(8)
+  expect(s.decks.event).toHaveLength(9)
   for (const p of ['host', 'guest'] as PlayerId[]) {
     const player = s.players[p]
     for (const r of player.regions) expect(r.storedResources).toBeGreaterThanOrEqual(0)
@@ -84,7 +84,7 @@ function actionPhaseMoves(s: GameState, p: PlayerId, rng: () => number): GameAct
   const want = ALL_RESOURCE_TYPES[Math.floor(rng() * 6)]
   moves.push({ type: 'PLAY_ACTION_CARD', cardId: 'caravan', params: { give: [give], receive: [want] } })
   moves.push({ type: 'PLAY_ACTION_CARD', cardId: 'merchant', params: { take: [want], give: [want] } })
-  for (const cardId of ['black-knight', 'arsonist', 'brigands']) moves.push({ type: 'PLAY_ACTION_CARD', cardId })
+  for (const cardId of ['black-knight', 'arsonist', 'brigands', 'spy']) moves.push({ type: 'PLAY_ACTION_CARD', cardId })
   moves.push({ type: 'TRADE_WITH_BANK', give, receive: want })
   return moves
 }
@@ -120,6 +120,12 @@ function step(s: GameState, rng: () => number): GameState {
     return applyAction(s, p, { type: 'ANSWER_ATTACK', playCounter: me.hand.includes(COUNTER_CARD[choice.attackCardId]) && rng() < 0.7 })
   }
   if (choice?.kind === 'attackRoll') return applyAction(s, p, { type: 'ROLL_ATTACK' })
+  if (choice?.kind === 'handCard') {
+    const hand = s.players[choice.owner].hand
+    if (choice.reason === 'spy') return applyAction(s, p, { type: 'CHOOSE_HAND_CARDS', cardIds: hand.filter(isSpyTarget).slice(0, 1) })
+    const toDeck = DRAW_STACK_IDS[Math.floor(rng() * 5)]
+    return applyAction(s, p, { type: 'CHOOSE_HAND_CARDS', cardIds: hand.slice(0, 2), toDeck })
+  }
   if (choice?.kind === 'discard') {
     const excess = me.hand.length - computePlayerStats(me).handLimit
     return applyAction(s, p, {

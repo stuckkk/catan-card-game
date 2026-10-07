@@ -68,8 +68,8 @@ export default function Hand({
   }
 
   function handlePlay(id: string) {
-    // Attack cards need no parameters: the engine runs the duel with prompts of its own.
-    if (id in COUNTER_CARD) onAction({ type: 'PLAY_ACTION_CARD', cardId: id })
+    // Attack cards and the Spy need no parameters: the engine asks with prompts of its own.
+    if (id in COUNTER_CARD || id === 'spy') onAction({ type: 'PLAY_ACTION_CARD', cardId: id })
     else setPlaying(id as ParamCard)
     setOpenIndex(null)
   }

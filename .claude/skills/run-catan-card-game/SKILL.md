@@ -25,7 +25,11 @@ Scenarios: `setup`, `turn-1`, `mid-game` (roll phase, a City each, 2 of every re
 Cards unlocked), `mid-game-action`, `civil-war` (Civil War just revealed, both picks + both
 discards pending), `black-knight` (action phase: host holds a Black Knight, guest has 2 Knights, a Herb
 Woman and a full hand), `arsonist-brigands` (action phase: host holds Arsonist, Brigands and
-Merchant with full Ore; guest has Library + Abbey + Knight placed, full Wool, a Bishop and a full hand).
+Merchant with full Ore; guest has Library + Abbey + Knight placed, full Wool, a Bishop and a full hand),
+`spy` (action phase: host holds a Spy; guest's hand has a Knight, a Fleet, a Herb Woman and a Mint),
+`conflict` / `conflict-offturn` (Conflict just revealed; the host / the guest holds the Knight Token and
+picks 2 of the other's 3 cards plus a stack).
+`midGame` alone is 6 VP combined: Action Card scenarios add a VP (e.g. a placed Knight = Knight Token).
 Optional 2nd arg = RNG seed. Unknown name → prints the list.
 To test a new mechanic, add a scenario to `SCENARIOS` using the helpers in the file (`midGame`,
 `update`, `place`, `city`, `hand`, `stock`, `eventOnTop`, `roll` with fixed dice).
