@@ -1,6 +1,6 @@
 import type {
-  CardDefinition, DeclarativeEffect, ExpansionColor, ExpansionKind, GameState, PlayerId,
-  Resources, ResourceType, DrawStackId, ProductionNumber,
+  CardDefinition, DeclarativeEffect, ExpansionColor, ExpansionKind, GameState, PlayerId, PlayerState,
+  PendingChoice, Resources, ResourceType, DrawStackId, ProductionNumber, SiteRef,
 } from './types'
 import {
   ALL_RESOURCE_TYPES, availableResources, canAfford, countResources, roomFor,
@@ -83,8 +83,8 @@ export const AQUEDUCT = expansion('aqueduct', 'red', 'building', { lumber: 2, or
   [{ type: 'PLAGUE_PROTECTION', scope: 'principality' }], 1)
 export const BATH_HOUSE = expansion('bath-house', 'red', 'building', { brick: 2, ore: 1, wool: 1 },
   [{ type: 'PLAGUE_PROTECTION', scope: 'city' }], 1)
-/** Civil War protection is not implemented yet (Civil War is out of the deck). */
-export const CHURCH = expansion('church', 'red', 'building', { ore: 2, grain: 2, brick: 1 }, [], 1)
+export const CHURCH = expansion('church', 'red', 'building', { ore: 2, grain: 2, brick: 1 },
+  [{ type: 'CIVIL_WAR_PROTECTION' }], 1)
 export const COLOSSUS = expansion('colossus', 'red', 'building', { ore: 3, brick: 3, grain: 3 }, [], 2)
 export const COUNTING_HOUSE = expansion('counting-house', 'red', 'building', { wool: 2, grain: 1, brick: 1 }, [commerce(3)])
 export const HARBOR = expansion('harbor', 'red', 'building', { ore: 1, wool: 1, brick: 1 },
@@ -194,7 +194,7 @@ export const EVENT_PROGRESS = event('progress', (state, roller) => {
   const order = [roller, opponentOf(roller)]
   const choices = order.flatMap(player => {
     const n = state.players[player].playedCards.filter(id => id === ABBEY.id || id === LIBRARY.id).length
-    return Array.from({ length: n }, () => ({ player, reason: 'progress' as const, options: ALL_RESOURCE_TYPES, takeFrom: null }))
+    return Array.from({ length: n }, () => ({ kind: 'resource' as const, player, reason: 'progress' as const, options: ALL_RESOURCE_TYPES, takeFrom: null }))
   })
   return { ...state, pendingChoices: [...state.pendingChoices, ...choices] }
 })
@@ -202,7 +202,36 @@ export const EVENT_PROGRESS = event('progress', (state, roller) => {
 /** Reshuffle the whole event deck (the engine has already put Year End back under it). */
 export const EVENT_YEAR_END = event('year-end', state => ({ ...state, decks: { ...state.decks, event: shuffle(state.decks.event) } }))
 
-export const EVENT_CIVIL_WAR = event('civil-war', undefined, true)
+/** Each player returns 1 Knight or Fleet to hand, chosen by the opponent (roller chooses first);
+ *  units in a City with a Church are safe. Then both discard down to their hand limit at once. */
+export const EVENT_CIVIL_WAR = event('civil-war', (state, roller) => {
+  const pick = (player: PlayerId): PendingChoice => {
+    const owner = opponentOf(player)
+    return { kind: 'placedCard', player, owner, reason: 'civilWar', options: civilWarTargets(state.players[owner]) }
+  }
+  const order = [roller, opponentOf(roller)]
+  return {
+    ...state,
+    pendingChoices: [
+      ...state.pendingChoices,
+      ...order.map(pick),
+      ...order.map(player => ({ kind: 'discard' as const, player })),
+    ],
+  }
+})
+
+/** Building Sites holding a Knight or Fleet that Civil War may hit (not in a City with a Church). */
+function civilWarTargets(player: PlayerState): SiteRef[] {
+  const out: SiteRef[] = []
+  player.principality.forEach((slot, slotIndex) => {
+    if (slot.expansionSlots.some(id => id && hasEffect(id, 'CIVIL_WAR_PROTECTION'))) return
+    slot.expansionSlots.forEach((id, expansionSlotIndex) => {
+      const kind = id ? getCard(id).expansionKind : undefined
+      if (kind === 'knight' || kind === 'fleet') out.push({ slotIndex, expansionSlotIndex })
+    })
+  })
+  return out
+}
 export const EVENT_CONFLICT = event('conflict', undefined, true)
 export const EVENT_MASTER_BUILDER = event('master-builder', undefined, true)
 

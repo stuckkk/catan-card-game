@@ -25,12 +25,15 @@ import DiceDisplay from '../components/DiceDisplay'
 import OpponentSummary from '../components/OpponentSummary'
 import OpponentVillage from '../components/OpponentVillage'
 import ResourceChoiceModal from '../components/ResourceChoiceModal'
+import PlacedCardChoiceModal from '../components/PlacedCardChoiceModal'
+import DiscardPanel from '../components/DiscardPanel'
 import Toasts from '../components/Toasts'
 import ActivityFeed from '../components/ActivityFeed'
 import BuildStrip from '../components/BuildStrip'
 import HelpButton from '../components/HelpButton'
 import { describeEvent, isToastWorthy, playerLabel } from '../components/activityText'
 import type { ActivityLine } from '../components/activityText'
+import dialog from '../components/Dialog.module.css'
 import styles from './GamePage.module.css'
 
 type ClientRole = 'host' | 'guest' | 'practice'
@@ -270,8 +273,28 @@ export default function GamePage() {
         </div>
       )}
 
-      {/* A mandatory pick; kept out of the turn panel so a collapsed phone sheet can't hide it. */}
-      {myChoice && <ResourceChoiceModal choice={myChoice} onAction={dispatchAction} />}
+      {/* Mandatory picks; kept out of the turn panel so a collapsed phone sheet can't hide them. */}
+      {myChoice?.kind === 'resource' && <ResourceChoiceModal choice={myChoice} onAction={dispatchAction} />}
+      {myChoice?.kind === 'placedCard' && (
+        <PlacedCardChoiceModal
+          key={view.eventLog.length}
+          choice={myChoice}
+          ownerPrincipality={view.players[myChoice.owner].principality}
+          onAction={dispatchAction}
+        />
+      )}
+      {myChoice?.kind === 'discard' && myFullState && (
+        <div className={dialog.backdrop} role="dialog" aria-modal="true">
+          <div className={dialog.sheet}>
+            <DiscardPanel
+              key={view.eventLog.length}
+              hand={myHand}
+              handLimit={computePlayerStats(myFullState).handLimit}
+              onAction={dispatchAction}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Header: the opponent on the left, the last roll in the middle, my score on the right. */}
       <header className={styles.topBar}>
@@ -365,7 +388,11 @@ export default function GamePage() {
         )}
 
         {activeChoice && !myChoice && (
-          <div className={styles.choiceWaiting}>{t('game.chooseResource.waiting')}</div>
+          <div className={styles.choiceWaiting}>
+            {t(activeChoice.kind === 'resource' ? 'game.chooseResource.waiting'
+              : activeChoice.kind === 'placedCard' ? `game.${activeChoice.reason}.waiting`
+              : 'game.discardNow.waiting')}
+          </div>
         )}
 
         {phase === 'action' && isMyTurn && myResources && (

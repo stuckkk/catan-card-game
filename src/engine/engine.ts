@@ -1,13 +1,13 @@
 import type {
   GameState, PlayerState, PlayerId, ResourceType, Resources, GameAction, ProjectedState,
   DiceRoll, EventSymbol, ProductionNumber, DeckId, DrawStackId, CentralSlot, PlayerStats,
-  ActionCardParams, DeclarativeEffect, GameEvent,
+  ActionCardParams, DeclarativeEffect, GameEvent, PendingPlacedCardChoice, SiteRef,
 } from './types'
 import { getCard, CARD_REGISTRY, ALL_DRAW_CARDS, DRAW_STACK_IDS, DEFAULT_EVENT_DECK, SCOUT } from './cards'
 import { getRegion, STARTING_REGIONS, STACK_REGIONS } from './regions'
 import {
   ALL_RESOURCE_TYPES, availableResources, canAfford, countResources, spendFromRegions, addToRegions,
-  shuffle, isSettlementLike, regionsBorderingCards,
+  shuffle, isSettlementLike, regionsBorderingCards, returnToHand,
 } from './board'
 
 export { availableResources } from './board'
@@ -299,7 +299,7 @@ function resolveEventSymbol(state: GameState, symbol: EventSymbol): GameState {
       if (options.length === 0) return { ...state, phase: 'production' }
       return {
         ...state,
-        pendingChoices: [{ player: holder, reason: 'commerce', options, takeFrom: from }],
+        pendingChoices: [{ kind: 'resource', player: holder, reason: 'commerce', options, takeFrom: from }],
         phase: 'event-resolution',
       }
     }
@@ -312,7 +312,7 @@ function resolveEventSymbol(state: GameState, symbol: EventSymbol): GameState {
       if (winner === null) return { ...state, phase: 'production' }
       return {
         ...state,
-        pendingChoices: [{ player: winner, reason: 'tournament', options: ALL_RESOURCE_TYPES, takeFrom: null }],
+        pendingChoices: [{ kind: 'resource', player: winner, reason: 'tournament', options: ALL_RESOURCE_TYPES, takeFrom: null }],
         phase: 'event-resolution',
       }
     }
@@ -322,8 +322,8 @@ function resolveEventSymbol(state: GameState, symbol: EventSymbol): GameState {
       return {
         ...state,
         pendingChoices: [
-          { player: active, reason: 'yearOfPlenty', options: ALL_RESOURCE_TYPES, takeFrom: null },
-          { player: opponent(active), reason: 'yearOfPlenty', options: ALL_RESOURCE_TYPES, takeFrom: null },
+          { kind: 'resource', player: active, reason: 'yearOfPlenty', options: ALL_RESOURCE_TYPES, takeFrom: null },
+          { kind: 'resource', player: opponent(active), reason: 'yearOfPlenty', options: ALL_RESOURCE_TYPES, takeFrom: null },
         ],
         phase: 'event-resolution',
       }
@@ -339,7 +339,7 @@ function resolveEventSymbol(state: GameState, symbol: EventSymbol): GameState {
         active, 'event-card', { cardId: eventCardId },
       )
       const effect = getCard(eventCardId).customEffect
-      if (effect) s = effect(s, active, {}) ?? s
+      if (effect) s = settleChoices(effect(s, active, {}) ?? s)
       return { ...s, phase: s.pendingChoices.length > 0 ? 'event-resolution' : 'production' }
     }
   }
@@ -375,9 +375,43 @@ function runProduction(state: GameState, roll: ProductionNumber): GameState {
   return logEvent({ ...state, players, phase: 'action' }, state.activePlayer, 'production', { roll, gains })
 }
 
-/** Once all pending resource choices are resolved, run the paused production step and enter
- *  the action phase. While choices remain, stay paused in 'event-resolution'. */
-function resumeAfterChoices(state: GameState): GameState {
+/** Cards in hand above the hand limit (0 if none). */
+function handExcess(player: PlayerState): number {
+  return Math.max(0, player.hand.length - computePlayerStats(player).handLimit)
+}
+
+/** Resolve prompts that need no input from the head of the queue: a discard with nothing above
+ *  the limit and a placed-card pick without options are dropped, one with a single option is
+ *  carried out. */
+function settleChoices(state: GameState): GameState {
+  let s = state
+  for (;;) {
+    const head = s.pendingChoices[0]
+    if (head?.kind === 'discard' && handExcess(s.players[head.player]) === 0) {
+      s = { ...s, pendingChoices: s.pendingChoices.slice(1) }
+    } else if (head?.kind === 'placedCard' && head.options.length <= 1) {
+      s = head.options.length === 0 ? { ...s, pendingChoices: s.pendingChoices.slice(1) } : resolvePlacedCard(s, head.options[0])
+    } else {
+      return s
+    }
+  }
+}
+
+/** Carry out the head placed-card pick: Civil War sends the card back to its owner's hand. */
+function resolvePlacedCard(state: GameState, site: SiteRef): GameState {
+  const choice = state.pendingChoices[0] as PendingPlacedCardChoice
+  const owner = state.players[choice.owner]
+  const cardId = owner.principality[site.slotIndex].expansionSlots[site.expansionSlotIndex]
+  return logEvent(
+    { ...withPlayer(state, choice.owner, returnToHand(owner, site.slotIndex, site.expansionSlotIndex)), pendingChoices: state.pendingChoices.slice(1) },
+    choice.owner, 'returned-to-hand', { cardId, reason: choice.reason },
+  )
+}
+
+/** Once all pending choices are resolved, run the paused production step and enter the action
+ *  phase. While choices remain, stay paused in 'event-resolution'. */
+function resumeAfterChoices(unsettled: GameState): GameState {
+  const state = settleChoices(unsettled)
   if (state.pendingChoices.length > 0) return state
   if (state.phase !== 'event-resolution') return state
   const prod = state.lastRoll?.productionNumber
@@ -387,7 +421,7 @@ function resumeAfterChoices(state: GameState): GameState {
 /** Submit the resource pick for the head pending choice. Only the owner may answer it. */
 function applyChooseResource(state: GameState, actingPlayer: PlayerId, resource: ResourceType): GameState {
   const choice = state.pendingChoices[0]
-  if (!choice || choice.player !== actingPlayer || !choice.options.includes(resource)) return state
+  if (choice?.kind !== 'resource' || choice.player !== actingPlayer || !choice.options.includes(resource)) return state
 
   // Commerce: take 1 from the opponent (overflow past the region cap is lost — the steal
   // still removes it from the opponent). Otherwise gain 1 from the bank.
@@ -398,6 +432,14 @@ function applyChooseResource(state: GameState, actingPlayer: PlayerId, resource:
   players = { ...players, [choice.player]: addToRegions(players[choice.player], { [resource]: 1 }) }
 
   return resumeAfterChoices({ ...state, players, pendingChoices: state.pendingChoices.slice(1) })
+}
+
+/** Submit the pick for the head placed-card choice: one of its options, by its owner's picker. */
+function applyChoosePlacedCard(state: GameState, actingPlayer: PlayerId, site: SiteRef): GameState {
+  const choice = state.pendingChoices[0]
+  if (choice?.kind !== 'placedCard' || choice.player !== actingPlayer) return state
+  if (!choice.options.some(o => o.slotIndex === site.slotIndex && o.expansionSlotIndex === site.expansionSlotIndex)) return state
+  return resumeAfterChoices(resolvePlacedCard(state, site))
 }
 
 // ─── Building ─────────────────────────────────────────────────────────────────
@@ -643,11 +685,13 @@ function applyEndActionPhase(state: GameState, actingPlayer: PlayerId): GameStat
   return { ...s, phase: 'draw' }
 }
 
-/** Over the limit: put exactly the excess cards under stacks of the player's choice. */
+/** Over the limit: put exactly the excess cards under stacks of the player's choice. In the draw
+ *  phase, or right away when a pending discard asks for it (e.g. after Civil War). */
 function applyDiscardToLimit(state: GameState, actingPlayer: PlayerId, discards: { cardId: string; toDeck: DrawStackId }[]): GameState {
-  if (state.phase !== 'draw') return state
+  const pending = state.pendingChoices[0]?.kind === 'discard'
+  if (pending ? state.pendingChoices[0].player !== actingPlayer : state.phase !== 'draw') return state
   const player = state.players[actingPlayer]
-  const excess = player.hand.length - computePlayerStats(player).handLimit
+  const excess = handExcess(player)
   if (excess <= 0 || discards.length !== excess) return state
   if (!discards.every(d => isDrawStack(d.toDeck))) return state
   const hand = removeAll(player.hand, discards.map(d => d.cardId))
@@ -655,7 +699,10 @@ function applyDiscardToLimit(state: GameState, actingPlayer: PlayerId, discards:
 
   const decks = { ...state.decks }
   for (const { cardId, toDeck } of discards) decks[toDeck] = [cardId, ...decks[toDeck]]
-  return { ...withPlayer(state, actingPlayer, { ...player, hand }), decks, phase: 'exchange' }
+  const discarded = { ...withPlayer(state, actingPlayer, { ...player, hand }), decks }
+  return pending
+    ? resumeAfterChoices({ ...discarded, pendingChoices: state.pendingChoices.slice(1) })
+    : { ...discarded, phase: 'exchange' }
 }
 
 /** Random draw: the top card of any stack. */
@@ -741,10 +788,14 @@ function applyExchange(state: GameState, actingPlayer: PlayerId, cardId: string,
 function mayAct(state: GameState, actingPlayer: PlayerId, action: GameAction): boolean {
   switch (action.type) {
     case 'SWAP_STARTING_REGIONS': return true
-    case 'CHOOSE_RESOURCE': return state.pendingChoices[0]?.player === actingPlayer
+    case 'CHOOSE_RESOURCE':
+    case 'CHOOSE_PLACED_CARD': return state.pendingChoices[0]?.player === actingPlayer
     case 'ACCEPT_TRADE':
     case 'DECLINE_TRADE': return true
     case 'TAKE_FROM_SEARCH': return state.search?.player === actingPlayer
+    case 'DISCARD_TO_LIMIT':
+      if (state.pendingChoices[0]?.kind === 'discard') return state.pendingChoices[0].player === actingPlayer
+      return state.phase !== 'setup' && state.activePlayer === actingPlayer
     case 'SEARCH_STACK': return state.phase === 'setup' || state.activePlayer === actingPlayer
     default: return state.phase !== 'setup' && state.activePlayer === actingPlayer
   }
@@ -766,6 +817,7 @@ export function applyAction(state: GameState, actingPlayer: PlayerId, action: Ga
     case 'PLAY_ACTION_CARD':   next = applyPlayActionCard(state, actingPlayer, action.cardId, action.params ?? {}); break
     case 'TRADE_WITH_BANK':    next = applyTradeWithBank(state, actingPlayer, action.give, action.receive); break
     case 'CHOOSE_RESOURCE':    next = applyChooseResource(state, actingPlayer, action.resource); break
+    case 'CHOOSE_PLACED_CARD': next = applyChoosePlacedCard(state, actingPlayer, action); break
     case 'PROPOSE_TRADE':      next = applyProposeTrade(state, actingPlayer, action.give, action.receive); break
     case 'ACCEPT_TRADE':       next = applyRespondTrade(state, actingPlayer, true); break
     case 'DECLINE_TRADE':      next = applyRespondTrade(state, actingPlayer, false); break
@@ -807,7 +859,11 @@ function actionLogPayload(before: GameState, after: GameState, actingPlayer: Pla
     case 'PLAY_ACTION_CARD': return { cardId: action.cardId }
     case 'TRADE_WITH_BANK':
       return { give: action.give, receive: action.receive, rate: getTradeRate(before.players[actingPlayer], action.give) }
-    case 'CHOOSE_RESOURCE': return { resource: action.resource, reason: before.pendingChoices[0]?.reason ?? null }
+    case 'CHOOSE_RESOURCE': {
+      const choice = before.pendingChoices[0]
+      return { resource: action.resource, reason: choice?.kind === 'resource' ? choice.reason : null }
+    }
+    case 'CHOOSE_PLACED_CARD': return null  // the return itself is logged ('returned-to-hand')
     case 'PROPOSE_TRADE': return { give: action.give, receive: action.receive }
     case 'ACCEPT_TRADE': return { ...before.pendingTrade, completed: after.players !== before.players }
     case 'DECLINE_TRADE': return { byProposer: before.pendingTrade?.from === actingPlayer }

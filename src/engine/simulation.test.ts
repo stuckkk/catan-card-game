@@ -31,7 +31,7 @@ function expansionCardsInPlay(s: GameState): string[] {
 
 function checkInvariants(s: GameState) {
   expect(sorted(expansionCardsInPlay(s))).toEqual(sorted(ALL_DRAW_CARDS))
-  expect(s.decks.event).toHaveLength(7)
+  expect(s.decks.event).toHaveLength(8)
   for (const p of ['host', 'guest'] as PlayerId[]) {
     const player = s.players[p]
     for (const r of player.regions) expect(r.storedResources).toBeGreaterThanOrEqual(0)
@@ -108,9 +108,19 @@ function step(s: GameState, rng: () => number): GameState {
     const used = Object.values(s.setup.picked)
     return applyAction(s, p, { type: 'SEARCH_STACK', deck: DRAW_STACK_IDS.find(d => !used.includes(d) && s.decks[d].length > 0)! })
   }
-  if (s.pendingChoices.length > 0) {
-    const options = s.pendingChoices[0].options
-    return applyAction(s, p, { type: 'CHOOSE_RESOURCE', resource: options[Math.floor(rng() * options.length)] })
+  const choice = s.pendingChoices[0]
+  if (choice?.kind === 'resource') {
+    return applyAction(s, p, { type: 'CHOOSE_RESOURCE', resource: choice.options[Math.floor(rng() * choice.options.length)] })
+  }
+  if (choice?.kind === 'placedCard') {
+    return applyAction(s, p, { type: 'CHOOSE_PLACED_CARD', ...choice.options[Math.floor(rng() * choice.options.length)] })
+  }
+  if (choice?.kind === 'discard') {
+    const excess = me.hand.length - computePlayerStats(me).handLimit
+    return applyAction(s, p, {
+      type: 'DISCARD_TO_LIMIT',
+      discards: me.hand.slice(0, excess).map((cardId, i) => ({ cardId, toDeck: DRAW_STACK_IDS[i % 5] })),
+    })
   }
   switch (s.phase) {
     case 'roll': {

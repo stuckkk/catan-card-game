@@ -47,6 +47,8 @@ export type DeclarativeEffect =
   | { type: 'SEARCH_DISCOUNT' }
   /** Plague immunity: all own Regions (Aqueduct) or the 4 Regions of its City (Bath House). */
   | { type: 'PLAGUE_PROTECTION'; scope: 'principality' | 'city' }
+  /** Units on this City's Building Sites cannot be chosen for Civil War (Church). */
+  | { type: 'CIVIL_WAR_PROTECTION' }
 
 /** Player-supplied parameters for Action Cards that need choices. */
 export interface ActionCardParams {
@@ -203,9 +205,9 @@ export interface GameState {
   search: StackSearch | null
   /** A resource trade offered by the active player, awaiting the opponent's response. */
   pendingTrade: PendingTrade | null
-  /** Interactive resource picks awaiting input, FIFO. Index 0 is the active prompt; while
-   *  non-empty, event resolution is paused (phase stays 'event-resolution'). */
-  pendingChoices: PendingResourceChoice[]
+  /** Interactive prompts awaiting input, FIFO. Index 0 is the active prompt; while non-empty,
+   *  event resolution is paused (phase stays 'event-resolution'). */
+  pendingChoices: PendingChoice[]
   /** Log of human-readable event keys for the action log UI */
   eventLog: GameEvent[]
 }
@@ -223,6 +225,7 @@ export type ResourceChoiceReason = 'commerce' | 'yearOfPlenty' | 'tournament' | 
 /** A pending interactive "choose a resource" prompt owned by one player. The engine
  *  pauses event resolution until the owner submits a CHOOSE_RESOURCE action. */
 export interface PendingResourceChoice {
+  kind: 'resource'
   /** The player who must pick. */
   player: PlayerId
   /** What triggered the choice. */
@@ -232,6 +235,34 @@ export interface PendingResourceChoice {
   /** Commerce: the opponent the chosen resource is taken from. Otherwise null (from the bank). */
   takeFrom: PlayerId | null
 }
+
+/** A Building Site on a principality: the Settlement/City slot and the site within it. */
+export interface SiteRef {
+  slotIndex: number
+  expansionSlotIndex: number
+}
+
+/** Pick one of `owner`'s placed cards (Civil War: a Knight or Fleet that goes back to hand).
+ *  A prompt with a single option resolves itself; one with none is dropped. */
+export interface PendingPlacedCardChoice {
+  kind: 'placedCard'
+  /** The player who picks. */
+  player: PlayerId
+  /** The player whose card it is. */
+  owner: PlayerId
+  reason: 'civilWar'
+  options: SiteRef[]
+}
+
+/** Put the cards above the hand limit under stack(s) of `player`'s choice, right now (outside
+ *  the draw phase). The excess is computed when the prompt comes up; it is dropped if there
+ *  is none by then. */
+export interface PendingDiscard {
+  kind: 'discard'
+  player: PlayerId
+}
+
+export type PendingChoice = PendingResourceChoice | PendingPlacedCardChoice | PendingDiscard
 
 export interface GameEvent {
   id: string
@@ -275,6 +306,8 @@ export type GameAction =
   | { type: 'TRADE_WITH_BANK'; give: ResourceType; receive: ResourceType }
   /** Submit the resource pick for the active pending choice. */
   | { type: 'CHOOSE_RESOURCE'; resource: ResourceType }
+  /** Submit the placed-card pick for the active pending choice (one of its options). */
+  | { type: 'CHOOSE_PLACED_CARD'; slotIndex: number; expansionSlotIndex: number }
   /** Active player offers a resource trade to the opponent. */
   | { type: 'PROPOSE_TRADE'; give: Partial<Resources>; receive: Partial<Resources> }
   /** Opponent accepts the pending trade offer. */
@@ -284,7 +317,8 @@ export type GameAction =
   /** Demolish own expansion (free, to the discard pile). */
   | { type: 'DEMOLISH'; slotIndex: number; expansionSlotIndex: number }
   | { type: 'END_ACTION_PHASE' }
-  /** Over the limit: put exactly the excess cards under stacks of your choice. */
+  /** Over the limit (draw phase, or a pending discard): put exactly the excess cards under
+   *  stacks of your choice. */
   | { type: 'DISCARD_TO_LIMIT'; discards: { cardId: string; toDeck: DrawStackId }[] }
   /** Random draw: take the top card of a stack. */
   | { type: 'DRAW_CARD'; fromDeck: DrawStackId }

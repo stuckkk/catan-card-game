@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import type { DeckId, DrawStackId, GameAction, ResourceType, Resources } from '../engine/types'
 import { DRAW_STACK_IDS } from '../engine/cards'
 import ResourcePicker from './ResourcePicker'
-import CardPicker from './CardPicker'
+import DiscardPanel from './DiscardPanel'
 import styles from './Panel.module.css'
 
 interface Props {
@@ -20,46 +20,10 @@ interface Props {
  *  from the top of a stack (free) or by searching a stack (paid). */
 export default function DrawPanel({ hand, handLimit, deckSizes, resources, searchCost, onAction }: Props) {
   const { t } = useTranslation()
-  const [selected, setSelected] = useState<number[]>([])
-  const [toDeck, setToDeck] = useState<DrawStackId>('stack-1')
   const [searchDeck, setSearchDeck] = useState<DrawStackId | null>(null)
   const [payWith, setPayWith] = useState<ResourceType[]>([])
 
-  const excess = hand.length - handLimit
-
-  if (excess > 0) {
-    return (
-      <div className={styles.panel}>
-        <div className={styles.title}>{t('game.draw.discardTitle')}</div>
-        <div className={styles.hint}>{t('game.draw.discardHint', { count: excess, limit: handLimit })}</div>
-        <CardPicker
-          items={hand.map((cardId, index) => ({ cardId, index }))}
-          selected={selected}
-          onToggle={i => setSelected(s => s.includes(i) ? s.filter(x => x !== i) : s.length < excess ? [...s, i] : s)}
-        />
-        <div className={styles.section}>
-          <span className={styles.label}>{t('game.draw.discardTo')}</span>
-          <div className={styles.cards}>
-            {DRAW_STACK_IDS.map(d => (
-              <button key={d} className={`${styles.deckChip} ${toDeck === d ? styles.selected : ''}`} onClick={() => setToDeck(d)}>
-                {t(`game.deckName.${d}`)}
-              </button>
-            ))}
-          </div>
-        </div>
-        <button
-          className="primary"
-          disabled={selected.length !== excess}
-          onClick={() => {
-            onAction({ type: 'DISCARD_TO_LIMIT', discards: selected.map(i => ({ cardId: hand[i], toDeck })) })
-            setSelected([])
-          }}
-        >
-          {t('game.draw.discardButton')}
-        </button>
-      </div>
-    )
-  }
+  if (hand.length > handLimit) return <DiscardPanel hand={hand} handLimit={handLimit} onAction={onAction} />
 
   const totalResources = Object.values(resources).reduce((a, b) => a + b, 0)
 

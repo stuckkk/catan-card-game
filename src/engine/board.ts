@@ -113,6 +113,20 @@ export function regionsBorderingCards(
   return counts
 }
 
+/** Take a placed expansion off its Building Site and put it back into the owner's hand. */
+export function returnToHand(player: PlayerState, slotIndex: number, expansionSlotIndex: number): PlayerState {
+  const cardId = player.principality[slotIndex].expansionSlots[expansionSlotIndex]!
+  const principality = player.principality.map((s, i) => {
+    if (i !== slotIndex) return s
+    const slots = [...s.expansionSlots]
+    slots[expansionSlotIndex] = null
+    return { ...s, expansionSlots: slots }
+  })
+  const played = [...player.playedCards]
+  played.splice(played.indexOf(cardId), 1)
+  return { ...player, principality, playedCards: played, hand: [...player.hand, cardId] }
+}
+
 /** All region indices that border one of the player's Cities (each listed once). */
 export function cityRegionIndices(player: PlayerState, cityMatch: (slot: CentralSlot) => boolean = () => true): Set<number> {
   const out = new Set<number>()

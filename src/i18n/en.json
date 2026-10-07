@@ -57,6 +57,14 @@
       "progressTitle": "Progress: choose a free resource",
       "waiting": "Opponent is choosing a resource…"
     },
+    "civilWar": {
+      "title": "Civil War: choose which of your opponent’s units goes back to their hand",
+      "confirm": "Send back to hand",
+      "waiting": "Opponent is choosing which of your units goes back to your hand…"
+    },
+    "discardNow": {
+      "waiting": "Opponent is putting cards back down to their hand limit…"
+    },
     "deckCount": "{{count}}",
     "deckName": {
       "stack-1": "Stack 1",
@@ -207,6 +215,7 @@
       "discard_other": "put {{count}} cards under stacks",
       "exchange": "exchanged a card at {{stack}}",
       "exchangeSearch": "exchanged a card and searched {{stack}}",
+      "returnedToHand": "{{card}} goes back to hand (Civil War)",
       "skipExchange": "ended the turn",
       "dismiss": "Dismiss"
     },
@@ -476,7 +485,7 @@
     },
     "eventCivilWar": {
       "name": "Civil War",
-      "description": "Each player must return a Knight or Fleet to his hand. Counter: Church."
+      "description": "Each player must return a Knight or Fleet to their hand. The opponent chooses which. Counter: Church."
     },
     "eventConflict": {
       "name": "Conflict",
@@ -537,6 +546,7 @@
     "commercePerFleet": "+{{amount}} Commerce per Trade Fleet",
     "searchDiscount": "Searching a stack costs only 1 resource",
     "plaguePrincipality": "All your regions are immune to the Plague",
-    "plagueCity": "The 4 regions of this City are immune to the Plague"
+    "plagueCity": "The 4 regions of this City are immune to the Plague",
+    "civilWarProtection": "Knights and Fleets in this City are safe from Civil War"
   }
 }
