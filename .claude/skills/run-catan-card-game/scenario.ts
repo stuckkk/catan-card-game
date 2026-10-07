@@ -111,6 +111,13 @@ const SCENARIOS: Record<string, (seed: number) => GameState> = {
     s = update(s, 'guest', pl => hand(['library', 'garrison', 'marketplace'])(place({ 0: ['knight-karl', null, null, null], 2: ['fleet-wool', null] })(pl)))
     return roll(eventOnTop(s, 'event-civil-war'), 'event', 6)
   },
+  /** Action phase, host holds a Black Knight; guest has 2 Knights, a Herb Woman and a full hand
+   *  (so a returned Knight forces an immediate discard). */
+  'black-knight': seed => {
+    let s: GameState = { ...midGame(seed), phase: 'action' }
+    s = update(s, 'host', pl => hand(['black-knight', 'abbey'])(place({ 0: ['knight-conrad', null, null, null] })(pl)))
+    return update(s, 'guest', pl => hand(['herb-woman', 'smithy', 'mint'])(place({ 0: ['knight-karl', null, null, null], 2: ['knight-otto', null] })(pl)))
+  },
 }
 
 const isMain = process.argv[1]?.endsWith('scenario.ts')

@@ -62,6 +62,25 @@
       "confirm": "Zurück auf die Hand",
       "waiting": "Gegner wählt, welche deiner Einheiten zurück auf deine Hand geht…"
     },
+    "blackKnight": {
+      "title": "Schwarzer Ritter: Wähle, welcher Ritter deines Gegners zurück auf die Hand geht",
+      "confirm": "Zurück auf die Hand",
+      "waiting": "Gegner wählt, welcher deiner Ritter zurück auf deine Hand geht…",
+      "noTarget": "Dein Gegner hat keinen Ritter, den du angreifen kannst."
+    },
+    "attack": {
+      "counterTitle": "⚔️ {{card}} greift an!",
+      "counterHint": "Spiele {{counter}} vor dem Wurf: dann gewinnt dein Gegner nur bei 1–2 statt 1–5.",
+      "playCounter": "{{counter}} spielen 🌿",
+      "noCounter": "Du hast keine {{counter}}.",
+      "letRoll": "Würfeln lassen",
+      "counterWaiting": "Gegner entscheidet, ob er eine Schutzkarte spielt…",
+      "rollTitle": "🎲 {{card}}: Würfle",
+      "rollHint": "Du gewinnst bei 1–5.",
+      "rollHintCountered": "Dein Gegner hat {{counter}} gespielt: du gewinnst nur bei 1–2.",
+      "roll": "🎲 Würfeln",
+      "rollWaiting": "Gegner würfelt ({{card}})…"
+    },
     "discardNow": {
       "waiting": "Gegner legt Karten bis zu seinem Handkartenlimit ab…"
     },
@@ -135,6 +154,7 @@
       "confirm": "Bezahlen"
     },
     "actionLocked": "Aktionskarten sind erst spielbar, wenn beide Spieler zusammen 7 SP haben.",
+    "herbWomanOnlyAsCounter": "Spiele die Kräuterhexe, wenn dein Gegner dich mit dem Schwarzen Ritter angreift.",
     "scoutOnlyOnBuild": "Spiele den Kundschafter beim Bau einer Siedlung.",
     "notImplemented": "Diese Karte ist noch nicht umgesetzt.",
     "alchemist": {
@@ -215,7 +235,11 @@
       "discard_other": "legt {{count}} Karten unter Stapel",
       "exchange": "tauscht eine Karte bei {{stack}}",
       "exchangeSearch": "tauscht eine Karte und durchsucht {{stack}}",
-      "returnedToHand": "{{card}} geht zurück auf die Hand (Bürgerkrieg)",
+      "returnedToHand": "{{card}} geht zurück auf die Hand ({{reason}})",
+      "counterPlayed": "spielt {{card}} gegen den Angriff",
+      "counterDeclined": "lässt würfeln",
+      "attackWon": "würfelt 🎲 {{die}} ({{card}}): der Angriff gelingt",
+      "attackLost": "würfelt 🎲 {{die}} ({{card}}): der Angriff scheitert",
       "skipExchange": "beendet den Zug",
       "dismiss": "Schließen"
     },
@@ -457,7 +481,7 @@
     },
     "blackKnight": {
       "name": "Schwarzer Ritter",
-      "description": "Würfle: bei 1–5 nimmt dein Gegner einen Ritter deiner Wahl auf die Hand; bei 6 du einen seiner Wahl. Gegenkarte: Kräuterhexe."
+      "description": "Nur wenn dein Gegner einen Ritter hat. Würfle: bei 1–5 nimmt dein Gegner einen Ritter deiner Wahl auf die Hand; bei 6 du einen seiner Wahl. Gegenkarte: Kräuterhexe."
     },
     "brigands": {
       "name": "Raubritter",
@@ -469,7 +493,7 @@
     },
     "herbWoman": {
       "name": "Kräuterhexe",
-      "description": "Gegen den Schwarzen Ritter vor dem Wurf spielen: der Angreifer verliert bei 3–6."
+      "description": "Spiele sie, wenn du mit dem Schwarzen Ritter angegriffen wirst, vor dem Wurf: der Angreifer verliert dann bei 3–6."
     },
     "merchant": {
       "name": "Kaufmann",

@@ -62,6 +62,25 @@
       "confirm": "Send back to hand",
       "waiting": "Opponent is choosing which of your units goes back to your hand…"
     },
+    "blackKnight": {
+      "title": "Black Knight: choose which of your opponent’s Knights goes back to their hand",
+      "confirm": "Send back to hand",
+      "waiting": "Opponent is choosing which of your Knights goes back to your hand…",
+      "noTarget": "Your opponent has no Knight to attack."
+    },
+    "attack": {
+      "counterTitle": "⚔️ {{card}} attacks!",
+      "counterHint": "Play {{counter}} before they roll: then they win only on 1–2 instead of 1–5.",
+      "playCounter": "Play {{counter}} 🌿",
+      "noCounter": "You have no {{counter}}.",
+      "letRoll": "Let them roll",
+      "counterWaiting": "Opponent is deciding whether to play a counter card…",
+      "rollTitle": "🎲 {{card}}: roll the die",
+      "rollHint": "You win on 1–5.",
+      "rollHintCountered": "Your opponent played {{counter}}: you win only on 1–2.",
+      "roll": "🎲 Roll",
+      "rollWaiting": "Opponent is rolling for the {{card}}…"
+    },
     "discardNow": {
       "waiting": "Opponent is putting cards back down to their hand limit…"
     },
@@ -135,6 +154,7 @@
       "confirm": "Pay"
     },
     "actionLocked": "Action cards unlock once both players together have 7 VP.",
+    "herbWomanOnlyAsCounter": "Play the Herb Woman when your opponent attacks you with the Black Knight.",
     "scoutOnlyOnBuild": "Play the Scout when building a Settlement.",
     "notImplemented": "This card is not implemented yet.",
     "alchemist": {
@@ -215,7 +235,11 @@
       "discard_other": "put {{count}} cards under stacks",
       "exchange": "exchanged a card at {{stack}}",
       "exchangeSearch": "exchanged a card and searched {{stack}}",
-      "returnedToHand": "{{card}} goes back to hand (Civil War)",
+      "returnedToHand": "{{card}} goes back to hand ({{reason}})",
+      "counterPlayed": "played {{card}} against the attack",
+      "counterDeclined": "lets the attack roll",
+      "attackWon": "rolled 🎲 {{die}} for the {{card}}: the attack succeeds",
+      "attackLost": "rolled 🎲 {{die}} for the {{card}}: the attack fails",
       "skipExchange": "ended the turn",
       "dismiss": "Dismiss"
     },
@@ -457,7 +481,7 @@
     },
     "blackKnight": {
       "name": "Black Knight",
-      "description": "Roll: on 1–5 your opponent returns a Knight of your choice to his hand; on 6 you return one of his choice. Counter: Herb Woman."
+      "description": "Only if your opponent has a Knight. Roll: on 1–5 your opponent returns a Knight of your choice to their hand; on 6 you return one of their choice. Counter: Herb Woman."
     },
     "brigands": {
       "name": "Brigands",
@@ -469,7 +493,7 @@
     },
     "herbWoman": {
       "name": "Herb Woman",
-      "description": "Play against the Black Knight before the attacker's roll: the attacker loses on 3–6."
+      "description": "Play when attacked by the Black Knight, before the roll: the attacker then loses on 3–6."
     },
     "merchant": {
       "name": "Merchant",

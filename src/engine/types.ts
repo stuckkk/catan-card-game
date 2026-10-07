@@ -206,7 +206,8 @@ export interface GameState {
   /** A resource trade offered by the active player, awaiting the opponent's response. */
   pendingTrade: PendingTrade | null
   /** Interactive prompts awaiting input, FIFO. Index 0 is the active prompt; while non-empty,
-   *  event resolution is paused (phase stays 'event-resolution'). */
+   *  event resolution is paused (phase stays 'event-resolution') and, in the action phase, the
+   *  active player can do nothing else (e.g. during an attack). */
   pendingChoices: PendingChoice[]
   /** Log of human-readable event keys for the action log UI */
   eventLog: GameEvent[]
@@ -242,7 +243,8 @@ export interface SiteRef {
   expansionSlotIndex: number
 }
 
-/** Pick one of `owner`'s placed cards (Civil War: a Knight or Fleet that goes back to hand).
+/** Pick one of `owner`'s placed cards that goes back to their hand (Civil War: a Knight or
+ *  Fleet; Black Knight: a Knight).
  *  A prompt with a single option resolves itself; one with none is dropped. */
 export interface PendingPlacedCardChoice {
   kind: 'placedCard'
@@ -250,7 +252,7 @@ export interface PendingPlacedCardChoice {
   player: PlayerId
   /** The player whose card it is. */
   owner: PlayerId
-  reason: 'civilWar'
+  reason: 'civilWar' | 'blackKnight'
   options: SiteRef[]
 }
 
@@ -262,7 +264,28 @@ export interface PendingDiscard {
   player: PlayerId
 }
 
-export type PendingChoice = PendingResourceChoice | PendingPlacedCardChoice | PendingDiscard
+/** Attack duel, step 1: the defender may play the counter card (Herb Woman vs Black Knight)
+ *  before the attacker rolls. Always asked, so the pause reveals nothing about their hand. */
+export interface PendingCounter {
+  kind: 'counter'
+  /** The defender. */
+  player: PlayerId
+  attacker: PlayerId
+  attackCardId: string
+}
+
+/** Attack duel, step 2: the attacker rolls one die; they win on 1–5, or 1–2 if countered. */
+export interface PendingAttackRoll {
+  kind: 'attackRoll'
+  /** The attacker. */
+  player: PlayerId
+  defender: PlayerId
+  attackCardId: string
+  countered: boolean
+}
+
+export type PendingChoice =
+  PendingResourceChoice | PendingPlacedCardChoice | PendingDiscard | PendingCounter | PendingAttackRoll
 
 export interface GameEvent {
   id: string
@@ -308,6 +331,10 @@ export type GameAction =
   | { type: 'CHOOSE_RESOURCE'; resource: ResourceType }
   /** Submit the placed-card pick for the active pending choice (one of its options). */
   | { type: 'CHOOSE_PLACED_CARD'; slotIndex: number; expansionSlotIndex: number }
+  /** Defender answers an attack: play the counter card from hand, or let the attacker roll. */
+  | { type: 'ANSWER_ATTACK'; playCounter: boolean }
+  /** Attacker rolls the die for the pending attack. */
+  | { type: 'ROLL_ATTACK' }
   /** Active player offers a resource trade to the opponent. */
   | { type: 'PROPOSE_TRADE'; give: Partial<Resources>; receive: Partial<Resources> }
   /** Opponent accepts the pending trade offer. */

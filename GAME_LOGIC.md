@@ -154,7 +154,9 @@ back to the middle (nobody holds it).
     same stack**, either the top card (free) or by searching it (paid as above).
 * Cards gained during the turn are not played until a later turn (the turn ends after step 4).
 * **Outside your turn:** if an effect raises your hand above your limit, immediately put the excess under
-  stack(s) of your choice. Losing an Abbey/Library likewise forces an immediate discard down.
+  stack(s) of your choice (DE p.11), e.g. a Knight returned by the opponent's Black Knight. Losing an
+  Abbey/Library likewise forces an immediate discard down. The active player instead checks the limit
+  at step 4 of their turn as usual.
 * **Civil War** (DE p.6): after it resolves, **both** players — the roller too — immediately put any cards
   above their limit under stack(s) of their choice (roller first).
 * If every expansion stack is empty, drawing stops.
@@ -170,7 +172,13 @@ back to the middle (nobody holds it).
   * They can only be played once the **combined VP of both players is at least 7**.
     *Exception:* Scout may always be played when building a Settlement.
   * Unless the card says otherwise, they are played after the dice have been resolved.
+  * An Action Card may only be played if its action can be carried out (DE p.11).
   * Counter cards (Bishop, Herb Woman) are played in reaction during the opponent's turn.
+* **Attack duel** (Black Knight): after the attack card is played, the defender is **always** asked whether
+  to play the counter card (so the pause reveals nothing about their hand). Then the attacker rolls one
+  die (1–6) and wins on 1–5, or only on 1–2 if the counter card was played (DE p.12–13). The loser
+  returns a card chosen by the winner (exactly one eligible card → it returns without a choice). Until
+  the attack is resolved the attacker can do nothing else.
 
 ---
 
@@ -186,10 +194,10 @@ icons and confirmed by the project owner against the physical cards. "Impl." = i
 | Alchemist | 2 | Play **before** your roll: choose the Production Die result; then roll the Event Die normally (event still resolves first). | ✔ |
 | Arsonist | 2 | Roll: 1–5 opponent returns a Building of your choice to hand; 6 you return a Building of their choice. Counter: Bishop. Fleets/Knights are not Buildings. | ✘ |
 | Bishop | 2 | Counter vs. Arsonist/Brigands, played before the attacker's roll: attacker now loses on 3–6. | ✘ |
-| Black Knight | 3 | Roll: 1–5 opponent returns a Knight of your choice to hand; 6 you return one of theirs' choice. Counter: Herb Woman. | ✘ |
+| Black Knight | 3 | Playable only if the opponent has a Knight. Roll (§9): 1–5 the opponent returns a Knight of your choice to hand; 6 you return a Knight of their choice (none → nothing happens). Any Knight can be chosen (a Church does not protect). The defender discards over-limit cards immediately (§8) (DE p.13). | ✔ |
 | Brigands | 1 | Roll: 1–5 take 2 resources of your choice from the opponent; 6 they take 2 from you. Counter: Bishop. | ✘ |
 | Caravan | 1 | Trade in up to 2 of your resources for the same number of other resources of your choice. | ✔ |
-| Herb Woman | 2 | Counter vs. Black Knight: attacker loses on 3–6. | ✘ |
+| Herb Woman | 2 | Counter vs. Black Knight, played when attacked, before the roll: the attacker now loses on 3–6. Cannot be played otherwise (DE p.12). | ✔ |
 | Merchant | 2 | Take up to 2 resources of your choice from the opponent, then give them 1 resource of your choice (may be one just taken). You need room on your Regions for what you take. | ✔ |
 | Scout | 2 | Play when building a Settlement: choose its 2 Regions from the Region stack, then reshuffle the stack. Playable below 7 combined VP. | ✔ |
 | Spy | 3 | Look at the opponent's hand; take 1 Unit or Action card (add to hand or play immediately). | ✘ |
@@ -284,11 +292,12 @@ Buildings vs Units: Knights and Fleets are **Units**; everything else is a **Bui
 ## 13. Not Yet Implemented
 
 These cards are defined but **kept out of the decks** until implemented, so no dead cards appear in play.
-Until then the expansion stacks hold 49 of 62 cards and the event deck 8 of 10.
+Until then the expansion stacks hold 54 of 62 cards and the event deck 8 of 10.
 
-* Action Cards: **Arsonist, Bishop, Black Knight, Brigands, Herb Woman, Spy** (dice duels, reactions on
-  the opponent's turn, hidden-hand inspection).
+* Action Cards: **Arsonist, Bishop, Brigands, Spy** (dice duels, reactions on the opponent's turn,
+  hidden-hand inspection).
 * Event Cards: **Conflict, Master Builder** (interactive hand choices for both players).
 * Consequences: the off-turn hand-limit discard (§8) only occurs through Civil War so far; losing an
   Abbey/Library outside your own turn cannot occur yet.
 * Player-to-player trades are offered by the active player only.
+* Player can choose which resource field to put resources not gained by the resource dice
