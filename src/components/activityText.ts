@@ -19,6 +19,9 @@ export function playerLabel(t: TFunction, player: PlayerId, viewer: PlayerId, is
   return player === viewer ? t('game.you') : t('game.opponent')
 }
 
+/** The card behind a 'returned-to-hand' reason, named in the log line. */
+const RETURN_REASON_CARD: Record<string, string> = { civilWar: 'event-civil-war', blackKnight: 'black-knight' }
+
 /** Text for a log entry, or null for entries not worth showing. */
 export function describeEvent(t: TFunction, e: GameEvent, viewer: PlayerId, isPractice: boolean): ActivityLine | null {
   const p = (e.payload ?? {}) as Record<string, unknown>
@@ -54,7 +57,11 @@ export function describeEvent(t: TFunction, e: GameEvent, viewer: PlayerId, isPr
       const def = typeof p.cardId === 'string' ? getCard(p.cardId) : null
       return global(t('game.log.eventCard', { card: card(p.cardId) }), def ? t(def.descriptionKey) : undefined)
     }
-    case 'returned-to-hand': return line(t('game.log.returnedToHand', { card: card(p.cardId) }))
+    case 'returned-to-hand':
+      return line(t('game.log.returnedToHand', { card: card(p.cardId), reason: card(RETURN_REASON_CARD[p.reason as string]) }))
+    case 'ANSWER_ATTACK': return line(p.playCounter ? t('game.log.counterPlayed', { card: card(p.cardId) }) : t('game.log.counterDeclined'))
+    case 'attack-roll':
+      return line(t(p.attackerWins ? 'game.log.attackWon' : 'game.log.attackLost', { die: p.die, card: card(p.cardId) }))
     case 'BUILD_ROAD': return line(t('game.log.buildRoad'))
     case 'BUILD_SETTLEMENT': return line(t(p.scout ? 'game.log.buildSettlementScout' : 'game.log.buildSettlement'))
     case 'BUILD_CITY': return line(t('game.log.buildCity'))
@@ -88,7 +95,7 @@ export function describeEvent(t: TFunction, e: GameEvent, viewer: PlayerId, isPr
 /** Entries that pop up as a toast when they arrive: what happens to both players always,
  *  and online also the opponent's moves (their trade offers have their own banner). */
 export function isToastWorthy(e: GameEvent, viewer: PlayerId, isPractice: boolean): boolean {
-  if (e.type === 'production' || e.type === 'brigand' || e.type === 'event-card' || e.type === 'returned-to-hand') return true
+  if (['production', 'brigand', 'event-card', 'returned-to-hand', 'attack-roll', 'ANSWER_ATTACK'].includes(e.type)) return true
   if (isPractice || e.player === viewer) return false
   return !['ROLL_DICE', 'END_ACTION_PHASE', 'PROPOSE_TRADE'].includes(e.type)
 }

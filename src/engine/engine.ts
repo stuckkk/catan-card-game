@@ -1,9 +1,11 @@
 import type {
   GameState, PlayerState, PlayerId, ResourceType, Resources, GameAction, ProjectedState,
   DiceRoll, EventSymbol, ProductionNumber, DeckId, DrawStackId, CentralSlot, PlayerStats,
-  ActionCardParams, DeclarativeEffect, GameEvent, PendingPlacedCardChoice, SiteRef,
+  ActionCardParams, DeclarativeEffect, GameEvent, PendingChoice, PendingPlacedCardChoice, SiteRef,
 } from './types'
-import { getCard, CARD_REGISTRY, ALL_DRAW_CARDS, DRAW_STACK_IDS, DEFAULT_EVENT_DECK, SCOUT } from './cards'
+import {
+  getCard, CARD_REGISTRY, ALL_DRAW_CARDS, DRAW_STACK_IDS, DEFAULT_EVENT_DECK, SCOUT, COUNTER_CARD, knightSites,
+} from './cards'
 import { getRegion, STARTING_REGIONS, STACK_REGIONS } from './regions'
 import {
   ALL_RESOURCE_TYPES, availableResources, canAfford, countResources, spendFromRegions, addToRegions,
@@ -442,6 +444,45 @@ function applyChoosePlacedCard(state: GameState, actingPlayer: PlayerId, site: S
   return resumeAfterChoices(resolvePlacedCard(state, site))
 }
 
+// ─── Attacks (Black Knight, GAME_LOGIC.md §9) ─────────────────────────────────
+
+/** The defender answers the head attack: play the counter card from hand, or let the attacker roll. */
+function applyAnswerAttack(state: GameState, actingPlayer: PlayerId, playCounter: boolean): GameState {
+  const choice = state.pendingChoices[0]
+  if (choice?.kind !== 'counter' || choice.player !== actingPlayer) return state
+  const counter = COUNTER_CARD[choice.attackCardId]
+  const defender = state.players[actingPlayer]
+  if (playCounter && !defender.hand.includes(counter)) return state
+  const roll: PendingChoice = {
+    kind: 'attackRoll', player: choice.attacker, defender: actingPlayer, attackCardId: choice.attackCardId, countered: playCounter,
+  }
+  const answered = { ...state, pendingChoices: [roll, ...state.pendingChoices.slice(1)] }
+  if (!playCounter) return answered
+  return {
+    ...withPlayer(answered, actingPlayer, { ...defender, hand: removeFirst(defender.hand, counter) }),
+    discardPile: [...state.discardPile, counter],
+  }
+}
+
+/** One six-sided die for an attack. */
+function rollDie(rng: () => number = Math.random): number {
+  return Math.floor(rng() * 6) + 1
+}
+
+/** Resolve the head attack roll with a known die: the attacker wins on 1–5, or 1–2 if countered.
+ *  The winner picks one of the loser's Knights, which goes back to hand; a defender then over
+ *  the limit discards at once (the attacker checks at the end of their turn as usual). */
+export function resolveAttackRoll(state: GameState, die: number): GameState {
+  const choice = state.pendingChoices[0]
+  if (choice?.kind !== 'attackRoll') return state
+  const attackerWins = die <= (choice.countered ? 2 : 5)
+  const [winner, loser] = attackerWins ? [choice.player, choice.defender] : [choice.defender, choice.player]
+  const pick: PendingChoice = { kind: 'placedCard', player: winner, owner: loser, reason: 'blackKnight', options: knightSites(state.players[loser]) }
+  const next: PendingChoice[] = attackerWins ? [pick, { kind: 'discard', player: choice.defender }] : [pick]
+  const logged = logEvent(state, choice.player, 'attack-roll', { cardId: choice.attackCardId, die, countered: choice.countered, attackerWins })
+  return resumeAfterChoices({ ...logged, pendingChoices: [...next, ...state.pendingChoices.slice(1)] })
+}
+
 // ─── Building ─────────────────────────────────────────────────────────────────
 
 function applyBuildRoad(state: GameState, actingPlayer: PlayerId, side: 'left' | 'right'): GameState {
@@ -789,7 +830,9 @@ function mayAct(state: GameState, actingPlayer: PlayerId, action: GameAction): b
   switch (action.type) {
     case 'SWAP_STARTING_REGIONS': return true
     case 'CHOOSE_RESOURCE':
-    case 'CHOOSE_PLACED_CARD': return state.pendingChoices[0]?.player === actingPlayer
+    case 'CHOOSE_PLACED_CARD':
+    case 'ANSWER_ATTACK':
+    case 'ROLL_ATTACK': return state.pendingChoices[0]?.player === actingPlayer
     case 'ACCEPT_TRADE':
     case 'DECLINE_TRADE': return true
     case 'TAKE_FROM_SEARCH': return state.search?.player === actingPlayer
@@ -797,7 +840,8 @@ function mayAct(state: GameState, actingPlayer: PlayerId, action: GameAction): b
       if (state.pendingChoices[0]?.kind === 'discard') return state.pendingChoices[0].player === actingPlayer
       return state.phase !== 'setup' && state.activePlayer === actingPlayer
     case 'SEARCH_STACK': return state.phase === 'setup' || state.activePlayer === actingPlayer
-    default: return state.phase !== 'setup' && state.activePlayer === actingPlayer
+    // While a prompt is open (e.g. an attack), the active player can do nothing else.
+    default: return state.phase !== 'setup' && state.activePlayer === actingPlayer && state.pendingChoices.length === 0
   }
 }
 
@@ -818,6 +862,8 @@ export function applyAction(state: GameState, actingPlayer: PlayerId, action: Ga
     case 'TRADE_WITH_BANK':    next = applyTradeWithBank(state, actingPlayer, action.give, action.receive); break
     case 'CHOOSE_RESOURCE':    next = applyChooseResource(state, actingPlayer, action.resource); break
     case 'CHOOSE_PLACED_CARD': next = applyChoosePlacedCard(state, actingPlayer, action); break
+    case 'ANSWER_ATTACK':      next = applyAnswerAttack(state, actingPlayer, action.playCounter); break
+    case 'ROLL_ATTACK':        next = resolveAttackRoll(state, rollDie()); break
     case 'PROPOSE_TRADE':      next = applyProposeTrade(state, actingPlayer, action.give, action.receive); break
     case 'ACCEPT_TRADE':       next = applyRespondTrade(state, actingPlayer, true); break
     case 'DECLINE_TRADE':      next = applyRespondTrade(state, actingPlayer, false); break
@@ -864,6 +910,11 @@ function actionLogPayload(before: GameState, after: GameState, actingPlayer: Pla
       return { resource: action.resource, reason: choice?.kind === 'resource' ? choice.reason : null }
     }
     case 'CHOOSE_PLACED_CARD': return null  // the return itself is logged ('returned-to-hand')
+    case 'ANSWER_ATTACK': {
+      const choice = before.pendingChoices[0]
+      return { playCounter: action.playCounter, cardId: choice?.kind === 'counter' ? COUNTER_CARD[choice.attackCardId] : null }
+    }
+    case 'ROLL_ATTACK': return null  // logged as 'attack-roll' with the die
     case 'PROPOSE_TRADE': return { give: action.give, receive: action.receive }
     case 'ACCEPT_TRADE': return { ...before.pendingTrade, completed: after.players !== before.players }
     case 'DECLINE_TRADE': return { byProposer: before.pendingTrade?.from === actingPlayer }

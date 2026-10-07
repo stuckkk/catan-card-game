@@ -13,6 +13,8 @@ interface Props {
   phase: TurnPhase | undefined
   resources: Resources | undefined
   opponentResources: Resources | undefined
+  /** The Black Knight can only be played against a Knight. */
+  opponentHasKnight: boolean
   /** Both players together have at least 7 VP. */
   actionsUnlocked: boolean
   onAction: (a: GameAction) => void
@@ -31,7 +33,7 @@ function canAffordCard(resources: Resources, cardId: string): boolean {
 type ParamCard = 'alchemist' | 'caravan' | 'merchant'
 
 export default function Hand({
-  cardIds, isMyTurn, phase, resources, opponentResources, actionsUnlocked, onAction, onBeginPlacement,
+  cardIds, isMyTurn, phase, resources, opponentResources, opponentHasKnight, actionsUnlocked, onAction, onBeginPlacement,
 }: Props) {
   const { t } = useTranslation()
   // Index (not id) so duplicate cards open the one actually tapped.
@@ -50,12 +52,16 @@ export default function Hand({
     const timingOk = isMyTurn && (openDef.id === 'alchemist' ? phase === 'roll' : phase === 'action')
     if (openDef.notImplemented) actionNote = t('game.notImplemented')
     else if (openDef.id === 'scout') actionNote = t('game.scoutOnlyOnBuild')
+    else if (openDef.id === 'herb-woman') actionNote = t('game.herbWomanOnlyAsCounter')
     else if (!actionsUnlocked) actionNote = t('game.actionLocked')
+    else if (openDef.id === 'black-knight' && !opponentHasKnight) actionNote = t('game.blackKnight.noTarget')
     else canPlay = timingOk
   }
 
   function handlePlay(id: string) {
-    setPlaying(id as ParamCard)
+    // The Black Knight needs no parameters: the engine runs the duel with prompts of its own.
+    if (id === 'black-knight') onAction({ type: 'PLAY_ACTION_CARD', cardId: id })
+    else setPlaying(id as ParamCard)
     setOpenIndex(null)
   }
 

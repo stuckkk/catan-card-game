@@ -5,7 +5,7 @@ import {
   applyAction, computeVP, availableResources, computePlayerStats, projectStateFor, setupChooser,
   actionCardsUnlocked, searchCost, tokenHolders,
 } from '../engine/engine'
-import { getCard } from '../engine/cards'
+import { getCard, knightSites } from '../engine/cards'
 import type { GameState, GameAction, ProjectedState, PlayerId, PlayerState } from '../engine/types'
 import { reconnectSession } from '../network/wsSession'
 import type { NetworkSession } from '../network/wsSession'
@@ -26,6 +26,7 @@ import OpponentSummary from '../components/OpponentSummary'
 import OpponentVillage from '../components/OpponentVillage'
 import ResourceChoiceModal from '../components/ResourceChoiceModal'
 import PlacedCardChoiceModal from '../components/PlacedCardChoiceModal'
+import AttackModal from '../components/AttackModal'
 import DiscardPanel from '../components/DiscardPanel'
 import Toasts from '../components/Toasts'
 import ActivityFeed from '../components/ActivityFeed'
@@ -283,6 +284,9 @@ export default function GamePage() {
           onAction={dispatchAction}
         />
       )}
+      {(myChoice?.kind === 'counter' || myChoice?.kind === 'attackRoll') && (
+        <AttackModal choice={myChoice} hand={myHand} onAction={dispatchAction} />
+      )}
       {myChoice?.kind === 'discard' && myFullState && (
         <div className={dialog.backdrop} role="dialog" aria-modal="true">
           <div className={dialog.sheet}>
@@ -348,7 +352,7 @@ export default function GamePage() {
               regions={myState.regions}
               isMyBoard
               phase={phase}
-              isMyTurn={isMyTurn}
+              isMyTurn={isMyTurn && !activeChoice}
               placingCardId={placingCardId}
               onAction={handleBoardAction}
               canArrange={phase === 'setup' && !view.setup.picked[myId]}
@@ -391,15 +395,17 @@ export default function GamePage() {
           <div className={styles.choiceWaiting}>
             {t(activeChoice.kind === 'resource' ? 'game.chooseResource.waiting'
               : activeChoice.kind === 'placedCard' ? `game.${activeChoice.reason}.waiting`
-              : 'game.discardNow.waiting')}
+              : activeChoice.kind === 'counter' ? 'game.attack.counterWaiting'
+              : activeChoice.kind === 'attackRoll' ? 'game.attack.rollWaiting'
+              : 'game.discardNow.waiting', 'attackCardId' in activeChoice ? { card: t(getCard(activeChoice.attackCardId).nameKey) } : undefined)}
           </div>
         )}
 
-        {phase === 'action' && isMyTurn && myResources && (
+        {phase === 'action' && isMyTurn && !activeChoice && myResources && (
           <BuildStrip resources={myResources} supply={view.supply} regionsLeft={view.regionStack.length} />
         )}
 
-        {phase === 'action' && isMyTurn && myResources && myState && (
+        {phase === 'action' && isMyTurn && !activeChoice && myResources && myState && (
           <TradeMenu
             resources={myResources}
             playedCards={myState.playedCards}
@@ -444,7 +450,7 @@ export default function GamePage() {
               {t('game.rollDice')}
             </button>
           )}
-          {phase === 'action' && isMyTurn && (
+          {phase === 'action' && isMyTurn && !activeChoice && (
             <button className="primary" onClick={() => dispatchAction({ type: 'END_ACTION_PHASE' })}>
               {t('game.endTurn')}
             </button>
@@ -462,10 +468,11 @@ export default function GamePage() {
         {myResources && <ResourceBar resources={myResources} />}
         <Hand
           cardIds={myHand}
-          isMyTurn={isMyTurn}
+          isMyTurn={isMyTurn && !activeChoice}
           phase={phase}
           resources={myResources}
           opponentResources={opponentResources}
+          opponentHasKnight={opponentState ? knightSites(opponentState as unknown as PlayerState).length > 0 : false}
           actionsUnlocked={actionCardsUnlocked(view)}
           onAction={dispatchAction}
           onBeginPlacement={setPlacingCardId}

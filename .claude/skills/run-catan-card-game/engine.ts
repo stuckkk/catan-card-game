@@ -3,6 +3,7 @@
 // One command per line (blank lines and # comments are skipped):
 //   <host|guest|auto> <GameAction JSON>   apply an action; 'auto' = whoever has to act now
 //   roll <event> <1-6>                    resolve the roll with fixed dice (phase must be 'roll')
+//   die <1-6>                             resolve a pending attack roll (Black Knight) with a fixed die
 //   show                                  print the summary again
 //   view <host|guest>                     print what that seat's browser receives (projected state)
 //   save <file>                           write the current GameState as JSON (feed it to browser.mjs)
@@ -11,7 +12,7 @@
 import { readFileSync, writeFileSync } from 'node:fs'
 import { createInterface } from 'node:readline'
 import {
-  applyAction, applyRoll, availableResources, computePlayerStats, computeVP, projectStateFor, setupChooser,
+  applyAction, applyRoll, resolveAttackRoll, availableResources, computePlayerStats, computeVP, projectStateFor, setupChooser,
 } from '../../../src/engine/engine'
 import type { DiceRoll, GameAction, GameState, PlayerId } from '../../../src/engine/types'
 
@@ -59,6 +60,8 @@ function run(line: string): void {
   if (cmd === 'roll') {
     const [event, n] = rest
     state = applyRoll(state, { eventSymbol: event as DiceRoll['eventSymbol'], productionNumber: Number(n) as DiceRoll['productionNumber'] })
+  } else if (cmd === 'die') {
+    state = resolveAttackRoll(state, Number(arg))
   } else if (cmd === 'host' || cmd === 'guest' || cmd === 'auto') {
     const player = cmd === 'auto' ? actor(state) : cmd
     state = applyAction(state, player, JSON.parse(arg) as GameAction)

@@ -153,9 +153,24 @@ export const SCOUT = action('scout', () => null)
 
 export const ARSONIST = action('arsonist', undefined, true)
 export const BISHOP = action('bishop', undefined, true)
-export const BLACK_KNIGHT = action('black-knight', undefined, true)
 export const BRIGANDS = action('brigands', undefined, true)
-export const HERB_WOMAN = action('herb-woman', undefined, true)
+
+/** Attack: only if the opponent has a Knight. They may answer with a Herb Woman, then you roll
+ *  (the engine resolves the duel: ANSWER_ATTACK, ROLL_ATTACK). */
+export const BLACK_KNIGHT = action('black-knight', (state, player) => {
+  const defender = opponentOf(player)
+  if (knightSites(state.players[defender]).length === 0) return null
+  return {
+    ...state,
+    pendingChoices: [...state.pendingChoices, { kind: 'counter', player: defender, attacker: player, attackCardId: 'black-knight' }],
+  }
+})
+
+/** Counter card: only played in answer to a Black Knight (ANSWER_ATTACK), never on its own. */
+export const HERB_WOMAN = action('herb-woman')
+
+/** The counter card the defender may play against an attack card. */
+export const COUNTER_CARD: Record<string, string> = { 'black-knight': HERB_WOMAN.id }
 export const SPY = action('spy', undefined, true)
 
 // ─── Event Cards (blue) ───────────────────────────────────────────────────────
@@ -232,6 +247,13 @@ function civilWarTargets(player: PlayerState): SiteRef[] {
   })
   return out
 }
+
+/** Building Sites holding a Knight (the Black Knight may hit any of them). */
+export function knightSites(player: PlayerState): SiteRef[] {
+  return player.principality.flatMap((slot, slotIndex) => slot.expansionSlots.flatMap((id, expansionSlotIndex) =>
+    id && getCard(id).expansionKind === 'knight' ? [{ slotIndex, expansionSlotIndex }] : []))
+}
+
 export const EVENT_CONFLICT = event('conflict', undefined, true)
 export const EVENT_MASTER_BUILDER = event('master-builder', undefined, true)
 

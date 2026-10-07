@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  applyAction, applyRoll, rollDice, computePlayerStats, computeVP, projectStateFor,
+  applyAction, applyRoll, resolveAttackRoll, rollDice, computePlayerStats, computeVP, projectStateFor,
   availableResources, getTradeRate, tokenHolders, createInitialState, searchCost, setupChooser,
 } from './engine'
 import { ALL_DRAW_CARDS, DEFAULT_EVENT_DECK, CARD_REGISTRY, getCard } from './cards'
@@ -112,14 +112,13 @@ const roll = (eventSymbol: DiceRoll['eventSymbol'], productionNumber: DiceRoll['
 // ─── Catalogue ───────────────────────────────────────────────────────────────
 
 describe('card catalogue', () => {
-  it('builds the expansion stacks from the 49 implemented of the 62 rulebook cards', () => {
-    expect(ALL_DRAW_CARDS).toHaveLength(49)
+  it('builds the expansion stacks from the 54 implemented of the 62 rulebook cards', () => {
+    expect(ALL_DRAW_CARDS).toHaveLength(54)
     const count = (id: string) => ALL_DRAW_CARDS.filter(c => c === id).length
     expect(count('garrison')).toBe(3)
     expect(count('town-hall')).toBe(2)
     expect(count('scout')).toBe(2)
     expect(count('spy')).toBe(0)           // not implemented → kept out
-    expect(count('black-knight')).toBe(0)
     expect(ALL_DRAW_CARDS.every(id => !getCard(id).notImplemented)).toBe(true)
   })
 
@@ -858,6 +857,149 @@ describe('action cards', () => {
     const s = { ...base, players: { ...base.players, host: { ...base.players.host, hand: ['scout', 'spy'] } } }
     expect(applyAction(s, 'host', { type: 'PLAY_ACTION_CARD', cardId: 'scout' })).toBe(s)
     expect(applyAction(s, 'host', { type: 'PLAY_ACTION_CARD', cardId: 'spy' })).toBe(s)
+  })
+})
+
+describe('Black Knight and Herb Woman', () => {
+  /** Two Cities each (8 VP together, so Action Cards are unlocked). */
+  const cities = (a: (string | null)[] = [], b: (string | null)[] = []) => {
+    const four = (x: (string | null)[]) => [...x, null, null, null, null].slice(0, 4)
+    return [settlementA(four(a)), road(), settlementB(four(b))]
+  }
+  const player = (id: PlayerId, board: CentralSlot[], over: Partial<PlayerState> = {}) =>
+    makePlayer(id, { principality: board, playedCards: playedFor(board), ...over })
+  const duel = (host: PlayerState, guest: PlayerState, over: Partial<GameState> = {}) =>
+    makeState({ players: { host: { ...host, hand: ['black-knight', ...host.hand] }, guest }, ...over })
+  const play = { type: 'PLAY_ACTION_CARD', cardId: 'black-knight' } as const
+  const answer = (playCounter: boolean) => ({ type: 'ANSWER_ATTACK', playCounter }) as const
+  const site = (slotIndex: number, expansionSlotIndex: number) => ({ slotIndex, expansionSlotIndex })
+  /** Played and answered: the attacker is about to roll. */
+  const toRoll = (host: PlayerState, guest: PlayerState, playCounter = false, over: Partial<GameState> = {}) =>
+    applyAction(applyAction(duel(host, guest, over), 'host', play), 'guest', answer(playCounter))
+
+  it('is in the decks: 3 Black Knights and 2 Herb Women', () => {
+    expect(ALL_DRAW_CARDS.filter(c => c === 'black-knight')).toHaveLength(3)
+    expect(ALL_DRAW_CARDS.filter(c => c === 'herb-woman')).toHaveLength(2)
+  })
+
+  it('needs an opponent with a Knight, 7 VP and the action phase; the Herb Woman is never played alone', () => {
+    const noKnight = duel(player('host', cities(['knight-karl'])), player('guest', cities()))
+    expect(applyAction(noKnight, 'host', play)).toBe(noKnight)
+
+    const small = [settlementA(), road(), settlementB()]
+    const locked = duel(player('host', small), player('guest', [settlementA(['knight-karl', null]), road(), settlementB()]))
+    expect(applyAction(locked, 'host', play)).toBe(locked)
+
+    const rollPhase = duel(player('host', cities()), player('guest', cities(['knight-karl'])), { phase: 'roll' })
+    expect(applyAction(rollPhase, 'host', play)).toBe(rollPhase)
+
+    const herb = makeState({ players: { host: player('host', cities(), { hand: ['herb-woman'] }), guest: player('guest', cities(['knight-karl'])) } })
+    expect(applyAction(herb, 'host', { type: 'PLAY_ACTION_CARD', cardId: 'herb-woman' })).toBe(herb)
+  })
+
+  it('asks the defender first, then the attacker rolls; meanwhile the attacker can do nothing else', () => {
+    const host = player('host', cities(), { regions: regionsWith({ lumber: 1, brick: 2 }) })
+    let s = applyAction(duel(host, player('guest', cities(['knight-karl']))), 'host', play)
+    expect(s.players.host.hand).toEqual([])
+    expect(s.discardPile).toEqual(['black-knight'])
+    expect(s.pendingChoices).toEqual([{ kind: 'counter', player: 'guest', attacker: 'host', attackCardId: 'black-knight' }])
+    for (const a of [{ type: 'ROLL_ATTACK' }, { type: 'END_ACTION_PHASE' }, { type: 'BUILD_ROAD', side: 'right' }, answer(false)] as const) {
+      expect(applyAction(s, 'host', a)).toBe(s)
+    }
+    expect(applyAction(s, 'guest', { type: 'ROLL_ATTACK' })).toBe(s)
+
+    s = applyAction(s, 'guest', answer(false))
+    expect(s.pendingChoices).toEqual([{ kind: 'attackRoll', player: 'host', defender: 'guest', attackCardId: 'black-knight', countered: false }])
+    expect(applyAction(s, 'guest', { type: 'ROLL_ATTACK' })).toBe(s)
+    expect(applyAction(s, 'host', { type: 'BUILD_ROAD', side: 'right' })).toBe(s)
+
+    const rolled = applyAction(s, 'host', { type: 'ROLL_ATTACK' })
+    expect(rolled.pendingChoices).toEqual([])
+    expect(rolled.eventLog.find(e => e.type === 'attack-roll')?.player).toBe('host')
+    expect(applyAction(rolled, 'host', { type: 'BUILD_ROAD', side: 'right' })).not.toBe(rolled)
+  })
+
+  it('plays the Herb Woman only from the defender’s hand and discards it', () => {
+    const host = player('host', cities())
+    const without = applyAction(duel(host, player('guest', cities(['knight-karl']))), 'host', play)
+    expect(applyAction(without, 'guest', answer(true))).toBe(without)
+
+    const s = toRoll(host, player('guest', cities(['knight-karl']), { hand: ['herb-woman', 'abbey'] }), true)
+    expect(s.players.guest.hand).toEqual(['abbey'])
+    expect(s.discardPile).toEqual(['black-knight', 'herb-woman'])
+    expect(s.pendingChoices[0]).toMatchObject({ kind: 'attackRoll', countered: true })
+  })
+
+  it('lets the attacker win on 1–5 (1–2 against the Herb Woman); the winner picks the loser’s Knight', () => {
+    const host = player('host', cities(['knight-otto'], ['knight-hagen']))
+    const guest = player('guest', cities(['knight-karl'], ['knight-conrad']), { hand: ['herb-woman'] })
+    const attackerPicks = { kind: 'placedCard', player: 'host', owner: 'guest', reason: 'blackKnight', options: [site(0, 0), site(2, 0)] }
+    const defenderPicks = { kind: 'placedCard', player: 'guest', owner: 'host', reason: 'blackKnight', options: [site(0, 0), site(2, 0)] }
+
+    const plain = toRoll(host, guest)
+    expect(resolveAttackRoll(plain, 5).pendingChoices).toEqual([attackerPicks, { kind: 'discard', player: 'guest' }])
+    expect(resolveAttackRoll(plain, 6).pendingChoices).toEqual([defenderPicks])
+    const countered = toRoll(host, guest, true)
+    expect(resolveAttackRoll(countered, 2).pendingChoices).toEqual([attackerPicks, { kind: 'discard', player: 'guest' }])
+    expect(resolveAttackRoll(countered, 3).pendingChoices).toEqual([defenderPicks])
+
+    const s = resolveAttackRoll(countered, 3)
+    expect(s.eventLog.slice(-1)[0]).toMatchObject({ player: 'host', type: 'attack-roll', payload: { cardId: 'black-knight', die: 3, countered: true, attackerWins: false } })
+    expect(applyAction(s, 'host', { type: 'CHOOSE_PLACED_CARD', ...site(0, 0) })).toBe(s)
+    const after = applyAction(s, 'guest', { type: 'CHOOSE_PLACED_CARD', ...site(2, 0) })
+    expect(after.players.host.hand).toEqual(['knight-hagen'])
+    expect(after.players.host.playedCards).not.toContain('knight-hagen')
+    expect(after.pendingChoices).toEqual([])
+    expect(after.phase).toBe('action')
+  })
+
+  it('returns the only Knight without asking, and does nothing when the loser has no Knight', () => {
+    const guest = player('guest', cities(['knight-karl']))
+    const won = resolveAttackRoll(toRoll(player('host', cities()), guest), 1)
+    expect(won.players.guest.hand).toEqual(['knight-karl'])
+    expect(won.players.guest.principality[0].expansionSlots).toEqual([null, null, null, null])
+    expect(won.pendingChoices).toEqual([])
+    expect(won.eventLog.slice(-1)[0]).toMatchObject({ player: 'guest', type: 'returned-to-hand', payload: { cardId: 'knight-karl', reason: 'blackKnight' } })
+
+    const s = toRoll(player('host', cities()), guest)
+    const lost = resolveAttackRoll(s, 6)
+    expect(lost.players).toEqual(s.players)
+    expect(lost.pendingChoices).toEqual([])
+    expect(lost.phase).toBe('action')
+  })
+
+  it('can hit a Knight in a City with a Church', () => {
+    const s = resolveAttackRoll(toRoll(player('host', cities()), player('guest', cities(['church', 'knight-karl']))), 1)
+    expect(s.players.guest.hand).toEqual(['knight-karl'])
+  })
+
+  it('makes a defender over the limit discard right away; then the attacker’s turn goes on', () => {
+    const guest = player('guest', cities(['knight-karl']), { hand: ['abbey', 'smithy', 'mint'] })
+    let s = resolveAttackRoll(toRoll(player('host', cities()), guest, false, { decks: { ...emptyDecks(), 'stack-4': ['library'] } }), 4)
+    expect(s.players.guest.hand).toEqual(['abbey', 'smithy', 'mint', 'knight-karl'])
+    expect(s.pendingChoices).toEqual([{ kind: 'discard', player: 'guest' }])
+    expect(applyAction(s, 'host', { type: 'END_ACTION_PHASE' })).toBe(s)
+
+    s = applyAction(s, 'guest', { type: 'DISCARD_TO_LIMIT', discards: [{ cardId: 'smithy', toDeck: 'stack-4' }] })
+    expect(s.players.guest.hand).toEqual(['abbey', 'mint', 'knight-karl'])
+    expect(s.decks['stack-4']).toEqual(['smithy', 'library'])
+    expect(s.pendingChoices).toEqual([])
+    expect(s.phase).toBe('action')
+    expect(applyAction(s, 'host', { type: 'END_ACTION_PHASE' }).phase).toBe('draw')  // the host's hand is empty
+  })
+
+  it('leaves an attacker over the limit to the end-of-turn check', () => {
+    const host = player('host', cities(['knight-conrad']), { hand: ['abbey', 'smithy', 'mint'] })
+    const s = resolveAttackRoll(toRoll(host, player('guest', cities(['knight-karl']))), 6)
+    expect(s.players.host.hand).toEqual(['abbey', 'smithy', 'mint', 'knight-conrad'])
+    expect(s.pendingChoices).toEqual([])
+    expect(applyAction(s, 'host', { type: 'END_ACTION_PHASE' }).phase).toBe('draw')
+  })
+
+  it('moves the Knight Token', () => {
+    const s = toRoll(player('host', cities(['knight-conrad'])), player('guest', cities(['knight-karl'])))
+    expect(tokenHolders(s).knight).toBe('guest')
+    expect(tokenHolders(resolveAttackRoll(s, 2)).knight).toBe('host')
   })
 })
 

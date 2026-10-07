@@ -31,3 +31,5 @@
 
 .title { font-family: var(--font-display); font-size: 20px; font-weight: 800; text-align: center; }
 .actions { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+.hint { margin: 0; text-align: center; color: var(--color-text-muted); }
+.cardRow { display: flex; gap: 8px; justify-content: center; }

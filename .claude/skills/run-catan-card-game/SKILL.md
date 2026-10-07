@@ -23,7 +23,8 @@ npx tsx .claude/skills/run-catan-card-game/scenario.ts civil-war > /tmp/catan-cw
 
 Scenarios: `setup`, `turn-1`, `mid-game` (roll phase, a City each, 2 of every resource, Action
 Cards unlocked), `mid-game-action`, `civil-war` (Civil War just revealed, both picks + both
-discards pending). Optional 2nd arg = RNG seed. Unknown name → prints the list.
+discards pending), `black-knight` (action phase: host holds a Black Knight, guest has 2 Knights, a Herb
+Woman and a full hand). Optional 2nd arg = RNG seed. Unknown name → prints the list.
 To test a new mechanic, add a scenario to `SCENARIOS` using the helpers in the file (`midGame`,
 `update`, `place`, `city`, `hand`, `stock`, `eventOnTop`, `roll` with fixed dice).
 
@@ -47,6 +48,7 @@ EOF
 |---|---|
 | `<host\|guest\|auto> <GameAction JSON>` | apply an action (`auto` = whoever must act now); prints `ok` or `REJECTED` |
 | `roll <event> <1-6>` | resolve the roll with fixed dice (`brigand`, `commerce`, `tournament`, `yearOfPlenty`, `event`) |
+| `die <1-6>` | resolve a pending attack roll (Black Knight) with a fixed die; `auto {"type":"ROLL_ATTACK"}` rolls randomly |
 | `show` | print the summary again |
 | `view <host\|guest>` | the projected state that seat's browser receives (hidden info check) |
 | `save <file>` | write the state; load it in the browser next |
