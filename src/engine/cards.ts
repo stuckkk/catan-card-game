@@ -3,7 +3,7 @@ import type {
   PendingChoice, Resources, ResourceType, DrawStackId, ProductionNumber, SiteRef,
 } from './types'
 import {
-  ALL_RESOURCE_TYPES, availableResources, canAfford, countResources, roomFor,
+  ALL_RESOURCE_TYPES, availableResources, canAfford, countResources, roomFor, stealableTypes,
   spendFromRegions, addToRegions, shuffle, regionsBorderingCards, cityRegionIndices,
 } from './board'
 
@@ -124,8 +124,8 @@ export const CARAVAN = action('caravan', (state, player, params) => {
   }
 })
 
-/** Take 1–2 resources of your choice from the opponent (you need room for them), then give
- *  them 1 resource of your choice (it may be one you just took). */
+/** Take 1–2 resources of your choice from the opponent, then give them 1 resource of your choice
+ *  (it may be one you just took). Both need room for what they receive (DE p.12). */
 export const MERCHANT = action('merchant', (state, player, params) => {
   const take = params.take ?? []
   const give = params.give ?? []
@@ -138,6 +138,7 @@ export const MERCHANT = action('merchant', (state, player, params) => {
   const me = addToRegions(state.players[player], taken)
   if (availableResources(me)[give[0]] < 1) return null
   const them = spendFromRegions(state.players[opp], taken)
+  if (roomFor(them, give[0]) < 1) return null
   return {
     ...state,
     players: {
@@ -151,26 +152,39 @@ export const MERCHANT = action('merchant', (state, player, params) => {
 /** Played together with BUILD_SETTLEMENT (the engine handles it); never played on its own. */
 export const SCOUT = action('scout', () => null)
 
-export const ARSONIST = action('arsonist', undefined, true)
-export const BISHOP = action('bishop', undefined, true)
-export const BRIGANDS = action('brigands', undefined, true)
+/** Whether an attack card has something to hit (DE p.11: only playable if its action can be
+ *  carried out): a Knight (Black Knight), a Building (Arsonist), or a resource of the defender's
+ *  that the attacker has room for (Brigands). */
+export function hasAttackTarget(cardId: string, attacker: PlayerState, defender: PlayerState): boolean {
+  switch (cardId) {
+    case 'black-knight': return knightSites(defender).length > 0
+    case 'arsonist': return buildingSites(defender).length > 0
+    case 'brigands': return stealableTypes(defender, attacker).length > 0
+    default: return false
+  }
+}
 
-/** Attack: only if the opponent has a Knight. They may answer with a Herb Woman, then you roll
+/** Attack: only with a target. The opponent may answer with the counter card, then you roll
  *  (the engine resolves the duel: ANSWER_ATTACK, ROLL_ATTACK). */
-export const BLACK_KNIGHT = action('black-knight', (state, player) => {
+const attack = (id: string) => action(id, (state, player) => {
   const defender = opponentOf(player)
-  if (knightSites(state.players[defender]).length === 0) return null
+  if (!hasAttackTarget(id, state.players[player], state.players[defender])) return null
   return {
     ...state,
-    pendingChoices: [...state.pendingChoices, { kind: 'counter', player: defender, attacker: player, attackCardId: 'black-knight' }],
+    pendingChoices: [...state.pendingChoices, { kind: 'counter', player: defender, attacker: player, attackCardId: id }],
   }
 })
 
-/** Counter card: only played in answer to a Black Knight (ANSWER_ATTACK), never on its own. */
+export const ARSONIST = attack('arsonist')
+export const BLACK_KNIGHT = attack('black-knight')
+export const BRIGANDS = attack('brigands')
+
+/** Counter cards: only played in answer to an attack (ANSWER_ATTACK), never on their own. */
+export const BISHOP = action('bishop')
 export const HERB_WOMAN = action('herb-woman')
 
 /** The counter card the defender may play against an attack card. */
-export const COUNTER_CARD: Record<string, string> = { 'black-knight': HERB_WOMAN.id }
+export const COUNTER_CARD: Record<string, string> = { 'black-knight': HERB_WOMAN.id, arsonist: BISHOP.id, brigands: BISHOP.id }
 export const SPY = action('spy', undefined, true)
 
 // ─── Event Cards (blue) ───────────────────────────────────────────────────────
@@ -248,10 +262,20 @@ function civilWarTargets(player: PlayerState): SiteRef[] {
   return out
 }
 
+/** Building Sites holding a card of the given kind. */
+function sitesOf(player: PlayerState, kind: ExpansionKind): SiteRef[] {
+  return player.principality.flatMap((slot, slotIndex) => slot.expansionSlots.flatMap((id, expansionSlotIndex) =>
+    id && getCard(id).expansionKind === kind ? [{ slotIndex, expansionSlotIndex }] : []))
+}
+
 /** Building Sites holding a Knight (the Black Knight may hit any of them). */
 export function knightSites(player: PlayerState): SiteRef[] {
-  return player.principality.flatMap((slot, slotIndex) => slot.expansionSlots.flatMap((id, expansionSlotIndex) =>
-    id && getCard(id).expansionKind === 'knight' ? [{ slotIndex, expansionSlotIndex }] : []))
+  return sitesOf(player, 'knight')
+}
+
+/** Building Sites holding a Building, i.e. anything but a Knight or Fleet (the Arsonist may hit any of them). */
+export function buildingSites(player: PlayerState): SiteRef[] {
+  return sitesOf(player, 'building')
 }
 
 export const EVENT_CONFLICT = event('conflict', undefined, true)

@@ -36,6 +36,12 @@ export function roomFor(player: PlayerState, type: ResourceType): number {
     .reduce((sum, r) => sum + (3 - r.storedResources), 0)
 }
 
+/** Resource types `from` holds and `to` has room for: what `to` may steal (Brigands). */
+export function stealableTypes(from: PlayerState, to: PlayerState): ResourceType[] {
+  const held = availableResources(from)
+  return ALL_RESOURCE_TYPES.filter(r => held[r] > 0 && roomFor(to, r) > 0)
+}
+
 /** Spend a cost from a player's regions, drawing greedily from regions of each type.
  *  Assumes affordability was already checked. */
 export function spendFromRegions(player: PlayerState, cost: Partial<Resources>): PlayerState {

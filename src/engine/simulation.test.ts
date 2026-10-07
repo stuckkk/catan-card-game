@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { applyAction, createInitialState, availableResources, computePlayerStats, searchCost, setupChooser } from './engine'
-import { ALL_DRAW_CARDS, DRAW_STACK_IDS, getCard } from './cards'
+import { ALL_DRAW_CARDS, COUNTER_CARD, DRAW_STACK_IDS, getCard } from './cards'
 import { ALL_RESOURCE_TYPES } from './board'
 import type { GameAction, GameState, PlayerId, ResourceType } from './types'
 
@@ -84,7 +84,7 @@ function actionPhaseMoves(s: GameState, p: PlayerId, rng: () => number): GameAct
   const want = ALL_RESOURCE_TYPES[Math.floor(rng() * 6)]
   moves.push({ type: 'PLAY_ACTION_CARD', cardId: 'caravan', params: { give: [give], receive: [want] } })
   moves.push({ type: 'PLAY_ACTION_CARD', cardId: 'merchant', params: { take: [want], give: [want] } })
-  moves.push({ type: 'PLAY_ACTION_CARD', cardId: 'black-knight' })
+  for (const cardId of ['black-knight', 'arsonist', 'brigands']) moves.push({ type: 'PLAY_ACTION_CARD', cardId })
   moves.push({ type: 'TRADE_WITH_BANK', give, receive: want })
   return moves
 }
@@ -117,7 +117,7 @@ function step(s: GameState, rng: () => number): GameState {
     return applyAction(s, p, { type: 'CHOOSE_PLACED_CARD', ...choice.options[Math.floor(rng() * choice.options.length)] })
   }
   if (choice?.kind === 'counter') {
-    return applyAction(s, p, { type: 'ANSWER_ATTACK', playCounter: me.hand.includes('herb-woman') && rng() < 0.7 })
+    return applyAction(s, p, { type: 'ANSWER_ATTACK', playCounter: me.hand.includes(COUNTER_CARD[choice.attackCardId]) && rng() < 0.7 })
   }
   if (choice?.kind === 'attackRoll') return applyAction(s, p, { type: 'ROLL_ATTACK' })
   if (choice?.kind === 'discard') {

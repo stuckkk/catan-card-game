@@ -221,7 +221,7 @@ export interface PendingTrade {
 }
 
 /** Why a player is being asked to pick a resource — drives the picker's label. */
-export type ResourceChoiceReason = 'commerce' | 'yearOfPlenty' | 'tournament' | 'progress'
+export type ResourceChoiceReason = 'commerce' | 'yearOfPlenty' | 'tournament' | 'progress' | 'brigands'
 
 /** A pending interactive "choose a resource" prompt owned by one player. The engine
  *  pauses event resolution until the owner submits a CHOOSE_RESOURCE action. */
@@ -231,9 +231,10 @@ export interface PendingResourceChoice {
   player: PlayerId
   /** What triggered the choice. */
   reason: ResourceChoiceReason
-  /** Resource types offered. Commerce: only resources the opponent holds. Otherwise all six. */
+  /** Resource types offered. Commerce: only resources the opponent holds. Brigands: only those
+   *  the picker also has room for (recomputed before each pick). Otherwise all six. */
   options: ResourceType[]
-  /** Commerce: the opponent the chosen resource is taken from. Otherwise null (from the bank). */
+  /** Commerce, Brigands: the opponent the chosen resource is taken from. Otherwise null (from the bank). */
   takeFrom: PlayerId | null
 }
 
@@ -244,7 +245,7 @@ export interface SiteRef {
 }
 
 /** Pick one of `owner`'s placed cards that goes back to their hand (Civil War: a Knight or
- *  Fleet; Black Knight: a Knight).
+ *  Fleet; Black Knight: a Knight; Arsonist: a Building).
  *  A prompt with a single option resolves itself; one with none is dropped. */
 export interface PendingPlacedCardChoice {
   kind: 'placedCard'
@@ -252,7 +253,7 @@ export interface PendingPlacedCardChoice {
   player: PlayerId
   /** The player whose card it is. */
   owner: PlayerId
-  reason: 'civilWar' | 'blackKnight'
+  reason: 'civilWar' | 'blackKnight' | 'arsonist'
   options: SiteRef[]
 }
 
@@ -264,8 +265,8 @@ export interface PendingDiscard {
   player: PlayerId
 }
 
-/** Attack duel, step 1: the defender may play the counter card (Herb Woman vs Black Knight)
- *  before the attacker rolls. Always asked, so the pause reveals nothing about their hand. */
+/** Attack duel, step 1: the defender may play the counter card (Herb Woman vs Black Knight,
+ *  Bishop vs Arsonist and Brigands) before the attacker rolls. Always asked, so the pause reveals nothing about their hand. */
 export interface PendingCounter {
   kind: 'counter'
   /** The defender. */

@@ -55,6 +55,7 @@
       "yearOfPlentyTitle": "Year of Plenty: choose your free resource",
       "tournamentTitle": "You won the tournament — choose your free resource",
       "progressTitle": "Progress: choose a free resource",
+      "brigandsTitle": "Brigands: choose a resource to steal from your opponent",
       "waiting": "Opponent is choosing a resource…"
     },
     "civilWar": {
@@ -68,10 +69,19 @@
       "waiting": "Opponent is choosing which of your Knights goes back to your hand…",
       "noTarget": "Your opponent has no Knight to attack."
     },
+    "arsonist": {
+      "title": "Arsonist: choose which of your opponent’s Buildings goes back to their hand",
+      "confirm": "Send back to hand",
+      "waiting": "Opponent is choosing which of your Buildings goes back to your hand…",
+      "noTarget": "Your opponent has no Building to attack."
+    },
+    "brigands": {
+      "noTarget": "Your opponent has no resource you have room for."
+    },
     "attack": {
       "counterTitle": "⚔️ {{card}} attacks!",
       "counterHint": "Play {{counter}} before they roll: then they win only on 1–2 instead of 1–5.",
-      "playCounter": "Play {{counter}} 🌿",
+      "playCounter": "Play {{counter}}",
       "noCounter": "You have no {{counter}}.",
       "letRoll": "Let them roll",
       "counterWaiting": "Opponent is deciding whether to play a counter card…",
@@ -155,6 +165,7 @@
     },
     "actionLocked": "Action cards unlock once both players together have 7 VP.",
     "herbWomanOnlyAsCounter": "Play the Herb Woman when your opponent attacks you with the Black Knight.",
+    "bishopOnlyAsCounter": "Play the Bishop when your opponent attacks you with the Arsonist or Brigands.",
     "scoutOnlyOnBuild": "Play the Scout when building a Settlement.",
     "notImplemented": "This card is not implemented yet.",
     "alchemist": {
@@ -219,6 +230,7 @@
       "playCard": "played {{card}}",
       "bankTrade": "traded {{give}} for {{receive}} with the bank",
       "tookResource": "took {{resource}} (Windmill Token)",
+      "stoleResource": "stole {{resource}} (Brigands)",
       "choseResource": "chose {{resource}}",
       "proposeTrade": "offers {{give}} for {{receive}}",
       "acceptTrade": "accepted the trade",
@@ -473,11 +485,11 @@
     },
     "arsonist": {
       "name": "Arsonist",
-      "description": "Roll: on 1–5 your opponent returns a Building of your choice to his hand; on 6 you return one of his choice. Counter: Bishop."
+      "description": "Only if your opponent has a Building. Roll: on 1–5 your opponent returns a Building of your choice to hand; on 6 you return one of their choice. Counter: Bishop."
     },
     "bishop": {
       "name": "Bishop",
-      "description": "Play against Brigands or the Arsonist before the attacker's roll: the attacker loses on 3–6."
+      "description": "Play it when you are attacked with Brigands or the Arsonist, before the roll: the attacker then loses on 3–6."
     },
     "blackKnight": {
       "name": "Black Knight",
@@ -485,7 +497,7 @@
     },
     "brigands": {
       "name": "Brigands",
-      "description": "Roll: on 1–5 take 2 resources of your choice from your opponent; on 6 he takes 2 from you. Counter: Bishop."
+      "description": "Roll: on 1–5 steal 2 resources of your choice from your opponent; on 6 they steal 2 from you. Only resources the thief has room for. Counter: Bishop."
     },
     "caravan": {
       "name": "Caravan",

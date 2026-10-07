@@ -112,8 +112,8 @@ const roll = (eventSymbol: DiceRoll['eventSymbol'], productionNumber: DiceRoll['
 // ─── Catalogue ───────────────────────────────────────────────────────────────
 
 describe('card catalogue', () => {
-  it('builds the expansion stacks from the 54 implemented of the 62 rulebook cards', () => {
-    expect(ALL_DRAW_CARDS).toHaveLength(54)
+  it('builds the expansion stacks from the 59 implemented of the 62 rulebook cards', () => {
+    expect(ALL_DRAW_CARDS).toHaveLength(59)
     const count = (id: string) => ALL_DRAW_CARDS.filter(c => c === id).length
     expect(count('garrison')).toBe(3)
     expect(count('town-hall')).toBe(2)
@@ -835,6 +835,18 @@ describe('action cards', () => {
     expect(applyAction(s, 'host', { type: 'PLAY_ACTION_CARD', cardId: 'merchant', params: { take: ['ore'], give: ['ore'] } })).toBe(s)
   })
 
+  it('Merchant needs room on the opponent’s regions for the resource given back', () => {
+    const base = unlocked()
+    const host = { ...base.players.host, hand: ['merchant'], regions: regionsWith({ wool: 1 }) }
+    const guest = { ...base.players.guest, regions: regionsWith({ wool: 3, ore: 2 }) }
+    const s = { ...base, players: { host, guest } }
+    expect(applyAction(s, 'host', { type: 'PLAY_ACTION_CARD', cardId: 'merchant', params: { take: ['ore'], give: ['wool'] } })).toBe(s)
+    // Room freed by the take counts.
+    const ok = applyAction(s, 'host', { type: 'PLAY_ACTION_CARD', cardId: 'merchant', params: { take: ['wool'], give: ['wool'] } })
+    expect(ok).not.toBe(s)
+    expect(res(ok.players.guest).wool).toBe(3)
+  })
+
   it('Alchemist is played before the roll and fixes the Production Die', () => {
     const base = unlocked({ phase: 'roll' })
     const s0 = { ...base, players: { ...base.players, host: { ...base.players.host, hand: ['alchemist'] } } }
@@ -860,19 +872,22 @@ describe('action cards', () => {
   })
 })
 
+// ─── Attacks ─────────────────────────────────────────────────────────────────
+
+/** Two Cities each (8 VP together, so Action Cards are unlocked). */
+const cities = (a: (string | null)[] = [], b: (string | null)[] = []) => {
+  const four = (x: (string | null)[]) => [...x, null, null, null, null].slice(0, 4)
+  return [settlementA(four(a)), road(), settlementB(four(b))]
+}
+const player = (id: PlayerId, board: CentralSlot[], over: Partial<PlayerState> = {}) =>
+  makePlayer(id, { principality: board, playedCards: playedFor(board), ...over })
+const site = (slotIndex: number, expansionSlotIndex: number) => ({ slotIndex, expansionSlotIndex })
+const answer = (playCounter: boolean) => ({ type: 'ANSWER_ATTACK', playCounter }) as const
+
 describe('Black Knight and Herb Woman', () => {
-  /** Two Cities each (8 VP together, so Action Cards are unlocked). */
-  const cities = (a: (string | null)[] = [], b: (string | null)[] = []) => {
-    const four = (x: (string | null)[]) => [...x, null, null, null, null].slice(0, 4)
-    return [settlementA(four(a)), road(), settlementB(four(b))]
-  }
-  const player = (id: PlayerId, board: CentralSlot[], over: Partial<PlayerState> = {}) =>
-    makePlayer(id, { principality: board, playedCards: playedFor(board), ...over })
   const duel = (host: PlayerState, guest: PlayerState, over: Partial<GameState> = {}) =>
     makeState({ players: { host: { ...host, hand: ['black-knight', ...host.hand] }, guest }, ...over })
   const play = { type: 'PLAY_ACTION_CARD', cardId: 'black-knight' } as const
-  const answer = (playCounter: boolean) => ({ type: 'ANSWER_ATTACK', playCounter }) as const
-  const site = (slotIndex: number, expansionSlotIndex: number) => ({ slotIndex, expansionSlotIndex })
   /** Played and answered: the attacker is about to roll. */
   const toRoll = (host: PlayerState, guest: PlayerState, playCounter = false, over: Partial<GameState> = {}) =>
     applyAction(applyAction(duel(host, guest, over), 'host', play), 'guest', answer(playCounter))
@@ -1000,6 +1015,158 @@ describe('Black Knight and Herb Woman', () => {
     const s = toRoll(player('host', cities(['knight-conrad'])), player('guest', cities(['knight-karl'])))
     expect(tokenHolders(s).knight).toBe('guest')
     expect(tokenHolders(resolveAttackRoll(s, 2)).knight).toBe('host')
+  })
+})
+
+describe('Arsonist, Brigands and Bishop', () => {
+  /** The host holds `cardId` and attacks the guest. */
+  const attack = (cardId: string, host: PlayerState, guest: PlayerState) =>
+    makeState({ players: { host: { ...host, hand: [cardId, ...host.hand] }, guest } })
+  const play = (cardId: string) => ({ type: 'PLAY_ACTION_CARD', cardId }) as const
+  /** Played and answered: the attacker is about to roll. */
+  const toRoll = (cardId: string, host: PlayerState, guest: PlayerState, playCounter = false) =>
+    applyAction(applyAction(attack(cardId, host, guest), 'host', play(cardId)), 'guest', answer(playCounter))
+  const choose = (resource: ResourceType) => ({ type: 'CHOOSE_RESOURCE', resource }) as const
+
+  it('is in the decks: 2 Arsonists, 2 Bishops, 1 Brigands', () => {
+    expect(ALL_DRAW_CARDS.filter(c => c === 'arsonist')).toHaveLength(2)
+    expect(ALL_DRAW_CARDS.filter(c => c === 'bishop')).toHaveLength(2)
+    expect(ALL_DRAW_CARDS.filter(c => c === 'brigands')).toHaveLength(1)
+  })
+
+  it('Arsonist needs an opponent with a Building (Knights and Fleets are not) and 7 VP', () => {
+    const unitsOnly = attack('arsonist', player('host', cities(['abbey'])), player('guest', cities(['knight-karl'], ['fleet-ore'])))
+    expect(applyAction(unitsOnly, 'host', play('arsonist'))).toBe(unitsOnly)
+
+    const small = [settlementA(), road(), settlementB()]
+    const locked = attack('arsonist', player('host', small), player('guest', [settlementA(['abbey', null]), road(), settlementB()]))
+    expect(applyAction(locked, 'host', play('arsonist'))).toBe(locked)
+
+    const ok = attack('arsonist', player('host', cities()), player('guest', cities(['abbey'])))
+    expect(applyAction(ok, 'host', play('arsonist')).pendingChoices)
+      .toEqual([{ kind: 'counter', player: 'guest', attacker: 'host', attackCardId: 'arsonist' }])
+  })
+
+  it('Brigands needs a resource of the opponent that the attacker has room for', () => {
+    const host = player('host', cities(), { regions: regionsWith({ wool: 3 }) })
+    const full = attack('brigands', host, player('guest', cities(), { regions: regionsWith({ wool: 2 }) }))
+    expect(applyAction(full, 'host', play('brigands'))).toBe(full)
+    const broke = attack('brigands', player('host', cities()), player('guest', cities()))
+    expect(applyAction(broke, 'host', play('brigands'))).toBe(broke)
+    const ok = attack('brigands', host, player('guest', cities(), { regions: regionsWith({ wool: 2, ore: 1 }) }))
+    expect(applyAction(ok, 'host', play('brigands')).pendingChoices[0]).toMatchObject({ kind: 'counter', attackCardId: 'brigands' })
+  })
+
+  it('the Bishop counters only the Arsonist and Brigands, and is never played alone', () => {
+    const guest = player('guest', cities(['abbey', 'knight-karl']), { hand: ['bishop', 'herb-woman'] })
+    const arson = toRoll('arsonist', player('host', cities()), guest, true)
+    expect(arson.players.guest.hand).toEqual(['herb-woman'])
+    expect(arson.discardPile).toEqual(['arsonist', 'bishop'])
+    expect(arson.pendingChoices[0]).toMatchObject({ kind: 'attackRoll', countered: true })
+    expect(toRoll('black-knight', player('host', cities()), guest, true).players.guest.hand).toEqual(['bishop'])
+
+    const herbOnly = applyAction(attack('arsonist', player('host', cities()), player('guest', cities(['abbey']), { hand: ['herb-woman'] })), 'host', play('arsonist'))
+    expect(applyAction(herbOnly, 'guest', answer(true))).toBe(herbOnly)
+
+    const alone = makeState({ players: { host: player('host', cities(), { hand: ['bishop'] }), guest: player('guest', cities(['abbey'])) } })
+    expect(applyAction(alone, 'host', play('bishop'))).toBe(alone)
+  })
+
+  it('Arsonist: the winner picks a Building of the loser (a Church too) on 1–5, or 1–2 against the Bishop', () => {
+    const host = player('host', cities(['abbey'], ['smithy']))
+    const guest = player('guest', cities(['church', 'knight-karl', 'fleet-ore', 'library']), { hand: ['bishop'] })
+    const attackerPicks = { kind: 'placedCard', player: 'host', owner: 'guest', reason: 'arsonist', options: [site(0, 0), site(0, 3)] }
+    const defenderPicks = { kind: 'placedCard', player: 'guest', owner: 'host', reason: 'arsonist', options: [site(0, 0), site(2, 0)] }
+    const discard = { kind: 'discard', player: 'guest' }
+
+    const plain = toRoll('arsonist', host, guest)
+    expect(resolveAttackRoll(plain, 5).pendingChoices).toEqual([attackerPicks, discard])
+    expect(resolveAttackRoll(plain, 6).pendingChoices).toEqual([defenderPicks])
+    const countered = toRoll('arsonist', host, guest, true)
+    expect(resolveAttackRoll(countered, 2).pendingChoices).toEqual([attackerPicks, discard])
+    expect(resolveAttackRoll(countered, 3).pendingChoices).toEqual([defenderPicks])
+
+    const after = applyAction(resolveAttackRoll(plain, 1), 'host', { type: 'CHOOSE_PLACED_CARD', ...site(0, 0) })
+    expect(after.players.guest.hand).toEqual(['bishop', 'church'])
+    expect(after.eventLog.slice(-1)[0]).toMatchObject({ player: 'guest', type: 'returned-to-hand', payload: { cardId: 'church', reason: 'arsonist' } })
+    expect(after.pendingChoices).toEqual([])
+    expect(after.phase).toBe('action')
+  })
+
+  it('Arsonist: a single Building returns without asking; a losing attacker without one loses nothing', () => {
+    const s = toRoll('arsonist', player('host', cities(['knight-conrad'])), player('guest', cities(['abbey'])))
+    const won = resolveAttackRoll(s, 3)
+    expect(won.players.guest.hand).toEqual(['abbey'])
+    expect(won.pendingChoices).toEqual([])
+
+    const lost = resolveAttackRoll(s, 6)
+    expect(lost.players).toEqual(s.players)
+    expect(lost.pendingChoices).toEqual([])
+    expect(lost.phase).toBe('action')
+  })
+
+  it('Arsonist: a defender who loses a Library discards right away; an attacker waits for the end of the turn', () => {
+    const guest = player('guest', cities(['library']), { hand: ['abbey', 'smithy', 'mint', 'church'] })
+    let s = resolveAttackRoll(toRoll('arsonist', player('host', cities()), guest), 4)
+    expect(s.players.guest.hand).toEqual(['abbey', 'smithy', 'mint', 'church', 'library'])
+    expect(s.pendingChoices).toEqual([{ kind: 'discard', player: 'guest' }])
+    s = applyAction(s, 'guest', { type: 'DISCARD_TO_LIMIT', discards: [{ cardId: 'smithy', toDeck: 'stack-1' }, { cardId: 'mint', toDeck: 'stack-2' }] })
+    expect(s.players.guest.hand).toEqual(['abbey', 'church', 'library'])
+    expect(s.pendingChoices).toEqual([])
+    expect(s.phase).toBe('action')
+
+    const host = player('host', cities(['library']), { hand: ['abbey', 'smithy', 'mint'] })
+    const lost = resolveAttackRoll(toRoll('arsonist', host, player('guest', cities(['abbey']))), 6)
+    expect(lost.players.host.hand).toEqual(['abbey', 'smithy', 'mint', 'library'])
+    expect(lost.pendingChoices).toEqual([])
+  })
+
+  it('Brigands: the winner steals 2, one pick at a time, only what they have room for', () => {
+    const host = player('host', cities(), { regions: regionsWith({ wool: 3, ore: 2 }) })
+    const guest = player('guest', cities(), { regions: regionsWith({ wool: 2, ore: 3, lumber: 1 }) })
+    let s = resolveAttackRoll(toRoll('brigands', host, guest), 5)
+    expect(s.pendingChoices[0]).toEqual({ kind: 'resource', player: 'host', reason: 'brigands', options: ['lumber', 'ore'], takeFrom: 'guest' })
+    expect(applyAction(s, 'host', choose('wool'))).toBe(s)
+
+    s = applyAction(s, 'host', choose('ore'))
+    expect(s.pendingChoices[0]).toMatchObject({ kind: 'resource', player: 'host', options: ['lumber'] })  // ore is full now
+    s = applyAction(s, 'host', choose('lumber'))
+    expect(res(s.players.host)).toMatchObject({ wool: 3, ore: 3, lumber: 1 })
+    expect(res(s.players.guest)).toMatchObject({ wool: 2, ore: 2, lumber: 0 })
+    expect(s.pendingChoices).toEqual([])
+    expect(s.phase).toBe('action')
+    expect(s.eventLog.slice(-1)[0]).toMatchObject({ player: 'host', type: 'CHOOSE_RESOURCE', payload: { resource: 'lumber', reason: 'brigands' } })
+  })
+
+  it('Brigands: the same type may be stolen twice; with 1 resource there is 1 pick', () => {
+    const twiceFrom = player('guest', cities(), { regions: regionsWith({ grain: 2 }) })
+    const s = resolveAttackRoll(toRoll('brigands', player('host', cities()), twiceFrom), 1)
+    const twice = applyAction(applyAction(s, 'host', choose('grain')), 'host', choose('grain'))
+    expect(res(twice.players.host).grain).toBe(2)
+    expect(res(twice.players.guest).grain).toBe(0)
+    expect(twice.pendingChoices).toEqual([])
+
+    const oneFrom = player('guest', cities(), { regions: regionsWith({ grain: 1 }) })
+    const one = applyAction(resolveAttackRoll(toRoll('brigands', player('host', cities()), oneFrom), 1), 'host', choose('grain'))
+    expect(one.pendingChoices).toEqual([])
+    expect(one.phase).toBe('action')
+  })
+
+  it('Brigands: on a 6 the defender steals from the attacker; with nothing to steal the turn goes on', () => {
+    const host = player('host', cities(), { regions: regionsWith({ brick: 2 }) })
+    const guest = player('guest', cities(), { regions: regionsWith({ ore: 1 }), hand: ['bishop'] })
+    let s = resolveAttackRoll(toRoll('brigands', host, guest, true), 3)
+    expect(s.pendingChoices).toHaveLength(2)
+    expect(s.pendingChoices[0]).toEqual({ kind: 'resource', player: 'guest', reason: 'brigands', options: ['brick'], takeFrom: 'host' })
+    expect(applyAction(s, 'host', choose('brick'))).toBe(s)
+    s = applyAction(applyAction(s, 'guest', choose('brick')), 'guest', choose('brick'))
+    expect(res(s.players.guest).brick).toBe(2)
+    expect(res(s.players.host).brick).toBe(0)
+    expect(s.pendingChoices).toEqual([])
+
+    const broke = resolveAttackRoll(toRoll('brigands', player('host', cities()), guest), 6)
+    expect(broke.pendingChoices).toEqual([])
+    expect(broke.phase).toBe('action')
   })
 })
 

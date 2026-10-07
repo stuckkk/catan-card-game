@@ -5,8 +5,9 @@ import {
   applyAction, computeVP, availableResources, computePlayerStats, projectStateFor, setupChooser,
   actionCardsUnlocked, searchCost, tokenHolders,
 } from '../engine/engine'
-import { getCard, knightSites } from '../engine/cards'
-import type { GameState, GameAction, ProjectedState, PlayerId, PlayerState } from '../engine/types'
+import { COUNTER_CARD, getCard, hasAttackTarget } from '../engine/cards'
+import { ALL_RESOURCE_TYPES, roomFor } from '../engine/board'
+import type { GameState, GameAction, ProjectedState, PlayerId, PlayerState, Resources } from '../engine/types'
 import { reconnectSession } from '../network/wsSession'
 import type { NetworkSession } from '../network/wsSession'
 import { sessionStore } from '../network/sessionStore'
@@ -153,7 +154,13 @@ export default function GamePage() {
   // treat as a full PlayerState here.
   const myFullState = myState as PlayerState | undefined
   const myResources = myFullState ? availableResources(myFullState) : undefined
-  const opponentResources = opponentState ? availableResources(opponentState as unknown as PlayerState) : undefined
+  const opponentFullState = opponentState as unknown as PlayerState | undefined
+  const opponentResources = opponentFullState ? availableResources(opponentFullState) : undefined
+  const roomOf = (p: PlayerState) => Object.fromEntries(ALL_RESOURCE_TYPES.map(r => [r, roomFor(p, r)])) as Resources
+  // Attack cards without a target (only the opponent's board and both players' Regions count, all public).
+  const noTarget = myFullState && opponentFullState
+    ? Object.keys(COUNTER_CARD).filter(id => !hasAttackTarget(id, myFullState, opponentFullState))
+    : []
 
   const activePlayer = view?.activePlayer
   const isMyTurn = activePlayer === myId
@@ -472,7 +479,9 @@ export default function GamePage() {
           phase={phase}
           resources={myResources}
           opponentResources={opponentResources}
-          opponentHasKnight={opponentState ? knightSites(opponentState as unknown as PlayerState).length > 0 : false}
+          myRoom={myFullState ? roomOf(myFullState) : undefined}
+          opponentRoom={opponentFullState ? roomOf(opponentFullState) : undefined}
+          noTarget={noTarget}
           actionsUnlocked={actionCardsUnlocked(view)}
           onAction={dispatchAction}
           onBeginPlacement={setPlacingCardId}

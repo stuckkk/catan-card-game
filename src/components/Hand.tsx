@@ -4,7 +4,7 @@ import CardView from './CardView'
 import CardDetail from './CardDetail'
 import ActionCardDialog from './ActionCardDialog'
 import type { GameAction, TurnPhase, Resources } from '../engine/types'
-import { getCard } from '../engine/cards'
+import { COUNTER_CARD, getCard } from '../engine/cards'
 import styles from './Hand.module.css'
 
 interface Props {
@@ -13,8 +13,11 @@ interface Props {
   phase: TurnPhase | undefined
   resources: Resources | undefined
   opponentResources: Resources | undefined
-  /** The Black Knight can only be played against a Knight. */
-  opponentHasKnight: boolean
+  /** Free Region room per resource type, mine and the opponent's (Merchant). */
+  myRoom: Resources | undefined
+  opponentRoom: Resources | undefined
+  /** Attack cards with nothing to hit (e.g. the Black Knight without an opposing Knight). */
+  noTarget: string[]
   /** Both players together have at least 7 VP. */
   actionsUnlocked: boolean
   onAction: (a: GameAction) => void
@@ -32,8 +35,13 @@ function canAffordCard(resources: Resources, cardId: string): boolean {
 
 type ParamCard = 'alchemist' | 'caravan' | 'merchant'
 
+/** Why an attack card can't be played: its target is missing. */
+const NO_TARGET_NOTE: Record<string, string> = {
+  'black-knight': 'game.blackKnight.noTarget', arsonist: 'game.arsonist.noTarget', brigands: 'game.brigands.noTarget',
+}
+
 export default function Hand({
-  cardIds, isMyTurn, phase, resources, opponentResources, opponentHasKnight, actionsUnlocked, onAction, onBeginPlacement,
+  cardIds, isMyTurn, phase, resources, opponentResources, myRoom, opponentRoom, noTarget, actionsUnlocked, onAction, onBeginPlacement,
 }: Props) {
   const { t } = useTranslation()
   // Index (not id) so duplicate cards open the one actually tapped.
@@ -53,14 +61,15 @@ export default function Hand({
     if (openDef.notImplemented) actionNote = t('game.notImplemented')
     else if (openDef.id === 'scout') actionNote = t('game.scoutOnlyOnBuild')
     else if (openDef.id === 'herb-woman') actionNote = t('game.herbWomanOnlyAsCounter')
+    else if (openDef.id === 'bishop') actionNote = t('game.bishopOnlyAsCounter')
     else if (!actionsUnlocked) actionNote = t('game.actionLocked')
-    else if (openDef.id === 'black-knight' && !opponentHasKnight) actionNote = t('game.blackKnight.noTarget')
+    else if (noTarget.includes(openDef.id)) actionNote = t(NO_TARGET_NOTE[openDef.id])
     else canPlay = timingOk
   }
 
   function handlePlay(id: string) {
-    // The Black Knight needs no parameters: the engine runs the duel with prompts of its own.
-    if (id === 'black-knight') onAction({ type: 'PLAY_ACTION_CARD', cardId: id })
+    // Attack cards need no parameters: the engine runs the duel with prompts of its own.
+    if (id in COUNTER_CARD) onAction({ type: 'PLAY_ACTION_CARD', cardId: id })
     else setPlaying(id as ParamCard)
     setOpenIndex(null)
   }
@@ -104,11 +113,13 @@ export default function Hand({
         />
       )}
 
-      {playing && resources && opponentResources && (
+      {playing && resources && opponentResources && myRoom && opponentRoom && (
         <ActionCardDialog
           cardId={playing}
           myResources={resources}
           opponentResources={opponentResources}
+          myRoom={myRoom}
+          opponentRoom={opponentRoom}
           onAction={onAction}
           onClose={() => setPlaying(null)}
         />

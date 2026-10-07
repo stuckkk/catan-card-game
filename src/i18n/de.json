@@ -55,6 +55,7 @@
       "yearOfPlentyTitle": "Gute Ernte: Wähle deinen Gratis-Rohstoff",
       "tournamentTitle": "Du hast das Turnier gewonnen – wähle deinen Gratis-Rohstoff",
       "progressTitle": "Fortschritt: Wähle einen Gratis-Rohstoff",
+      "brigandsTitle": "Raubritter: Wähle einen Rohstoff, den du dem Gegner stiehlst",
       "waiting": "Gegner wählt einen Rohstoff…"
     },
     "civilWar": {
@@ -68,10 +69,19 @@
       "waiting": "Gegner wählt, welcher deiner Ritter zurück auf deine Hand geht…",
       "noTarget": "Dein Gegner hat keinen Ritter, den du angreifen kannst."
     },
+    "arsonist": {
+      "title": "Brandstifter: Wähle, welches Gebäude deines Gegners zurück auf seine Hand geht",
+      "confirm": "Zurück auf die Hand",
+      "waiting": "Dein Gegner wählt, welches deiner Gebäude zurück auf deine Hand geht…",
+      "noTarget": "Dein Gegner hat kein Gebäude, das du angreifen kannst."
+    },
+    "brigands": {
+      "noTarget": "Dein Gegner hat keinen Rohstoff, für den du Platz hast."
+    },
     "attack": {
       "counterTitle": "⚔️ {{card}} greift an!",
       "counterHint": "Spiele {{counter}} vor dem Wurf: dann gewinnt dein Gegner nur bei 1–2 statt 1–5.",
-      "playCounter": "{{counter}} spielen 🌿",
+      "playCounter": "{{counter}} spielen",
       "noCounter": "Du hast keine {{counter}}.",
       "letRoll": "Würfeln lassen",
       "counterWaiting": "Gegner entscheidet, ob er eine Schutzkarte spielt…",
@@ -155,6 +165,7 @@
     },
     "actionLocked": "Aktionskarten sind erst spielbar, wenn beide Spieler zusammen 7 SP haben.",
     "herbWomanOnlyAsCounter": "Spiele die Kräuterhexe, wenn dein Gegner dich mit dem Schwarzen Ritter angreift.",
+    "bishopOnlyAsCounter": "Spiele den Bischof, wenn dein Gegner dich mit dem Brandstifter oder Raubritter angreift.",
     "scoutOnlyOnBuild": "Spiele den Kundschafter beim Bau einer Siedlung.",
     "notImplemented": "Diese Karte ist noch nicht umgesetzt.",
     "alchemist": {
@@ -219,6 +230,7 @@
       "playCard": "spielt {{card}}",
       "bankTrade": "tauscht {{give}} gegen {{receive}} mit der Bank",
       "tookResource": "nimmt {{resource}} (Windmühlenplättchen)",
+      "stoleResource": "stiehlt {{resource}} (Raubritter)",
       "choseResource": "wählt {{resource}}",
       "proposeTrade": "bietet {{give}} für {{receive}}",
       "acceptTrade": "nimmt den Handel an",
@@ -473,11 +485,11 @@
     },
     "arsonist": {
       "name": "Brandstifter",
-      "description": "Würfle: bei 1–5 nimmt dein Gegner ein Gebäude deiner Wahl auf die Hand; bei 6 du eines seiner Wahl. Gegenkarte: Bischof."
+      "description": "Nur wenn dein Gegner ein Gebäude hat. Würfle: bei 1–5 nimmt dein Gegner ein Gebäude deiner Wahl auf die Hand; bei 6 du eines seiner Wahl. Gegenkarte: Bischof."
     },
     "bishop": {
       "name": "Bischof",
-      "description": "Gegen Raubritter oder Brandstifter vor dem Wurf spielen: der Angreifer verliert bei 3–6."
+      "description": "Spiele ihn, wenn du mit dem Raubritter oder Brandstifter angegriffen wirst, vor dem Wurf: der Angreifer verliert dann bei 3–6."
     },
     "blackKnight": {
       "name": "Schwarzer Ritter",
@@ -485,7 +497,7 @@
     },
     "brigands": {
       "name": "Raubritter",
-      "description": "Würfle: bei 1–5 nimm deinem Gegner 2 Rohstoffe deiner Wahl; bei 6 nimmt er dir 2. Gegenkarte: Bischof."
+      "description": "Würfle: bei 1–5 stiehlst du deinem Gegner 2 Rohstoffe deiner Wahl; bei 6 stiehlt er dir 2. Nur Rohstoffe, für die der Dieb Platz hat. Gegenkarte: Bischof."
     },
     "caravan": {
       "name": "Karawane",

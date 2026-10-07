@@ -4,12 +4,12 @@ import type {
   ActionCardParams, DeclarativeEffect, GameEvent, PendingChoice, PendingPlacedCardChoice, SiteRef,
 } from './types'
 import {
-  getCard, CARD_REGISTRY, ALL_DRAW_CARDS, DRAW_STACK_IDS, DEFAULT_EVENT_DECK, SCOUT, COUNTER_CARD, knightSites,
+  getCard, CARD_REGISTRY, ALL_DRAW_CARDS, DRAW_STACK_IDS, DEFAULT_EVENT_DECK, SCOUT, COUNTER_CARD, knightSites, buildingSites,
 } from './cards'
 import { getRegion, STARTING_REGIONS, STACK_REGIONS } from './regions'
 import {
   ALL_RESOURCE_TYPES, availableResources, canAfford, countResources, spendFromRegions, addToRegions,
-  shuffle, isSettlementLike, regionsBorderingCards, returnToHand,
+  shuffle, isSettlementLike, regionsBorderingCards, returnToHand, stealableTypes,
 } from './board'
 
 export { availableResources } from './board'
@@ -384,12 +384,17 @@ function handExcess(player: PlayerState): number {
 
 /** Resolve prompts that need no input from the head of the queue: a discard with nothing above
  *  the limit and a placed-card pick without options are dropped, one with a single option is
- *  carried out. */
+ *  carried out. A Brigands pick gets its options from the current resources (dropped if none). */
 function settleChoices(state: GameState): GameState {
   let s = state
   for (;;) {
     const head = s.pendingChoices[0]
-    if (head?.kind === 'discard' && handExcess(s.players[head.player]) === 0) {
+    if (head?.kind === 'resource' && head.reason === 'brigands') {
+      const options = stealableTypes(s.players[head.takeFrom!], s.players[head.player])
+      const rest = s.pendingChoices.slice(1)
+      if (options.length > 0) return { ...s, pendingChoices: [{ ...head, options }, ...rest] }
+      s = { ...s, pendingChoices: rest }
+    } else if (head?.kind === 'discard' && handExcess(s.players[head.player]) === 0) {
       s = { ...s, pendingChoices: s.pendingChoices.slice(1) }
     } else if (head?.kind === 'placedCard' && head.options.length <= 1) {
       s = head.options.length === 0 ? { ...s, pendingChoices: s.pendingChoices.slice(1) } : resolvePlacedCard(s, head.options[0])
@@ -425,8 +430,9 @@ function applyChooseResource(state: GameState, actingPlayer: PlayerId, resource:
   const choice = state.pendingChoices[0]
   if (choice?.kind !== 'resource' || choice.player !== actingPlayer || !choice.options.includes(resource)) return state
 
-  // Commerce: take 1 from the opponent (overflow past the region cap is lost — the steal
-  // still removes it from the opponent). Otherwise gain 1 from the bank.
+  // Commerce, Brigands: take 1 from the opponent (Commerce: overflow past the region cap is
+  // lost — the steal still removes it; Brigands only offers types with room). Otherwise gain 1
+  // from the bank.
   let players = state.players
   if (choice.takeFrom) {
     players = { ...players, [choice.takeFrom]: spendFromRegions(players[choice.takeFrom], { [resource]: 1 }) }
@@ -444,7 +450,7 @@ function applyChoosePlacedCard(state: GameState, actingPlayer: PlayerId, site: S
   return resumeAfterChoices(resolvePlacedCard(state, site))
 }
 
-// ─── Attacks (Black Knight, GAME_LOGIC.md §9) ─────────────────────────────────
+// ─── Attacks (Black Knight, Arsonist, Brigands; GAME_LOGIC.md §9) ─────────────
 
 /** The defender answers the head attack: play the counter card from hand, or let the attacker roll. */
 function applyAnswerAttack(state: GameState, actingPlayer: PlayerId, playCounter: boolean): GameState {
@@ -469,16 +475,28 @@ function rollDie(rng: () => number = Math.random): number {
   return Math.floor(rng() * 6) + 1
 }
 
+/** What the loser of an attack pays: a Knight (Black Knight) or Building (Arsonist) of the
+ *  winner's choice goes back to hand, or the winner steals 2 resources (Brigands). */
+function attackSpoils(state: GameState, cardId: string, winner: PlayerId, loser: PlayerId): PendingChoice[] {
+  if (cardId === 'brigands') {
+    const steal: PendingChoice = { kind: 'resource', player: winner, reason: 'brigands', options: [], takeFrom: loser }
+    return [steal, steal]
+  }
+  const arsonist = cardId === 'arsonist'
+  const options = arsonist ? buildingSites(state.players[loser]) : knightSites(state.players[loser])
+  return [{ kind: 'placedCard', player: winner, owner: loser, reason: arsonist ? 'arsonist' : 'blackKnight', options }]
+}
+
 /** Resolve the head attack roll with a known die: the attacker wins on 1–5, or 1–2 if countered.
- *  The winner picks one of the loser's Knights, which goes back to hand; a defender then over
- *  the limit discards at once (the attacker checks at the end of their turn as usual). */
+ *  The loser pays (attackSpoils); a defender then over the limit discards at once (the attacker
+ *  checks at the end of their turn as usual). */
 export function resolveAttackRoll(state: GameState, die: number): GameState {
   const choice = state.pendingChoices[0]
   if (choice?.kind !== 'attackRoll') return state
   const attackerWins = die <= (choice.countered ? 2 : 5)
   const [winner, loser] = attackerWins ? [choice.player, choice.defender] : [choice.defender, choice.player]
-  const pick: PendingChoice = { kind: 'placedCard', player: winner, owner: loser, reason: 'blackKnight', options: knightSites(state.players[loser]) }
-  const next: PendingChoice[] = attackerWins ? [pick, { kind: 'discard', player: choice.defender }] : [pick]
+  const spoils = attackSpoils(state, choice.attackCardId, winner, loser)
+  const next: PendingChoice[] = attackerWins ? [...spoils, { kind: 'discard', player: choice.defender }] : spoils
   const logged = logEvent(state, choice.player, 'attack-roll', { cardId: choice.attackCardId, die, countered: choice.countered, attackerWins })
   return resumeAfterChoices({ ...logged, pendingChoices: [...next, ...state.pendingChoices.slice(1)] })
 }
