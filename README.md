@@ -84,3 +84,7 @@ npm run lint          # ESLint
 - [`docs/adr/`](docs/adr/): architecture decision records.
 
 The printed rulebooks `GAME_LOGIC.md` refers to (`rules_german_original.pdf`, `rules.pdf`) are copyrighted and not included in the repository. Contributors working on game rules need their own copy.
+
+## License
+
+The source code is released under the [MIT License](LICENSE). The license covers this project's code only, not the Catan name, game rules text or card artwork.
