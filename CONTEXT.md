@@ -1,6 +1,6 @@
 # Catan Card Game
 
-A two-player digital adaptation of the Catan Card Game (Mayfair, 2005; rulebook in local `rules.pdf`, spec in `GAME_LOGIC.md`), playable online by connecting to a server hosted on someone's own machine.
+A two-player digital adaptation of the Catan Card Game (Kosmos, 2005; authoritative German rulebook in local `rules_german_original.pdf`, English Mayfair edition in `rules.pdf` as a translation aid, spec in `GAME_LOGIC.md`), playable online by connecting to a server hosted on someone's own machine.
 
 ## Language
 
