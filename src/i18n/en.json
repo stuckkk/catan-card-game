@@ -138,8 +138,7 @@
       "event-resolution": "Event Resolution",
       "production": "Production",
       "action": "Action Phase",
-      "draw": "Draw Phase",
-      "exchange": "Exchange"
+      "draw": "Draw Phase"
     },
     "vpTarget": "VP Target: {{count}}",
     "currentVP": "{{count}} VP",
@@ -175,8 +174,8 @@
     "draw": {
       "title": "Draw to your hand limit",
       "hint": "Draw {{count}} more card(s) (limit {{limit}}): the top card of a stack for free, or search a stack for {{cost}} resource(s) of your choice.",
-      "drawTop": "Draw top",
-      "search": "Search",
+      "drawTop": "Take top card",
+      "search": "Search it (pay {{cost}})",
       "discardTitle": "Over your hand limit",
       "discardHint": "Put {{count}} card(s) under a stack (limit {{limit}}).",
       "discardTo": "Put under",
@@ -238,8 +237,7 @@
       "setup": "Setup",
       "roll": "Roll",
       "action": "Action",
-      "draw": "Draw",
-      "exchange": "Exchange"
+      "draw": "Draw"
     },
     "log": {
       "player": "Player {{n}}",
@@ -316,8 +314,7 @@
       "step": {
         "roll": "— roll both dice. The event die is resolved first, then every region (yours and your opponent’s) showing the rolled number produces 1 resource. A region holds at most 3.",
         "action": "— build, trade and play Action Cards, in any order and as often as you like.",
-        "draw": "— fill your hand up to the hand limit: take the top card of a stack for free, or search a stack for 2 resources of your choice (1 with a Town Hall). Too many cards? Put the extras under stacks.",
-        "exchange": "— if your hand was already full, you may put 1 card under a stack and take a new one from that same stack."
+        "draw": "— fill your hand up to the hand limit: take the top card of a stack for free, or search a stack for 2 resources of your choice (1 with a Town Hall). Too many cards? Put the extras under stacks. Was your hand already full? Then you may put 1 card under a stack and take a new one from that same stack."
       },
       "eventsTitle": "Event die",
       "event": {

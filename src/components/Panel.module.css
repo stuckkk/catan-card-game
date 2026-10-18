@@ -60,14 +60,13 @@
 .deckChip.selected,
 .resChip.selected { background: color-mix(in srgb, var(--beacon) 22%, var(--sea-mid)); }
 
-/* A draw stack: name, cards left, and its buttons. */
+/* A draw stack: name and cards left. */
 .deckChip {
   flex-direction: column;
   align-items: stretch;
   min-width: 76px;
   text-align: center;
 }
-.deckChip button { padding: 4px 8px; font-size: 13px; }
 
 .deckCount {
   font-size: 12px;

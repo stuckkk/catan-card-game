@@ -306,4 +306,4 @@ Buildings vs Units: Knights and Fleets are **Units**; everything else is a **Bui
 
 * Check code base architecture/desgin/refactoring opportunities
 * Run ultrareview
-* Extra phase for drawing and switching cards??
+* Function to remove buildings/units
