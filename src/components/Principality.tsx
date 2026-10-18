@@ -17,6 +17,9 @@ import panel from './Panel.module.css'
 /** The expansion card currently being placed (card-first flow), with its resolved colour. */
 type Placing = { cardId: string; color: ExpansionColor } | null
 
+/** A placed expansion tapped to inspect, with its position so it can be demolished. */
+type Inspected = { cardId: string; slotIndex: number; expansionSlotIndex: number }
+
 type BuildKind = 'road' | 'settlement' | 'city'
 /** A Road/Settlement/City build waiting for the player's confirmation. */
 type PendingBuild = { kind: BuildKind; action: GameAction }
@@ -71,10 +74,10 @@ function ExpansionSlot({ cardId, slotIndex, expansionSlotIndex, placeableHere, p
   placeableHere: boolean
   placing: Placing
   onAction: (a: GameAction) => void
-  onInspect: (cardId: string) => void
+  onInspect: (card: Inspected) => void
 }) {
   const { t } = useTranslation()
-  if (cardId) return <CardView cardId={cardId} compact onClick={() => onInspect(cardId)} />
+  if (cardId) return <CardView cardId={cardId} compact onClick={() => onInspect({ cardId, slotIndex, expansionSlotIndex })} />
   if (placeableHere && placing) {
     return (
       <button
@@ -101,7 +104,7 @@ function SettlementExpansions({ slot, idx, side, placing, onAction, onInspect }:
   side: 'above' | 'below'
   placing: Placing
   onAction: (a: GameAction) => void
-  onInspect: (cardId: string) => void
+  onInspect: (card: Inspected) => void
 }) {
   if (slot.kind !== 'settlement' && slot.kind !== 'city') return null
   const { aboveExp, belowExp } = splitExpansions(slot)
@@ -243,8 +246,8 @@ export default function Principality({
   const { t } = useTranslation()
   const canBuild = isMyBoard && isMyTurn && phase === 'action'
 
-  // Card tapped on the board to inspect its effects/perks (view-only sheet).
-  const [inspectCardId, setInspectCardId] = useState<string | null>(null)
+  // Card tapped on the board to inspect its effects/perks; on your own turn it can be demolished.
+  const [inspect, setInspect] = useState<Inspected | null>(null)
   // Setup: the first region tapped for a swap.
   const [swapFrom, setSwapFrom] = useState<number | null>(null)
   const [pendingBuild, setPendingBuild] = useState<PendingBuild | null>(null)
@@ -346,7 +349,7 @@ export default function Principality({
         {/* Expansions built above a settlement/city — sits between the top regions and the core */}
         {settlementSlots.map(({ slot, idx }, k) => (
           <div key={`ea${k}`} className={styles.expAboveCell} style={{ gridColumn: 2 * k + 2, gridRow: 2 }}>
-            <SettlementExpansions slot={slot} idx={idx} side="above" placing={placing} onAction={onAction} onInspect={setInspectCardId} />
+            <SettlementExpansions slot={slot} idx={idx} side="above" placing={placing} onAction={onAction} onInspect={setInspect} />
           </div>
         ))}
 
@@ -370,7 +373,7 @@ export default function Principality({
         {/* Expansions built below a settlement/city — sits between the core and the bottom regions */}
         {settlementSlots.map(({ slot, idx }, k) => (
           <div key={`eb${k}`} className={styles.expBelowCell} style={{ gridColumn: 2 * k + 2, gridRow: 4 }}>
-            <SettlementExpansions slot={slot} idx={idx} side="below" placing={placing} onAction={onAction} onInspect={setInspectCardId} />
+            <SettlementExpansions slot={slot} idx={idx} side="below" placing={placing} onAction={onAction} onInspect={setInspect} />
           </div>
         ))}
 
@@ -416,8 +419,15 @@ export default function Principality({
         />
       )}
 
-      {inspectCardId && (
-        <CardDetail cardId={inspectCardId} onClose={() => setInspectCardId(null)} />
+      {inspect && (
+        <CardDetail
+          cardId={inspect.cardId}
+          onDemolish={canBuild ? () => {
+            onAction({ type: 'DEMOLISH', slotIndex: inspect.slotIndex, expansionSlotIndex: inspect.expansionSlotIndex })
+            setInspect(null)
+          } : undefined}
+          onClose={() => setInspect(null)}
+        />
       )}
     </div>
   )

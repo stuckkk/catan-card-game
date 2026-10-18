@@ -58,6 +58,7 @@ export default function HelpButton({ vpTarget }: { vpTarget: number }) {
               <h3>{t('game.help.cardsTitle')}</h3>
               <p>{t('game.help.handLimit')}</p>
               <p>{t('game.help.actionCards')}</p>
+              <p>{t('game.help.demolish')}</p>
             </section>
 
             <section className={styles.section}>

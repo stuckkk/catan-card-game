@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getCard } from '../engine/cards'
 import type { DeclarativeEffect, ResourceType, Resources } from '../engine/types'
@@ -17,6 +18,8 @@ interface Props {
   resources?: Resources
   onPlay?: () => void
   onBuild?: () => void
+  /** Discard this placed expansion (own board, own action phase); needs a second tap. */
+  onDemolish?: () => void
   onClose: () => void
 }
 
@@ -39,10 +42,11 @@ function useEffectText() {
   }
 }
 
-export default function CardDetail({ cardId, canPlay, canBuild, affordable = true, note, resources, onPlay, onBuild, onClose }: Props) {
+export default function CardDetail({ cardId, canPlay, canBuild, affordable = true, note, resources, onPlay, onBuild, onDemolish, onClose }: Props) {
   const { t } = useTranslation()
   const effectText = useEffectText()
   const def = getCard(cardId)
+  const [confirming, setConfirming] = useState(false)
 
   const cost = def.cost ? RESOURCE_ORDER.filter(r => (def.cost?.[r] ?? 0) > 0) : []
   const typeLabel = [
@@ -98,6 +102,11 @@ export default function CardDetail({ cardId, canPlay, canBuild, affordable = tru
           {canBuild && onBuild && (
             <button className="primary" disabled={!affordable} onClick={onBuild}>
               {t('card.build')}
+            </button>
+          )}
+          {onDemolish && (
+            <button className={styles.danger} onClick={confirming ? onDemolish : () => setConfirming(true)}>
+              {t(confirming ? 'card.demolishAgain' : 'card.demolish')}
             </button>
           )}
           <button className="secondary" onClick={onClose}>{t('card.close')}</button>

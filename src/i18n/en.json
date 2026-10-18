@@ -327,6 +327,7 @@
       "cardsTitle": "Cards",
       "handLimit": "Hand limit: 3 cards, +1 for each Abbey and Library you own.",
       "actionCards": "Action Cards can be played once both players together have at least 7 victory points. The Scout can always be played when building a Settlement.",
+      "demolish": "Need room? On your turn, tap one of your expansions and demolish it (no refund).",
       "tradeTitle": "Trading",
       "trade": "In your action phase: 3 of one resource for 1 of your choice from the bank, or 2:1 for a resource whose Trade Fleet you own (Mint: Gold 1:1). You can also offer your opponent any deal.",
       "tokensTitle": "Knight and Windmill Tokens",
@@ -340,7 +341,9 @@
     "play": "Play",
     "build": "Build",
     "close": "Close",
-    "missing": "Missing:"
+    "missing": "Missing:",
+    "demolish": "Demolish",
+    "demolishAgain": "Tap again to demolish"
   },
   "cardType": {
     "green": "Region Expansion",

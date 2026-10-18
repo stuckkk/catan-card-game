@@ -40,6 +40,19 @@ Sessions are held in memory only, so restarting the server ends any in-progress 
 
 The server has no accounts or authentication: anyone who can reach the port can create or join a game. If you put it on the internet, run it behind a reverse proxy with TLS. The client switches to `wss://` automatically when the page is served over HTTPS; make sure the proxy forwards WebSocket upgrades on `/ws`.
 
+### Deploying on Render
+
+[Render](https://render.com) can run the server straight from this repository, with TLS and WebSockets included, so no proxy setup is needed.
+
+1. Under **Account Settings → Git Deployment Credentials**, connect GitHub and install the Render GitHub App for the repository. Connecting the repo as a "Public Git Repository" URL works too, but then Render gets no webhook and **does not auto-deploy** on push.
+2. Create a **Web Service** from the repository. Render detects the `Dockerfile` and builds the image from it. Leave `PORT` unset; Render provides it and the server reads it.
+3. Under **Settings**:
+   - set the branch to `main` and **Auto-Deploy** to "On Commit";
+   - set **Health Check Path** to `/healthz`.
+4. The game is then live at `https://<service-name>.onrender.com`. The invite links use that address.
+
+On the free instance type the service goes to sleep after about 15 minutes without traffic, and the first request after that takes up to a minute to wake it. Since sessions are only held in memory, going to sleep or deploying again ends any game in progress.
+
 ## How to play
 
 1. Open the server in a browser and choose **Create Game**. Pick a victory point target (7, 12 or 13; the rulebook uses 12).

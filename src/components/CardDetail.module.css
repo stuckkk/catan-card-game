@@ -82,3 +82,10 @@
   margin-top: 12px;
 }
 .actions button { flex: 1; }
+
+/* Demolishing can't be undone. */
+.danger {
+  background: var(--color-red-card);
+  color: #fff;
+  font-weight: 700;
+}
