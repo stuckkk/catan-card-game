@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import type { PlayerId, PlayerState, ProjectedState } from '../engine/types'
-import { computePlayerStats, computeVP, tokenHolders } from '../engine/engine'
+import { availableResources, computePlayerStats, computeVP, tokenHolders } from '../engine/engine'
+import ResourceBar from './ResourceBar'
 import styles from './OpponentSummary.module.css'
 
 interface Props {
@@ -18,6 +19,7 @@ export default function OpponentSummary({ expanded, onToggle, myId, view }: Prop
   const opp = view.players[oppId]
   const oppHandSize = typeof opp.hand === 'number' ? opp.hand : opp.hand.length
   const stats = computePlayerStats(opp as unknown as PlayerState)
+  const resources = availableResources(opp as unknown as PlayerState)
   const tokens = tokenHolders(view)
 
   return (
@@ -35,6 +37,7 @@ export default function OpponentSummary({ expanded, onToggle, myId, view }: Prop
 
       {expanded && (
         <div className={styles.detail}>
+          <ResourceBar resources={resources} />
           <div className={styles.statRow}>
             <span>⚔️ {t('symbols.strength')}</span><span>{stats.strengthPoints}</span>
           </div>

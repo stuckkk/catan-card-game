@@ -310,4 +310,4 @@ Buildings vs Units: Knights and Fleets are **Units**; everything else is a **Bui
 * Abbreviations for costs in German 2L for 2 Lehm instead of 2 B(rick) or use emojis of resources, also for Siegpunkte/Victory points
 * Buggy when using the link to connect
 * Extra phase for drawing and switching cards??
-* Overview of ressources of opponents like the one of own resources (no need to count dots on field)
+* Align numbers of ressources on bottom left horizontally
