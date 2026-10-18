@@ -2,6 +2,8 @@
 
 A two-player digital adaptation of the Catan Card Game (*Die Siedler von Catan – Das Kartenspiel*, Kosmos 2005; English edition by Mayfair Games). You run the server on a machine you control, and both players connect to it from a browser on their phone or computer. The UI is available in English and German.
 
+**Play online:** a hosted instance runs at **<https://catan-card-game.onrender.com/>**. It is on Render's free tier, so the first visit after a quiet spell can take up to a minute while the server wakes up, and a game in progress is lost when the server goes to sleep or is redeployed. To run your own, see [Running the server](#running-the-server).
+
 The rules the app implements are specified in [`GAME_LOGIC.md`](GAME_LOGIC.md).
 
 > This is an unofficial fan project. It is not affiliated with or endorsed by Catan GmbH, Kosmos or Mayfair Games. CATAN is a trademark of Catan GmbH.
