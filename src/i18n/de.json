@@ -327,6 +327,7 @@
       "cardsTitle": "Karten",
       "handLimit": "Handlimit: 3 Karten, +1 für jedes Kloster und jede Bibliothek in deinem Fürstentum.",
       "actionCards": "Aktionskarten dürfen gespielt werden, sobald beide Spieler zusammen mindestens 7 Siegpunkte haben. Den Kundschafter darfst du beim Bau einer Siedlung immer spielen.",
+      "demolish": "Kein Platz mehr? Tippe in deinem Zug eine deiner Erweiterungen an und reiße sie ab (ohne Erstattung).",
       "tradeTitle": "Handel",
       "trade": "In deiner Aktionsphase: 3 gleiche Rohstoffe gegen 1 beliebigen von der Bank, oder 2:1 für einen Rohstoff, dessen Handelsflotte du besitzt (Münzgießerei: Gold 1:1). Du kannst dem Gegner auch jeden beliebigen Handel anbieten.",
       "tokensTitle": "Ritter- und Windmühlenplättchen",
@@ -340,7 +341,9 @@
     "play": "Ausspielen",
     "build": "Bauen",
     "close": "Schließen",
-    "missing": "Es fehlt:"
+    "missing": "Es fehlt:",
+    "demolish": "Abreißen",
+    "demolishAgain": "Zum Abreißen nochmal tippen"
   },
   "cardType": {
     "green": "Landschaftsausbau",

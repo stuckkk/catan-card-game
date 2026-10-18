@@ -306,4 +306,3 @@ Buildings vs Units: Knights and Fleets are **Units**; everything else is a **Bui
 
 * Check code base architecture/desgin/refactoring opportunities
 * Run ultrareview
-* Function to remove buildings/units
