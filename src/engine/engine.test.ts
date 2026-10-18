@@ -739,6 +739,15 @@ describe('cities and expansions', () => {
     expect(applyAction(s, 'host', { type: 'PLACE_EXPANSION', cardId: 'abbey', slotIndex: 0, expansionSlotIndex: 0 })).toBe(s)
   })
 
+  it('logs the Knight Token changing hands, and losing it to a tie', () => {
+    const s = makeState({ players: { host: makePlayer('host', { hand: ['knight-conrad'], regions: regionsWith({ grain: 1, ore: 1 }) }), guest: makePlayer('guest') } })
+    const built = applyAction(s, 'host', { type: 'PLACE_EXPANSION', cardId: 'knight-conrad', slotIndex: 0, expansionSlotIndex: 0 })
+    expect(built.eventLog.slice(-1)[0]).toMatchObject({ player: 'host', type: 'token', payload: { token: 'knight', gained: true } })
+    const demolished = applyAction(built, 'host', { type: 'DEMOLISH', slotIndex: 0, expansionSlotIndex: 0 })
+    expect(demolished.eventLog.slice(-1)[0]).toMatchObject({ player: 'host', type: 'token', payload: { token: 'knight', gained: false } })
+    expect(applyAction(demolished, 'host', { type: 'END_ACTION_PHASE' }).eventLog.filter(e => e.type === 'token')).toHaveLength(2)
+  })
+
   it('demolishes an expansion to the discard pile for free', () => {
     const board = [settlementA(['abbey', null]), road(), settlementB()]
     const s = applyAction(makeState({ players: { host: makePlayer('host', { principality: board, playedCards: playedFor(board) }), guest: makePlayer('guest') } }),

@@ -1,0 +1,31 @@
+/* A held token: filled gold so it stands out in the header. Pops in when it changes hands. */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px 2px 6px;
+  border-radius: 999px;
+  background: var(--beacon);
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--beacon) 40%, transparent), 0 0 10px color-mix(in srgb, var(--beacon) 45%, transparent);
+  animation: pop-in 0.6s ease-out;
+}
+
+/* Desktop shows the token's name, phones the +1 it's worth. */
+.bonus { display: none; }
+
+@keyframes pop-in {
+  0% { transform: scale(0.4); opacity: 0; }
+  60% { transform: scale(1.15); opacity: 1; }
+  100% { transform: none; }
+}
+
+@media (max-width: 760px) {
+  .chip { padding: 1px 6px 1px 4px; font-size: 11px; gap: 2px; }
+  .name { display: none; }
+  .bonus { display: inline; }
+}

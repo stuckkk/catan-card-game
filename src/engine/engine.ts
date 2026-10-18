@@ -1027,12 +1027,25 @@ export function applyAction(state: GameState, actingPlayer: PlayerId, action: Ga
 const EVENT_LOG_LIMIT = 50
 
 /** The log after `action`: its own entry goes before whatever the handler logged (production,
- *  event cards…), so the log reads in the order things happened. */
+ *  event cards…), so the log reads in the order things happened. A Knight/Windmill Token
+ *  changing hands comes last, as the result of it all. */
 function withActionLogged(before: GameState, after: GameState, actingPlayer: PlayerId, action: GameAction): GameEvent[] {
   const added = after.eventLog.slice(before.eventLog.length)
   const payload = actionLogPayload(before, after, actingPlayer, action)
   const own = payload ? [makeEvent(actingPlayer, action.type, payload)] : []
-  return [...before.eventLog, ...own, ...added].slice(-EVENT_LOG_LIMIT)
+  return [...before.eventLog, ...own, ...added, ...tokenChanges(before, after)].slice(-EVENT_LOG_LIMIT)
+}
+
+/** One entry per token that changed holder: for the new holder, or for the old one when a tie
+ *  leaves it with nobody. */
+function tokenChanges(before: GameState, after: GameState): GameEvent[] {
+  const was = tokenHolders(before)
+  const now = tokenHolders(after)
+  return (['knight', 'windmill'] as const).flatMap(token => {
+    if (was[token] === now[token]) return []
+    if (now[token]) return [makeEvent(now[token], 'token', { token, gained: true })]
+    return [makeEvent(was[token]!, 'token', { token, gained: false })]
+  })
 }
 
 /** Public details of a successful action for the activity log, or null to leave it out.

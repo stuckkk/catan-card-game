@@ -306,7 +306,5 @@ Buildings vs Units: Knights and Fleets are **Units**; everything else is a **Bui
 
 * Check code base architecture/desgin/refactoring opportunities
 * Run ultrareview
-* Make marker for own tokens more prominent (hint or text displayed)
 * Buggy when using the link to connect
 * Extra phase for drawing and switching cards??
-* Align numbers of ressources on bottom left horizontally

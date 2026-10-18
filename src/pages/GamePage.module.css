@@ -67,6 +67,7 @@
   line-height: 1.1;
 }
 .myScoreLabel { font-size: 13px; color: var(--color-text-muted); }
+.myTokens { display: flex; gap: 4px; margin-top: 3px; }
 
 .vp {
   font-family: var(--font-display);

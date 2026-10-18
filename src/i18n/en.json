@@ -290,7 +290,9 @@
       "dismiss": "Dismiss",
       "masterBuilderSearch": "looks through {{stack}} (Master Builder)",
       "masterBuilderNothing": "took nothing from {{stack}} (Master Builder)",
-      "masterBuilderSwap": "took a card from {{stack}} and put one under {{to}} (Master Builder)"
+      "masterBuilderSwap": "took a card from {{stack}} and put one under {{to}} (Master Builder)",
+      "tokenGained": "took the {{token}} (+1 VP)",
+      "tokenLost": "lost the {{token}} (tie)"
     },
     "build": {
       "title": "Build",
@@ -373,7 +375,9 @@
   },
   "advantage": {
     "knight": "Knight Token",
-    "windmill": "Windmill Token"
+    "windmill": "Windmill Token",
+    "knightHint": "+1 VP: more Strength Points than the opponent",
+    "windmillHint": "+1 VP: more Commerce Points than the opponent and at least one City"
   },
   "dice": {
     "brigand": "Brigand Attack!",
