@@ -31,12 +31,18 @@ export default function LobbyPage() {
   const [copied, setCopied] = useState(false)
   const [errorKey, setErrorKey] = useState<ErrorKey>('connectionLost')
 
-  // Auto-join when arriving via invite link
+  // Auto-join when arriving via invite link - also when it's pasted into a tab that already
+  // shows the lobby: only the #hash changes then, so the page isn't reloaded.
   useEffect(() => {
-    const match = window.location.hash.match(/^#join=(.+)/)
-    if (match) {
-      handleJoin(match[1])
+    function joinFromHash() {
+      const match = window.location.hash.match(/^#join=(.+)/)
+      if (match) {
+        handleJoin(match[1])
+      }
     }
+    joinFromHash()
+    window.addEventListener('hashchange', joinFromHash)
+    return () => window.removeEventListener('hashchange', joinFromHash)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
