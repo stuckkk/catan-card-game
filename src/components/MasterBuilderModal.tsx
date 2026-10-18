@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { DeckId, DrawStackId, GameAction, PendingMasterBuilderChoice } from '../engine/types'
-import { DRAW_STACK_IDS } from '../engine/cards'
+import { DRAW_STACK_IDS, getCard } from '../engine/cards'
 import CardPicker from './CardPicker'
 import CardDetail from './CardDetail'
 import dialog from './Dialog.module.css'
@@ -24,6 +24,8 @@ export default function MasterBuilderModal({ choice, deckSizes, contents, hand, 
   const [taken, setTaken] = useState<number | null>(null)
   const [giveBack, setGiveBack] = useState<number | null>(null)
   const [toDeck, setToDeck] = useState<DrawStackId>('stack-1')
+  // Second step: the card to take is chosen, now pick what goes back.
+  const [giving, setGiving] = useState(false)
   // Card opened in the detail sheet (index into `contents`).
   const [inspecting, setInspecting] = useState<number | null>(null)
   const chips = (selected: DrawStackId | null, onPick: (d: DrawStackId) => void, allowed: (d: DrawStackId) => boolean) => (
@@ -60,20 +62,33 @@ export default function MasterBuilderModal({ choice, deckSizes, contents, hand, 
   // Shown top card first, like the other searches.
   const items = contents.map((cardId, index) => ({ cardId, index })).reverse()
   const giveOptions = taken === null ? [] : [...hand, contents[taken]]
+  // Two steps, so picking a card doesn't grow the sheet and push the buttons off-screen.
   return (
     <div className={dialog.backdrop} role="dialog" aria-modal="true">
       <div className={dialog.sheet}>
         <div className={dialog.title}>{t('game.masterBuilder.title')}</div>
-        <p className={dialog.hint}>{t('game.masterBuilder.takeHint')}</p>
-        <CardPicker
-          items={items}
-          selected={taken === null ? [] : [taken]}
-          onToggle={i => { setTaken(taken === i ? null : i); setGiveBack(null) }}
-          topIndex={contents.length - 1}
-          onInspect={setInspecting}
-        />
-        {taken !== null && (
+        {!giving || taken === null ? (
           <>
+            <p className={dialog.hint}>{t('game.masterBuilder.takeHint')}</p>
+            <CardPicker
+              items={items}
+              selected={taken === null ? [] : [taken]}
+              onToggle={i => { setTaken(taken === i ? null : i); setGiveBack(null) }}
+              topIndex={contents.length - 1}
+              onInspect={setInspecting}
+            />
+            <div className={dialog.actions}>
+              <button className="secondary" onClick={() => onAction({ type: 'TAKE_FROM_SEARCH', cardIds: [] })}>
+                {t('game.masterBuilder.takeNothing')}
+              </button>
+              <button className="primary" disabled={taken === null} onClick={() => setGiving(true)}>
+                {t('game.masterBuilder.next')}
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <p className={dialog.hint}>{t('game.masterBuilder.giveHint', { card: t(getCard(contents[taken]).nameKey) })}</p>
             <div className={panel.section}>
               <span className={panel.label}>{t('game.masterBuilder.giveBack')}</span>
             </div>
@@ -86,22 +101,22 @@ export default function MasterBuilderModal({ choice, deckSizes, contents, hand, 
               <span className={panel.label}>{t('game.masterBuilder.giveBackTo')}</span>
               {chips(toDeck, setToDeck, () => true)}
             </div>
+            <div className={dialog.actions}>
+              <button className="secondary" onClick={() => setGiving(false)}>
+                {t('game.masterBuilder.back')}
+              </button>
+              <button
+                className="primary"
+                disabled={giveBack === null}
+                onClick={() => giveBack !== null && onAction({
+                  type: 'TAKE_FROM_SEARCH', cardIds: [contents[taken]], giveBack: { cardId: giveOptions[giveBack], toDeck },
+                })}
+              >
+                {t('game.masterBuilder.swap')}
+              </button>
+            </div>
           </>
         )}
-        <div className={dialog.actions}>
-          <button className="secondary" onClick={() => onAction({ type: 'TAKE_FROM_SEARCH', cardIds: [] })}>
-            {t('game.masterBuilder.takeNothing')}
-          </button>
-          <button
-            className="primary"
-            disabled={taken === null || giveBack === null}
-            onClick={() => taken !== null && giveBack !== null && onAction({
-              type: 'TAKE_FROM_SEARCH', cardIds: [contents[taken]], giveBack: { cardId: giveOptions[giveBack], toDeck },
-            })}
-          >
-            {t('game.masterBuilder.swap')}
-          </button>
-        </div>
         {inspecting != null && <CardDetail cardId={contents[inspecting]} onClose={() => setInspecting(null)} />}
       </div>
     </div>
