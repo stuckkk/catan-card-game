@@ -16,15 +16,17 @@ interface Props {
   onAction: (a: GameAction) => void
 }
 
-/** Draw phase: over the limit, put the excess under a stack; under it, draw each card either
- *  from the top of a stack (free) or by searching a stack (paid). */
+/** Draw phase: over the limit, put the excess under a stack; under it, draw each card from a chosen
+ *  stack, either its top card (free) or by searching it (paid). Same layout as the ExchangePanel. */
 export default function DrawPanel({ hand, handLimit, deckSizes, resources, searchCost, onAction }: Props) {
   const { t } = useTranslation()
-  const [searchDeck, setSearchDeck] = useState<DrawStackId | null>(null)
+  const [deck, setDeck] = useState<DrawStackId | null>(null)
+  const [searching, setSearching] = useState(false)
   const [payWith, setPayWith] = useState<ResourceType[]>([])
 
   if (hand.length > handLimit) return <DiscardPanel hand={hand} handLimit={handLimit} onAction={onAction} />
 
+  const ready = deck != null && deckSizes[deck] > 0
   const totalResources = Object.values(resources).reduce((a, b) => a + b, 0)
 
   return (
@@ -35,24 +37,28 @@ export default function DrawPanel({ hand, handLimit, deckSizes, resources, searc
       </div>
       <div className={styles.cards}>
         {DRAW_STACK_IDS.map(d => (
-          <div key={d} className={`${styles.deckChip} ${searchDeck === d ? styles.selected : ''}`}>
+          <button
+            key={d}
+            className={`${styles.deckChip} ${deck === d ? styles.selected : ''}`}
+            disabled={deckSizes[d] === 0}
+            onClick={() => { setDeck(p => (p === d ? null : d)); setSearching(false); setPayWith([]) }}
+          >
             <span>{t(`game.deckName.${d}`)}</span>
             <span className={styles.deckCount}>{deckSizes[d]}</span>
-            <button className="secondary" disabled={deckSizes[d] === 0} onClick={() => onAction({ type: 'DRAW_CARD', fromDeck: d })}>
-              {t('game.draw.drawTop')}
-            </button>
-            <button
-              className="secondary"
-              disabled={deckSizes[d] === 0 || totalResources < searchCost}
-              onClick={() => { setSearchDeck(s => s === d ? null : d); setPayWith([]) }}
-            >
-              {t('game.draw.search')}
-            </button>
-          </div>
+          </button>
         ))}
       </div>
 
-      {searchDeck && (
+      <div className={styles.actions}>
+        <button className="primary" disabled={!ready} onClick={() => ready && onAction({ type: 'DRAW_CARD', fromDeck: deck })}>
+          {t('game.draw.drawTop')}
+        </button>
+        <button className="secondary" disabled={!ready || totalResources < searchCost} onClick={() => setSearching(s => !s)}>
+          {t('game.draw.search', { cost: searchCost })}
+        </button>
+      </div>
+
+      {searching && ready && (
         <div className={styles.paid}>
           <ResourcePicker
             label={t('game.pay.label', { count: searchCost })}
@@ -65,8 +71,8 @@ export default function DrawPanel({ hand, handLimit, deckSizes, resources, searc
             className="primary"
             disabled={payWith.length !== searchCost}
             onClick={() => {
-              onAction({ type: 'SEARCH_STACK', deck: searchDeck, payWith })
-              setSearchDeck(null)
+              onAction({ type: 'SEARCH_STACK', deck, payWith })
+              setSearching(false)
               setPayWith([])
             }}
           >

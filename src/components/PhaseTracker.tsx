@@ -5,13 +5,13 @@ import styles from './PhaseTracker.module.css'
 /**
  * The visible stops in a turn. The engine's transient 'event-resolution' and
  * 'production' phases resolve synchronously inside ROLL_DICE, so they map onto
- * the Roll step rather than getting their own stop.
+ * the Roll step rather than getting their own stop. Drawing and the optional exchange are one
+ * step in the rules (step 4 "Draw"), so they share a stop too.
  */
 const STEPS: { key: TurnPhase; mapsFrom: TurnPhase[] }[] = [
   { key: 'roll', mapsFrom: ['roll', 'event-resolution', 'production'] },
   { key: 'action', mapsFrom: ['action'] },
-  { key: 'draw', mapsFrom: ['draw'] },
-  { key: 'exchange', mapsFrom: ['exchange'] },
+  { key: 'draw', mapsFrom: ['draw', 'exchange'] },
 ]
 
 const SETUP_STEPS: typeof STEPS = [{ key: 'setup', mapsFrom: ['setup'] }]

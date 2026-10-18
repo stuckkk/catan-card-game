@@ -138,8 +138,7 @@
       "event-resolution": "Ereignisauflösung",
       "production": "Ertrag",
       "action": "Aktionsphase",
-      "draw": "Nachziehen",
-      "exchange": "Austausch"
+      "draw": "Nachziehen"
     },
     "vpTarget": "SP-Ziel: {{count}}",
     "currentVP": "{{count}} SP",
@@ -175,8 +174,8 @@
     "draw": {
       "title": "Auf Handkartenlimit ziehen",
       "hint": "Ziehe noch {{count}} Karte(n) (Limit {{limit}}): die oberste Karte eines Stapels gratis, oder durchsuche einen Stapel für {{cost}} Rohstoff(e) deiner Wahl.",
-      "drawTop": "Oberste ziehen",
-      "search": "Durchsuchen",
+      "drawTop": "Oberste Karte nehmen",
+      "search": "Durchsuchen ({{cost}} zahlen)",
       "discardTitle": "Handkartenlimit überschritten",
       "discardHint": "Lege {{count}} Karte(n) unter einen Stapel (Limit {{limit}}).",
       "discardTo": "Darunterlegen",
@@ -238,8 +237,7 @@
       "setup": "Aufbau",
       "roll": "Würfeln",
       "action": "Aktionen",
-      "draw": "Ziehen",
-      "exchange": "Tauschen"
+      "draw": "Nachziehen"
     },
     "log": {
       "player": "Spieler {{n}}",
@@ -316,8 +314,7 @@
       "step": {
         "roll": "– beide Würfel werfen. Zuerst wird der Ereigniswürfel ausgeführt, dann bringt jede Landschaft (deine und die des Gegners) mit der gewürfelten Zahl 1 Rohstoff. Eine Landschaft fasst höchstens 3.",
         "action": "– bauen, handeln und Aktionskarten spielen, in beliebiger Reihenfolge und beliebig oft.",
-        "draw": "– die Hand bis zum Handlimit auffüllen: die oberste Karte eines Stapels kostenlos nehmen oder einen Stapel für 2 Rohstoffe deiner Wahl durchsuchen (1 mit Rathaus). Zu viele Karten? Lege die überzähligen unter Stapel.",
-        "exchange": "– war deine Hand schon voll, darfst du 1 Karte unter einen Stapel legen und eine neue vom selben Stapel nehmen."
+        "draw": "– die Hand bis zum Handlimit auffüllen: die oberste Karte eines Stapels kostenlos nehmen oder einen Stapel für 2 Rohstoffe deiner Wahl durchsuchen (1 mit Rathaus). Zu viele Karten? Lege die überzähligen unter Stapel. War deine Hand schon voll, darfst du danach 1 Karte unter einen Stapel legen und eine neue vom selben Stapel nehmen."
       },
       "eventsTitle": "Ereigniswürfel",
       "event": {

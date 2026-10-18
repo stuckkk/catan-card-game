@@ -11,7 +11,7 @@ const EVENTS = [
   { key: 'event', icon: '?' },
 ] as const
 
-const STEPS = ['roll', 'action', 'draw', 'exchange'] as const
+const STEPS = ['roll', 'action', 'draw'] as const
 
 /** 📖 in the header (not "?", which is the event die's Event face): a short rules overview (GAME_LOGIC.md §1, §5–§9). */
 export default function HelpButton({ vpTarget }: { vpTarget: number }) {
