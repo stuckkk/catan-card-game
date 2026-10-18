@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { getCard } from '../engine/cards'
-import type { ResourceType, Resources } from '../engine/types'
+import type { ResourceType, Resources, SymbolType } from '../engine/types'
+import { RESOURCE_ICON } from './resourceMeta'
 import styles from './CardView.module.css'
 
 const COLOR_CLASS: Record<string, string> = {
@@ -9,8 +10,8 @@ const COLOR_CLASS: Record<string, string> = {
   yellow: styles.yellow,
 }
 
-const RESOURCE_SYMBOLS: Record<ResourceType, string> = {
-  lumber: 'L', wool: 'W', gold: 'Au', brick: 'B', ore: 'O', grain: 'G',
+const SYMBOL_ICON: Record<SymbolType, string> = {
+  strength: '⚔️', tournament: '🛡️', commerce: '⚖️',
 }
 
 interface Props {
@@ -25,7 +26,7 @@ function CostBadge({ cost }: { cost: Partial<Resources> }) {
   return (
     <div className={styles.cost}>
       {(Object.keys(cost) as ResourceType[]).filter(r => (cost[r] ?? 0) > 0).map(r => (
-        <span key={r} className={styles.costItem}>{cost[r]}{RESOURCE_SYMBOLS[r]}</span>
+        <span key={r} className={styles.costItem}>{cost[r]}{RESOURCE_ICON[r]}</span>
       ))}
     </div>
   )
@@ -38,7 +39,7 @@ export default function CardView({ cardId, compact, selected, affordable = true,
 
   const symbolSummary = def.effects
     .filter(e => e.type === 'GRANT_SYMBOL')
-    .map(e => e.type === 'GRANT_SYMBOL' ? `${e.amount}${e.symbol[0].toUpperCase()}` : '')
+    .map(e => e.type === 'GRANT_SYMBOL' ? `${e.amount}${SYMBOL_ICON[e.symbol]}` : '')
     .join(' ')
 
   return (
@@ -56,11 +57,11 @@ export default function CardView({ cardId, compact, selected, affordable = true,
           )}
           <div className={styles.effects}>
             {def.directVP != null && def.directVP > 0 && (
-              <span className={styles.vp}>{def.directVP}VP</span>
+              <span className={styles.vp}>{t('game.currentVP', { count: def.directVP })}</span>
             )}
             {symbolSummary && <span className={styles.symbols}>{symbolSummary}</span>}
             {def.effects.filter(e => e.type === 'IMPROVED_TRADE').map((e, i) => (
-              e.type === 'IMPROVED_TRADE' && <span key={i} className={styles.trade}>{e.rate}:1 {RESOURCE_SYMBOLS[e.resource]}</span>
+              e.type === 'IMPROVED_TRADE' && <span key={i} className={styles.trade}>{e.rate}:1 {RESOURCE_ICON[e.resource]}</span>
             ))}
           </div>
         </>
