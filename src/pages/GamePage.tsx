@@ -51,7 +51,7 @@ function practiceSeat(state: GameState): PlayerId {
 }
 
 export default function GamePage() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const location = useLocation()
   const navigate = useNavigate()
 
@@ -353,6 +353,15 @@ export default function GamePage() {
         </div>
 
         <div className={styles.headerEnd}>
+          {/* Shows the current language; a tap switches to the other one. */}
+          <button
+            className={styles.langButton}
+            onClick={() => i18n.changeLanguage(i18n.language.startsWith('de') ? 'en' : 'de')}
+            aria-label={t('lobby.language')}
+            title={t('lobby.language')}
+          >
+            {i18n.language.startsWith('de') ? 'DE' : 'EN'}
+          </button>
           <HelpButton vpTarget={view.config.vpTarget} />
           <div className={styles.myScore}>
             <span className={styles.myScoreLabel}>

@@ -44,6 +44,22 @@
   gap: 10px;
 }
 
+/* Same round shape as the 📖 help button next to it. */
+.langButton {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+  background: var(--sea-mid);
+  color: var(--color-text);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.langButton:hover { border-color: var(--beacon); }
+
 .myScore {
   display: flex;
   flex-direction: column;
