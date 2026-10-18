@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next'
 import type { PlayerId, PlayerState, ProjectedState } from '../engine/types'
 import { availableResources, computePlayerStats, computeVP, tokenHolders } from '../engine/engine'
 import ResourceBar from './ResourceBar'
+import TokenChip from './TokenChip'
 import styles from './OpponentSummary.module.css'
 
 interface Props {
@@ -29,8 +30,8 @@ export default function OpponentSummary({ expanded, onToggle, myId, view }: Prop
         <span className={styles.quickStats}>
           <span className={styles.vp}>{t('game.currentVP', { count: computeVP(view, oppId) })}</span>
           <span className={styles.hand}>{t('game.handSize', { count: oppHandSize })}</span>
-          {tokens.knight === oppId && <span className={styles.token} title={t('advantage.knight')}>⚔️ <span className={styles.tokenName}>{t('advantage.knight')}</span></span>}
-          {tokens.windmill === oppId && <span className={styles.token} title={t('advantage.windmill')}>⚖️ <span className={styles.tokenName}>{t('advantage.windmill')}</span></span>}
+          {tokens.knight === oppId && <TokenChip token="knight" />}
+          {tokens.windmill === oppId && <TokenChip token="windmill" />}
         </span>
         <span className={styles.chevron}>{expanded ? '▲' : '▼'}</span>
       </button>

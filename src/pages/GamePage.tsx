@@ -36,6 +36,7 @@ import Toasts from '../components/Toasts'
 import ActivityFeed from '../components/ActivityFeed'
 import BuildStrip from '../components/BuildStrip'
 import HelpButton from '../components/HelpButton'
+import TokenChip from '../components/TokenChip'
 import { describeEvent, isToastWorthy, playerLabel } from '../components/activityText'
 import type { ActivityLine } from '../components/activityText'
 import dialog from '../components/Dialog.module.css'
@@ -364,12 +365,14 @@ export default function GamePage() {
           </button>
           <HelpButton vpTarget={view.config.vpTarget} />
           <div className={styles.myScore}>
-            <span className={styles.myScoreLabel}>
-              {myTokens.knight === myId && <span title={t('advantage.knight')}>⚔️ </span>}
-              {myTokens.windmill === myId && <span title={t('advantage.windmill')}>⚖️ </span>}
-              {t('game.you')}
-            </span>
+            <span className={styles.myScoreLabel}>{t('game.you')}</span>
             <span className={styles.vp}>{t('game.vpOfTarget', { count: myVP, target: view.config.vpTarget })}</span>
+            {(myTokens.knight === myId || myTokens.windmill === myId) && (
+              <span className={styles.myTokens}>
+                {myTokens.knight === myId && <TokenChip token="knight" />}
+                {myTokens.windmill === myId && <TokenChip token="windmill" />}
+              </span>
+            )}
           </div>
         </div>
       </header>

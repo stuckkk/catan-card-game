@@ -43,7 +43,6 @@
   color: var(--color-gold);
 }
 .hand { font-size: 13px; color: var(--color-text-muted); white-space: nowrap; }
-.token { color: var(--beacon); font-size: 12px; white-space: nowrap; }
 
 .chevron {
   grid-area: chevron;
@@ -77,8 +76,6 @@
 
 @media (max-width: 760px) {
   .vp { font-size: 17px; }
-  /* Only the token icons fit here; the name is in the tooltip and the stats popover. */
-  .tokenName { display: none; }
   .hand { font-size: 12px; }
 }
 

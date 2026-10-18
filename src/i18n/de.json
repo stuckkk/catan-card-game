@@ -290,7 +290,9 @@
       "dismiss": "Schließen",
       "masterBuilderSearch": "sieht {{stack}} durch (Baumeister)",
       "masterBuilderNothing": "hat nichts aus {{stack}} genommen (Baumeister)",
-      "masterBuilderSwap": "hat eine Karte aus {{stack}} genommen und eine unter {{to}} geschoben (Baumeister)"
+      "masterBuilderSwap": "hat eine Karte aus {{stack}} genommen und eine unter {{to}} geschoben (Baumeister)",
+      "tokenGained": "bekommt das {{token}} (+1 SP)",
+      "tokenLost": "verliert das {{token}} (Gleichstand)"
     },
     "build": {
       "title": "Bauen",
@@ -373,7 +375,9 @@
   },
   "advantage": {
     "knight": "Ritterplättchen",
-    "windmill": "Windmühlenplättchen"
+    "windmill": "Windmühlenplättchen",
+    "knightHint": "+1 SP: mehr Stärkepunkte als der Gegner",
+    "windmillHint": "+1 SP: mehr Handelspunkte als der Gegner und mindestens eine Stadt"
   },
   "dice": {
     "brigand": "Räuberüberfall!",

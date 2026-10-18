@@ -101,6 +101,7 @@ export function describeEvent(t: TFunction, e: GameEvent, viewer: PlayerId, isPr
     case 'DISCARD_TO_LIMIT': return line(t('game.log.discard', { count: Number(p.count) }))
     case 'EXCHANGE': return line(t(p.searched ? 'game.log.exchangeSearch' : 'game.log.exchange', { stack: stack(p.deck) }))
     case 'SKIP_EXCHANGE': return line(t('game.log.skipExchange'))
+    case 'token': return line(t(p.gained ? 'game.log.tokenGained' : 'game.log.tokenLost', { token: t(`advantage.${p.token}`) }))
     default: return null
   }
 }
@@ -108,7 +109,7 @@ export function describeEvent(t: TFunction, e: GameEvent, viewer: PlayerId, isPr
 /** Entries that pop up as a toast when they arrive: what happens to both players always,
  *  and online also the opponent's moves (their trade offers have their own banner). */
 export function isToastWorthy(e: GameEvent, viewer: PlayerId, isPractice: boolean): boolean {
-  if (['production', 'brigand', 'event-card', 'returned-to-hand', 'attack-roll', 'ANSWER_ATTACK'].includes(e.type)) return true
+  if (['production', 'brigand', 'event-card', 'returned-to-hand', 'attack-roll', 'ANSWER_ATTACK', 'token'].includes(e.type)) return true
   if (isPractice || e.player === viewer) return false
   return !['ROLL_DICE', 'END_ACTION_PHASE', 'PROPOSE_TRADE'].includes(e.type)
 }
