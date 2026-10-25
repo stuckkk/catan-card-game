@@ -2,8 +2,12 @@ import {
   applyAction, actionCardsUnlocked, availableResources, computePlayerStats, computeVP, doubledRegions,
   getTradeRate, produceForPlayer, searchCost, setupChooser,
 } from './engine'
-import { CITY, COUNTER_CARD, DRAW_STACK_IDS, ROAD, SETTLEMENT, getCard, getRegion, hasAttackTarget, isSpyTarget } from './cards'
-import { ALL_RESOURCE_TYPES, addToRegions, isSettlementLike, regionsBorderingCards, returnToHand, spendFromRegions, stealableTypes } from './board'
+import { CITY, COUNTER_CARD, DRAW_STACK_IDS, ROAD, SETTLEMENT, getCard, hasAttackTarget, hasEffect, isSpyTarget } from './cards'
+import { getRegion } from './regions'
+import {
+  ALL_RESOURCE_TYPES, addToRegions, isSettlementLike, mapPlayers, opponent, regionsBorderingCards, removeFirst,
+  returnToHand, spendFromRegions, stealableTypes, totalOf, withPlayer,
+} from './board'
 import type {
   CardDefinition, DrawStackId, GameAction, GameState, PendingChoice, PendingRegionChoice, PlayerId, PlayerState,
   ProductionNumber, Resources, ResourceType,
@@ -18,8 +22,6 @@ import type {
 // opponent's hand is only read while the bot picks from it (Spy, Conflict), a stack only while
 // the bot searches it, and the Region stack's order is hidden before simulating (hideOrder).
 // Moves whose outcome depends on chance or hidden cards (rolls, draws) are never simulated.
-
-const opponent = (p: PlayerId): PlayerId => (p === 'host' ? 'guest' : 'host')
 
 // ─── Weights ──────────────────────────────────────────────────────────────────
 
@@ -122,10 +124,8 @@ function fallback(state: GameState, me: PlayerId): GameAction | null {
 
 // ─── Evaluation ───────────────────────────────────────────────────────────────
 
-const hasEffect = (cardId: string, type: string) => getCard(cardId).effects.some(e => e.type === type)
-
 /** The bot's position minus a share of the opponent's. */
-export function evaluate(s: GameState, me: PlayerId): number {
+function evaluate(s: GameState, me: PlayerId): number {
   return playerValue(s, me, true) - OPPONENT_WEIGHT * playerValue(s, opponent(me), false)
 }
 
@@ -184,7 +184,7 @@ function regionsOf(player: PlayerState, type: ResourceType): number {
 }
 
 /** What a card is worth to `p` (in hand, to keep, take or bury). */
-export function cardValue(id: string, s: GameState, p: PlayerId): number {
+function cardValue(id: string, s: GameState, p: PlayerId): number {
   const def = getCard(id)
   const player = s.players[p]
   if (def.category === 'action') return ACTION_CARD_VALUE[id] ?? 1
@@ -208,7 +208,7 @@ export function cardValue(id: string, s: GameState, p: PlayerId): number {
       case 'CIVIL_WAR_PROTECTION': v += 0.3; break
     }
   }
-  v -= 0.25 * Object.values(def.cost ?? {}).reduce((a, b) => a + (b ?? 0), 0)
+  v -= 0.25 * totalOf(def.cost ?? {})
   if (def.expansionColor === 'red' && !player.principality.some(x => x.kind === 'city')) v *= 0.6
   if (!hasFreeSite(player, def)) v *= 0.7
   return Math.max(0.2, v)
@@ -339,9 +339,7 @@ function exchangeMoves(s: GameState, me: PlayerId): GameAction[] {
 /** The state after playing `cardId` from hand, before its effect. */
 function withoutCard(s: GameState, me: PlayerId, cardId: string): GameState {
   const player = s.players[me]
-  const hand = [...player.hand]
-  hand.splice(hand.indexOf(cardId), 1)
-  return { ...s, players: { ...s.players, [me]: { ...player, hand } } }
+  return withPlayer(s, me, { ...player, hand: removeFirst(player.hand, cardId) })
 }
 
 /** Black Knight, Arsonist, Brigands: the expected score of the duel. */
@@ -367,10 +365,10 @@ function bestOutcome(s: GameState, me: PlayerId, winner: PlayerId, loser: Player
     for (let i = 0; i < 2; i++) {
       const types = stealableTypes(x.players[loser], x.players[winner])
       if (types.length === 0) break
-      const steals = types.map(r => ({
-        ...x,
-        players: { ...x.players, [loser]: spendFromRegions(x.players[loser], { [r]: 1 }), [winner]: addToRegions(x.players[winner], { [r]: 1 }) },
-      }) as GameState)
+      const steals = types.map(r => {
+        const robbed = withPlayer(x, loser, spendFromRegions(x.players[loser], { [r]: 1 }))
+        return withPlayer(robbed, winner, addToRegions(x.players[winner], { [r]: 1 }))
+      })
       x = pickBest(steals, me, winner === me)
     }
     outcomes.push(x)
@@ -378,7 +376,7 @@ function bestOutcome(s: GameState, me: PlayerId, winner: PlayerId, loser: Player
     const kind = cardId === 'arsonist' ? 'building' : 'knight'
     s.players[loser].principality.forEach((slot, slotIndex) => slot.expansionSlots.forEach((id, expansionSlotIndex) => {
       if (id && getCard(id).expansionKind === kind) {
-        outcomes.push({ ...s, players: { ...s.players, [loser]: returnToHand(s.players[loser], slotIndex, expansionSlotIndex) } })
+        outcomes.push(withPlayer(s, loser, returnToHand(s.players[loser], slotIndex, expansionSlotIndex)))
       }
     }))
     if (outcomes.length === 0) outcomes.push(s)
@@ -405,9 +403,7 @@ function spyScore(s: GameState, me: PlayerId): number | null {
 /** Play an Alchemist when the best Production Die result beats an average roll by enough. */
 function rollPhase(s: GameState, me: PlayerId): GameAction {
   if (s.players[me].hand.includes('alchemist') && actionCardsUnlocked(s) && s.alchemistNumber === null) {
-    const scores = ([1, 2, 3, 4, 5, 6] as ProductionNumber[]).map(n => evaluate({
-      ...s, players: { host: produceForPlayer(s.players.host, n), guest: produceForPlayer(s.players.guest, n) },
-    }, me))
+    const scores = ([1, 2, 3, 4, 5, 6] as ProductionNumber[]).map(n => evaluate(mapPlayers(s, p => produceForPlayer(p, n)), me))
     const average = scores.reduce((a, b) => a + b, 0) / 6
     const best = Math.max(...scores)
     if (best - average > HAND_WEIGHT * cardValue('alchemist', s, me) + MARGIN) {
@@ -528,8 +524,7 @@ function takeFromSearch(s: GameState, me: PlayerId): GameAction {
 function searchPayment(s: GameState, me: PlayerId): ResourceType[] | null {
   const player = s.players[me]
   const have = availableResources(player)
-  const total = Object.values(have).reduce((a, b) => a + b, 0)
-  if (total < 6) return null
+  if (totalOf(have) < 6) return null
   const pay: ResourceType[] = []
   for (let i = 0; i < searchCost(player); i++) {
     const r = ALL_RESOURCE_TYPES.reduce((a, b) => (have[b] * resourceWorth(player, a) > have[a] * resourceWorth(player, b) ? b : a))

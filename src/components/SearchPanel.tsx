@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import type { GameAction, StackSearch } from '../engine/types'
 import CardDetail from './CardDetail'
 import CardPicker from './CardPicker'
+import { toggleIndex } from './selection'
 import styles from './Panel.module.css'
 
 interface Props {
@@ -23,10 +24,6 @@ export default function SearchPanel({ search, contents, onAction }: Props) {
   // Show the top card first; indices still refer to `contents`.
   const order = contents.map((_, i) => i).reverse()
 
-  function toggle(i: number) {
-    setSelected(s => s.includes(i) ? s.filter(x => x !== i) : needed === 1 ? [i] : s.length < needed ? [...s, i] : s)
-  }
-
   return (
     <div className={styles.panel}>
       <div className={styles.title}>{t('game.search.title', { stack: t(`game.deckName.${search.deck}`) })}</div>
@@ -36,7 +33,7 @@ export default function SearchPanel({ search, contents, onAction }: Props) {
       <CardPicker
         items={order.map(i => ({ cardId: contents[i], index: i }))}
         selected={selected}
-        onToggle={toggle}
+        onToggle={i => setSelected(s => toggleIndex(s, i, needed))}
         topIndex={order[0]}
         onInspect={setInspecting}
       />

@@ -1,4 +1,4 @@
-import type { GameAction, PlayerId, ProjectedState } from '../engine/types'
+import type { GameAction, Language, PlayerId, ProjectedState } from '../engine/types'
 import type { ClientMessage, ServerMessage } from './protocol'
 
 export interface NetworkSession {
@@ -170,7 +170,7 @@ function handshake(
   })
 }
 
-export async function createSession(opts: { vpTarget: number; language: 'en' | 'de' }): Promise<NetworkSession> {
+export async function createSession(opts: { vpTarget: number; language: Language }): Promise<NetworkSession> {
   const { socket, message } = await handshake(
     { type: 'create_session', vpTarget: opts.vpTarget, language: opts.language },
     'session_created',

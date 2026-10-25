@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import type { GameAction, PlayerId, ProjectedState } from '../engine/types'
-import { DRAW_STACK_IDS } from '../engine/cards'
 import { setupChooser } from '../engine/engine'
+import StackChips from './StackChips'
 import styles from './Panel.module.css'
 
 interface Props {
@@ -28,19 +28,11 @@ export default function SetupPanel({ view, myId, onAction }: Props) {
       {chooser === myId && !view.search && (
         <>
           <div className={styles.hint}>{t('game.setup.pickHint')}</div>
-          <div className={styles.cards}>
-            {DRAW_STACK_IDS.map(d => (
-              <button
-                key={d}
-                className={styles.deckChip}
-                disabled={usedStacks.includes(d) || view.deckSizes[d] === 0}
-                onClick={() => onAction({ type: 'SEARCH_STACK', deck: d })}
-              >
-                <span>{t(`game.deckName.${d}`)}</span>
-                <span className={styles.deckCount}>{view.deckSizes[d]}</span>
-              </button>
-            ))}
-          </div>
+          <StackChips
+            counts={view.deckSizes}
+            disabled={d => usedStacks.includes(d) || view.deckSizes[d] === 0}
+            onPick={d => onAction({ type: 'SEARCH_STACK', deck: d })}
+          />
         </>
       )}
 

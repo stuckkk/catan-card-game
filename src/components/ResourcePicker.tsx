@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import type { ResourceType, Resources } from '../engine/types'
-import { RESOURCE_ORDER, RESOURCE_ICON } from './resourceMeta'
+import { ALL_RESOURCE_TYPES } from '../engine/board'
+import { RESOURCE_ICON } from './resourceMeta'
 import styles from './Panel.module.css'
 
 interface Props {
@@ -23,7 +24,7 @@ export default function ResourcePicker({ label, max, available, value, onChange 
     <div className={styles.section}>
       <span className={styles.label}>{label}</span>
       <div className={styles.row}>
-        {RESOURCE_ORDER.map(r => (
+        {ALL_RESOURCE_TYPES.map(r => (
           <button
             key={r}
             className={`${styles.resChip} ${picked(r) > 0 ? styles.selected : ''}`}

@@ -34,12 +34,14 @@
   text-align: center;
 }
 
+/* Rows of three (two rows for all six), a shorter last row centred. */
 .picker {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
   justify-content: center;
 }
+.picker > .chip { flex: 0 0 calc((100% - 16px) / 3); }
 
 .chip {
   display: flex;

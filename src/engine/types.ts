@@ -152,10 +152,12 @@ export interface DiceRoll {
   productionNumber: ProductionNumber
 }
 
+export type Language = 'en' | 'de'
+
 export interface GameConfig {
   vpTarget: number
   /** Language preference for the session */
-  language: 'en' | 'de'
+  language: Language
 }
 
 /** Shared supply of Development Cards (GAME_LOGIC.md §2). */

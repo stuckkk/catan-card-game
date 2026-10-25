@@ -6,6 +6,8 @@ import type { NetworkSession } from '../network/wsSession'
 import { sessionStore } from '../network/sessionStore'
 import { savePersisted } from '../network/persistence'
 import { createInitialState } from '../engine/engine'
+import type { Language } from '../engine/types'
+import type { ClientRole } from './useGameSession'
 import styles from './LobbyPage.module.css'
 
 type LobbyMode = 'idle' | 'hosting' | 'joining' | 'error'
@@ -46,7 +48,7 @@ export default function LobbyPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  function currentLanguage(): 'en' | 'de' {
+  function currentLanguage(): Language {
     return i18n.language.startsWith('de') ? 'de' : 'en'
   }
 
@@ -94,18 +96,12 @@ export default function LobbyPage() {
     }
   }
 
-  function handlePractice() {
+  /** No network session and no persistence: a hot-seat board to learn on (practice), or a game
+   *  against the computer in the other seat. */
+  function startLocalGame(role: Extract<ClientRole, 'practice' | 'computer'>) {
     const initialState = createInitialState({ vpTarget, language: currentLanguage() })
     sessionStore.set(null)
-    // No network session and no persistence — a solo hot-seat board to learn on.
-    navigate('/game', { state: { role: 'practice', initialGameState: initialState } })
-  }
-
-  function handleComputer() {
-    const initialState = createInitialState({ vpTarget, language: currentLanguage() })
-    sessionStore.set(null)
-    // Runs locally like Practice, with the computer in the other seat.
-    navigate('/game', { state: { role: 'computer', initialGameState: initialState } })
+    navigate('/game', { state: { role, initialGameState: initialState } })
   }
 
   // Phones offer their native share sheet (WhatsApp, Messages…); copying stays available.
@@ -175,8 +171,8 @@ export default function LobbyPage() {
 
             <div className={styles.divider}><span>{t('lobby.or')}</span></div>
 
-            <button className="secondary" onClick={handleComputer}>{t('lobby.computer')}</button>
-            <button className="secondary" onClick={handlePractice}>{t('lobby.practice')}</button>
+            <button className="secondary" onClick={() => startLocalGame('computer')}>{t('lobby.computer')}</button>
+            <button className="secondary" onClick={() => startLocalGame('practice')}>{t('lobby.practice')}</button>
           </div>
         )}
 

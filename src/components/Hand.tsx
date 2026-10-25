@@ -5,6 +5,7 @@ import CardDetail from './CardDetail'
 import ActionCardDialog from './ActionCardDialog'
 import type { GameAction, TurnPhase, Resources } from '../engine/types'
 import { COUNTER_CARD, getCard } from '../engine/cards'
+import { canAfford } from '../engine/board'
 import styles from './Hand.module.css'
 
 interface Props {
@@ -26,11 +27,7 @@ interface Props {
 }
 
 function canAffordCard(resources: Resources, cardId: string): boolean {
-  const def = getCard(cardId)
-  if (!def.cost) return true
-  return Object.entries(def.cost).every(([r, amount]) =>
-    resources[r as keyof Resources] >= (amount ?? 0)
-  )
+  return canAfford(resources, getCard(cardId).cost ?? {})
 }
 
 type ParamCard = 'alchemist' | 'caravan' | 'merchant'

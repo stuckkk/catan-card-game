@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { GameAction, ProductionNumber, ResourceType, Resources } from '../engine/types'
+import Modal from './Modal'
 import ResourcePicker from './ResourcePicker'
-import { RESOURCE_ORDER } from './resourceMeta'
+import { ALL_RESOURCE_TYPES } from '../engine/board'
 import styles from './Dialog.module.css'
 import panel from './Panel.module.css'
 
@@ -32,58 +33,56 @@ export default function ActionCardDialog({ cardId, myResources, opponentResource
   // take and the opponent has room for (the take frees room on their side).
   const takeable = { ...opponentResources }
   const givable = { ...myResources }
-  for (const r of RESOURCE_ORDER) {
+  for (const r of ALL_RESOURCE_TYPES) {
     const taken = first.filter(x => x === r).length
     takeable[r] = Math.min(opponentResources[r], myRoom[r])
     givable[r] = Math.min(myResources[r] + taken, opponentRoom[r] + taken)
   }
 
   return (
-    <div className={styles.backdrop} onClick={onClose}>
-      <div className={styles.sheet} onClick={e => e.stopPropagation()} role="dialog" aria-modal="true">
-        {cardId === 'alchemist' && (
-          <>
-            <div className={styles.title}>{t('game.alchemist.title')}</div>
-            <div className={panel.row}>
-              {([1, 2, 3, 4, 5, 6] as ProductionNumber[]).map(n => (
-                <button key={n} className={panel.deckChip} onClick={() => play({ productionNumber: n })}>{n}</button>
-              ))}
-            </div>
-          </>
-        )}
+    <Modal onClose={onClose}>
+      {cardId === 'alchemist' && (
+        <>
+          <div className={styles.title}>{t('game.alchemist.title')}</div>
+          <div className={panel.row}>
+            {([1, 2, 3, 4, 5, 6] as ProductionNumber[]).map(n => (
+              <button key={n} className={panel.deckChip} onClick={() => play({ productionNumber: n })}>{n}</button>
+            ))}
+          </div>
+        </>
+      )}
 
-        {cardId === 'caravan' && (
-          <>
-            <div className={styles.title}>{t('game.caravan.title')}</div>
-            <ResourcePicker label={t('game.caravan.give')} max={2} available={myResources} value={first} onChange={setFirst} />
-            <ResourcePicker label={t('game.caravan.receive')} max={first.length} value={second} onChange={setSecond} />
-          </>
-        )}
+      {cardId === 'caravan' && (
+        <>
+          <div className={styles.title}>{t('game.caravan.title')}</div>
+          <ResourcePicker label={t('game.caravan.give')} max={2} available={myResources} value={first} onChange={setFirst} />
+          <ResourcePicker label={t('game.caravan.receive')} max={first.length} value={second} onChange={setSecond} />
+        </>
+      )}
 
-        {cardId === 'merchant' && (
-          <>
-            <div className={styles.title}>{t('game.merchant.title')}</div>
-            <ResourcePicker label={t('game.merchant.take')} max={2} available={takeable} value={first}
-              onChange={v => { setFirst(v); setSecond([]) }} />
-            <ResourcePicker label={t('game.merchant.give')} max={1} available={givable} value={second} onChange={setSecond} />
-          </>
-        )}
+      {cardId === 'merchant' && (
+        <>
+          <div className={styles.title}>{t('game.merchant.title')}</div>
+          <ResourcePicker label={t('game.merchant.take')} max={2} available={takeable} value={first}
+            onChange={v => { setFirst(v); setSecond([]) }} />
+          <ResourcePicker label={t('game.merchant.give')} max={1} available={givable} value={second} onChange={setSecond} />
+        </>
+      )}
 
-        <div className={styles.actions}>
-          <button className="secondary" onClick={onClose}>{t('game.cancel')}</button>
-          {cardId !== 'alchemist' && (
-            <button
-              className="primary"
-              disabled={cardId === 'caravan'
-                ? first.length === 0 || second.length !== first.length
-                : first.length === 0 || second.length !== 1}
-              onClick={() => play(cardId === 'caravan' ? { give: first, receive: second } : { take: first, give: second })}
-            >
-              {t('game.confirm')}
-            </button>
-          )}
-        </div>
+      <div className={styles.actions}>
+        <button className="secondary" onClick={onClose}>{t('game.cancel')}</button>
+        {cardId !== 'alchemist' && (
+          <button
+            className="primary"
+            disabled={cardId === 'caravan'
+              ? first.length === 0 || second.length !== first.length
+              : first.length === 0 || second.length !== 1}
+            onClick={() => play(cardId === 'caravan' ? { give: first, receive: second } : { take: first, give: second })}
+          >
+            {t('game.confirm')}
+          </button>
+        )}
       </div>
-    </div>
+    </Modal>
   )
 }

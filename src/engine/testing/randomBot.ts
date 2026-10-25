@@ -1,8 +1,9 @@
 import { expect } from 'vitest'
-import { applyAction, availableResources, computePlayerStats, searchCost, setupChooser } from '../engine'
-import { ALL_DRAW_CARDS, COUNTER_CARD, DRAW_STACK_IDS, getCard, getRegion, isSpyTarget } from '../cards'
+import { applyAction, availableResources, computePlayerStats, nextActor, searchCost } from '../engine'
+import { ALL_DRAW_CARDS, COUNTER_CARD, DRAW_STACK_IDS, getCard, isSpyTarget } from '../cards'
+import { getRegion } from '../regions'
 import { ALL_RESOURCE_TYPES } from '../board'
-import type { GameAction, GameState, PlayerId, ResourceType } from '../types'
+import type { GameAction, GameState, PlayerId, PlayerState, ResourceType } from '../types'
 
 // Simple random bots for simulated games: they shake out soft-locks and broken invariants
 // across the full rule set, and are the baseline the computer opponent is measured against.
@@ -48,11 +49,10 @@ export function checkInvariants(s: GameState) {
   expect(s.regionStack.length).toBe(11 - 2 * (5 - s.supply.settlement))
 }
 
-/** The player who must act next. */
-export function actor(s: GameState): PlayerId {
-  if (s.search) return s.search.player
-  if (s.phase === 'setup') return setupChooser(s)!
-  return s.pendingChoices[0]?.player ?? s.activePlayer
+/** The cards above the hand limit, the first ones in hand, spread over the stacks. */
+function discardExcess(me: PlayerState): GameAction {
+  const excess = me.hand.length - computePlayerStats(me).handLimit
+  return { type: 'DISCARD_TO_LIMIT', discards: me.hand.slice(0, excess).map((cardId, i) => ({ cardId, toDeck: DRAW_STACK_IDS[i % 5] })) }
 }
 
 function pay(s: GameState, p: PlayerId, n: number): ResourceType[] {
@@ -90,7 +90,7 @@ function actionPhaseMoves(s: GameState, p: PlayerId, rng: () => number): GameAct
 }
 
 export function step(s: GameState, rng: () => number): GameState {
-  const p = actor(s)
+  const p = nextActor(s)
   const me = s.players[p]
   const tryAll = (moves: GameAction[]) => {
     for (const m of moves) {
@@ -154,13 +154,7 @@ export function step(s: GameState, rng: () => number): GameState {
     const toDeck = DRAW_STACK_IDS[Math.floor(rng() * 5)]
     return applyAction(s, p, { type: 'CHOOSE_HAND_CARDS', cardIds: hand.slice(0, 2), toDeck })
   }
-  if (choice?.kind === 'discard') {
-    const excess = me.hand.length - computePlayerStats(me).handLimit
-    return applyAction(s, p, {
-      type: 'DISCARD_TO_LIMIT',
-      discards: me.hand.slice(0, excess).map((cardId, i) => ({ cardId, toDeck: DRAW_STACK_IDS[i % 5] })),
-    })
-  }
+  if (choice?.kind === 'discard') return applyAction(s, p, discardExcess(me))
   switch (s.phase) {
     case 'roll': {
       if (me.hand.includes('alchemist') && rng() < 0.5) {
@@ -177,14 +171,9 @@ export function step(s: GameState, rng: () => number): GameState {
       return applyAction(s, p, { type: 'END_ACTION_PHASE' })
     }
     case 'draw': {
-      const limit = computePlayerStats(me).handLimit
-      if (me.hand.length > limit) {
-        return applyAction(s, p, {
-          type: 'DISCARD_TO_LIMIT',
-          discards: me.hand.slice(0, me.hand.length - limit).map((cardId, i) => ({ cardId, toDeck: DRAW_STACK_IDS[i % 5] })),
-        })
-      }
-      const deck = DRAW_STACK_IDS.filter(d => s.decks[d].length > 0)[Math.floor(rng() * 5) % Math.max(1, DRAW_STACK_IDS.filter(d => s.decks[d].length > 0).length)]
+      if (me.hand.length > computePlayerStats(me).handLimit) return applyAction(s, p, discardExcess(me))
+      const open = DRAW_STACK_IDS.filter(d => s.decks[d].length > 0)
+      const deck = open[Math.floor(rng() * 5) % Math.max(1, open.length)]
       if (rng() < 0.3) {
         const next = applyAction(s, p, { type: 'SEARCH_STACK', deck, payWith: pay(s, p, searchCost(me)) })
         if (next !== s) return next

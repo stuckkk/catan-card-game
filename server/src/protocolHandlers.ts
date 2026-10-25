@@ -1,5 +1,6 @@
 import type { WebSocket } from 'ws'
 import { projectStateFor } from '../../src/engine/engine'
+import { opponent } from '../../src/engine/board'
 import type { PlayerId } from '../../src/engine/types'
 import type { ClientMessage, ServerErrorCode, ServerMessage } from '../../src/network/protocol'
 import type { SessionManager } from './sessionManager'
@@ -16,10 +17,6 @@ const ERROR_MESSAGES: Record<ServerErrorCode, string> = {
   ROOM_FULL: 'That session already has two players.',
   INVALID_TOKEN: 'Reconnect token was not recognized.',
   MALFORMED_MESSAGE: 'Malformed message.',
-}
-
-function opponentOf(playerId: PlayerId): PlayerId {
-  return playerId === 'host' ? 'guest' : 'host'
 }
 
 function sendState(manager: SessionManager, roomId: string, viewer: PlayerId, socket: WebSocket): void {
@@ -39,7 +36,7 @@ function broadcastState(manager: SessionManager, roomId: string): void {
 
 export function notifyPeer(manager: SessionManager, roomId: string, playerId: PlayerId, message: ServerMessage): void {
   const session = manager.getSession(roomId)
-  const opponentSocket = session?.players[opponentOf(playerId)]?.socket
+  const opponentSocket = session?.players[opponent(playerId)]?.socket
   if (opponentSocket) send(opponentSocket, message)
 }
 

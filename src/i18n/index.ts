@@ -2,11 +2,12 @@ import i18n from 'i18next'
 import { initReactI18next } from 'react-i18next'
 import en from './en.json'
 import de from './de.json'
+import type { Language } from '../engine/types'
 
 // The player's last choice survives reloads and later visits (localStorage, per browser).
 const STORAGE_KEY = 'catan-duel-language'
 
-function storedLanguage(): 'en' | 'de' | null {
+function storedLanguage(): Language | null {
   try {
     const lng = localStorage.getItem(STORAGE_KEY)
     return lng === 'en' || lng === 'de' ? lng : null

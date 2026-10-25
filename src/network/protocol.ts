@@ -1,8 +1,8 @@
-import type { GameAction, PlayerId, ProjectedState } from '../engine/types'
+import type { GameAction, Language, PlayerId, ProjectedState } from '../engine/types'
 
 /** Messages a client sends to the server over the WebSocket connection. */
 export type ClientMessage =
-  | { type: 'create_session'; vpTarget: number; language: 'en' | 'de' }
+  | { type: 'create_session'; vpTarget: number; language: Language }
   | { type: 'join_session'; roomId: string }
   | { type: 'reconnect'; roomId: string; token: string }
   | { type: 'action'; action: GameAction }

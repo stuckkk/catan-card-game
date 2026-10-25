@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { getCard } from '../engine/cards'
-import type { ResourceType, Resources, SymbolType } from '../engine/types'
+import { ALL_RESOURCE_TYPES } from '../engine/board'
+import type { Resources, SymbolType } from '../engine/types'
 import { RESOURCE_ICON } from './resourceMeta'
 import styles from './CardView.module.css'
 
@@ -25,7 +26,7 @@ interface Props {
 function CostBadge({ cost }: { cost: Partial<Resources> }) {
   return (
     <div className={styles.cost}>
-      {(Object.keys(cost) as ResourceType[]).filter(r => (cost[r] ?? 0) > 0).map(r => (
+      {ALL_RESOURCE_TYPES.filter(r => (cost[r] ?? 0) > 0).map(r => (
         <span key={r} className={styles.costItem}>{cost[r]}{RESOURCE_ICON[r]}</span>
       ))}
     </div>

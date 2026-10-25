@@ -1,21 +1,62 @@
 import { EMPTY_RESOURCES } from './types'
-import type { CentralSlot, PlayerState, ResourceType, Resources } from './types'
+import type { CentralSlot, GameState, PlayerId, PlayerState, ResourceType, Resources } from './types'
 import { getRegion } from './regions'
+
+// ─── Players & Lists ───────────────────────────────────────────────────────────
+
+export function opponent(player: PlayerId): PlayerId {
+  return player === 'host' ? 'guest' : 'host'
+}
+
+export function withPlayer(state: GameState, id: PlayerId, player: PlayerState): GameState {
+  return { ...state, players: { ...state.players, [id]: player } }
+}
+
+/** Apply `fn` to both players. */
+export function mapPlayers(state: GameState, fn: (p: PlayerState) => PlayerState): GameState {
+  return { ...state, players: { host: fn(state.players.host), guest: fn(state.players.guest) } }
+}
+
+/** Return a copy of `list` with the first occurrence of `item` removed. */
+export function removeFirst(list: string[], item: string): string[] {
+  const idx = list.indexOf(item)
+  if (idx === -1) return [...list]
+  const copy = [...list]
+  copy.splice(idx, 1)
+  return copy
+}
+
+/** Remove every item of `items` (as a multiset) from `list`; null if any is missing. */
+export function removeAll(list: string[], items: string[]): string[] | null {
+  let rest = [...list]
+  for (const item of items) {
+    if (!rest.includes(item)) return null
+    rest = removeFirst(rest, item)
+  }
+  return rest
+}
 
 // ─── Region-based Resources ────────────────────────────────────────────────────
 // Resources are stored directly on a player's Regions (0–3 each). These helpers treat
 // the Regions as the single source of truth for spendable resources. Shared by the
 // engine and by card custom effects (kept free of a cards.ts import to avoid a cycle).
 
+/** In rulebook order (Forest, Pasture, Hills, Mountains, Fields, Gold Field), which is also the order
+ *  the UI shows resources in. */
 export const ALL_RESOURCE_TYPES = Object.keys(EMPTY_RESOURCES) as ResourceType[]
 
 /** A player's spendable resources, summed from region storage by resource type. */
-export function availableResources(player: PlayerState): Resources {
+export function availableResources(player: Pick<PlayerState, 'regions'>): Resources {
   const r: Resources = { ...EMPTY_RESOURCES }
   for (const region of player.regions) {
     r[getRegion(region.regionId).resourceType] += region.storedResources
   }
   return r
+}
+
+/** How many resources there are in total. */
+export function totalOf(r: Partial<Resources>): number {
+  return Object.values(r).reduce((sum, n) => sum + (n ?? 0), 0)
 }
 
 export function canAfford(resources: Resources, cost: Partial<Resources>): boolean {
@@ -30,14 +71,14 @@ export function countResources(list: ResourceType[]): Partial<Resources> {
 }
 
 /** Free capacity (up to 3 per region) across a player's regions of one type. */
-export function roomFor(player: PlayerState, type: ResourceType): number {
+export function roomFor(player: Pick<PlayerState, 'regions'>, type: ResourceType): number {
   return player.regions
     .filter(r => getRegion(r.regionId).resourceType === type)
     .reduce((sum, r) => sum + (3 - r.storedResources), 0)
 }
 
 /** Resource types `from` holds and `to` has room for: what `to` may steal (Brigands). */
-export function stealableTypes(from: PlayerState, to: PlayerState): ResourceType[] {
+export function stealableTypes(from: Pick<PlayerState, 'regions'>, to: Pick<PlayerState, 'regions'>): ResourceType[] {
   const held = availableResources(from)
   return ALL_RESOURCE_TYPES.filter(r => held[r] > 0 && roomFor(to, r) > 0)
 }
@@ -109,12 +150,12 @@ export function isSettlementLike(slot: CentralSlot): boolean {
   return slot.kind === 'settlement' || slot.kind === 'city'
 }
 
-export function siteSide(slot: CentralSlot, expansionSlotIndex: number): 'above' | 'below' {
+function siteSide(slot: CentralSlot, expansionSlotIndex: number): 'above' | 'below' {
   return expansionSlotIndex < slot.expansionSlots.length / 2 ? 'above' : 'below'
 }
 
 /** The 2 Regions a Building Site borders: its side's left and right corners. */
-export function siteNeighbours(slot: CentralSlot, expansionSlotIndex: number): number[] {
+function siteNeighbours(slot: CentralSlot, expansionSlotIndex: number): number[] {
   const [topLeft, bottomLeft, topRight, bottomRight] = slot.regionIndices
   return siteSide(slot, expansionSlotIndex) === 'above' ? [topLeft, topRight] : [bottomLeft, bottomRight]
 }
@@ -138,15 +179,22 @@ export function regionsBorderingCards(
 /** Take a placed expansion off its Building Site and put it back into the owner's hand. */
 export function returnToHand(player: PlayerState, slotIndex: number, expansionSlotIndex: number): PlayerState {
   const cardId = player.principality[slotIndex].expansionSlots[expansionSlotIndex]!
-  const principality = player.principality.map((s, i) => {
+  return {
+    ...player,
+    principality: withSite(player.principality, slotIndex, expansionSlotIndex, null),
+    playedCards: removeFirst(player.playedCards, cardId),
+    hand: [...player.hand, cardId],
+  }
+}
+
+/** The principality with one Building Site holding `cardId` (null: emptied). */
+export function withSite(principality: CentralSlot[], slotIndex: number, expansionSlotIndex: number, cardId: string | null): CentralSlot[] {
+  return principality.map((s, i) => {
     if (i !== slotIndex) return s
     const slots = [...s.expansionSlots]
-    slots[expansionSlotIndex] = null
+    slots[expansionSlotIndex] = cardId
     return { ...s, expansionSlots: slots }
   })
-  const played = [...player.playedCards]
-  played.splice(played.indexOf(cardId), 1)
-  return { ...player, principality, playedCards: played, hand: [...player.hand, cardId] }
 }
 
 /** All region indices that border one of the player's Cities (each listed once). */
