@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { DrawStackId, GameAction } from '../engine/types'
-import { DRAW_STACK_IDS } from '../engine/cards'
 import CardPicker from './CardPicker'
+import { toggleIndex } from './selection'
+import StackChips from './StackChips'
 import styles from './Panel.module.css'
 
 interface Props {
@@ -25,17 +26,11 @@ export default function DiscardPanel({ hand, handLimit, onAction }: Props) {
       <CardPicker
         items={hand.map((cardId, index) => ({ cardId, index }))}
         selected={selected}
-        onToggle={i => setSelected(s => s.includes(i) ? s.filter(x => x !== i) : s.length < excess ? [...s, i] : s)}
+        onToggle={i => setSelected(s => toggleIndex(s, i, excess))}
       />
       <div className={styles.section}>
         <span className={styles.label}>{t('game.draw.discardTo')}</span>
-        <div className={styles.cards}>
-          {DRAW_STACK_IDS.map(d => (
-            <button key={d} className={`${styles.deckChip} ${toDeck === d ? styles.selected : ''}`} onClick={() => setToDeck(d)}>
-              {t(`game.deckName.${d}`)}
-            </button>
-          ))}
-        </div>
+        <StackChips selected={toDeck} onPick={setToDeck} />
       </div>
       <button
         className="primary"

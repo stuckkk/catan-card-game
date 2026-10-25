@@ -61,7 +61,8 @@
 .tradeBlock { display: flex; flex-direction: column; gap: 4px; }
 .blockLabel { font-size: 13px; color: var(--color-text-muted); }
 
-.steppers { display: flex; gap: 6px; flex-wrap: wrap; }
+/* Two rows of three. */
+.steppers { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
 
 .stepper {
   display: flex;

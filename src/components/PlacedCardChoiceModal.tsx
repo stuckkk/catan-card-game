@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { CentralSlot, GameAction, PendingPlacedCardChoice } from '../engine/types'
 import CardPicker from './CardPicker'
+import Modal from './Modal'
 import dialog from './Dialog.module.css'
 
 interface Props {
@@ -22,20 +23,18 @@ export default function PlacedCardChoiceModal({ choice, ownerPrincipality, onAct
   }))
 
   return (
-    <div className={dialog.backdrop} role="dialog" aria-modal="true">
-      <div className={dialog.sheet}>
-        <div className={dialog.title}>{t(`game.${choice.reason}.title`)}</div>
-        <CardPicker items={items} selected={selected === null ? [] : [selected]} onToggle={i => setSelected(s => s === i ? null : i)} />
-        <div className={dialog.actions}>
-          <button
-            className="primary"
-            disabled={selected === null}
-            onClick={() => selected !== null && onAction({ type: 'CHOOSE_PLACED_CARD', ...choice.options[selected] })}
-          >
-            {t(`game.${choice.reason}.confirm`)}
-          </button>
-        </div>
+    <Modal>
+      <div className={dialog.title}>{t(`game.${choice.reason}.title`)}</div>
+      <CardPicker items={items} selected={selected === null ? [] : [selected]} onToggle={i => setSelected(s => s === i ? null : i)} />
+      <div className={dialog.actions}>
+        <button
+          className="primary"
+          disabled={selected === null}
+          onClick={() => selected !== null && onAction({ type: 'CHOOSE_PLACED_CARD', ...choice.options[selected] })}
+        >
+          {t(`game.${choice.reason}.confirm`)}
+        </button>
       </div>
-    </div>
+    </Modal>
   )
 }

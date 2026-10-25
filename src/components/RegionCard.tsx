@@ -1,17 +1,8 @@
 import { useTranslation } from 'react-i18next'
-import { getRegion } from '../engine/cards'
+import { getRegion } from '../engine/regions'
 import type { RegionState } from '../engine/types'
-import { RESOURCE_ICON } from './resourceMeta'
+import { RESOURCE_COLOR, RESOURCE_ICON } from './resourceMeta'
 import styles from './RegionCard.module.css'
-
-const RESOURCE_COLOR: Record<string, string> = {
-  lumber: 'var(--color-lumber)',
-  wool: 'var(--color-wool)',
-  gold: 'var(--color-gold)',
-  brick: 'var(--color-brick)',
-  ore: 'var(--color-ore)',
-  grain: 'var(--color-grain)',
-}
 
 interface Props {
   region: RegionState

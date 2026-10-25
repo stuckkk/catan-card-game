@@ -12,23 +12,16 @@
 import { readFileSync, writeFileSync } from 'node:fs'
 import { createInterface } from 'node:readline'
 import {
-  applyAction, applyRoll, resolveAttackRoll, availableResources, computePlayerStats, computeVP, projectStateFor, setupChooser,
+  applyAction, applyRoll, resolveAttackRoll, availableResources, computePlayerStats, computeVP, projectStateFor, nextActor,
 } from '../../../src/engine/engine'
 import type { DiceRoll, GameAction, GameState, PlayerId } from '../../../src/engine/types'
 
 let state: GameState = JSON.parse(readFileSync(process.argv[2], 'utf8'))
 let rejected = 0
 
-/** The seat that has to act next (same rule as practice mode's hot seat). */
-function actor(s: GameState): PlayerId {
-  if (s.search) return s.search.player
-  if (s.phase === 'setup') return setupChooser(s) ?? s.setup.firstPlayer
-  return s.pendingChoices[0]?.player ?? s.activePlayer
-}
-
 function summary(s: GameState): string {
   const lines = [
-    `turn ${s.turn} · active ${s.activePlayer} · phase ${s.phase} · to act: ${actor(s)}${s.winner ? ` · WINNER ${s.winner}` : ''}`,
+    `turn ${s.turn} · active ${s.activePlayer} · phase ${s.phase} · to act: ${nextActor(s)}${s.winner ? ` · WINNER ${s.winner}` : ''}`,
   ]
   if (s.pendingChoices.length) lines.push(`pending: ${s.pendingChoices.map(c => JSON.stringify(c)).join(' | ')}`)
   if (s.search) lines.push(`search: ${JSON.stringify(s.search)} contents(top last): ${s.decks[s.search.deck].join(',')}`)
@@ -63,7 +56,7 @@ function run(line: string): void {
   } else if (cmd === 'die') {
     state = resolveAttackRoll(state, Number(arg))
   } else if (cmd === 'host' || cmd === 'guest' || cmd === 'auto') {
-    const player = cmd === 'auto' ? actor(state) : cmd
+    const player = cmd === 'auto' ? nextActor(state) : cmd
     state = applyAction(state, player, JSON.parse(arg) as GameAction)
   } else {
     throw new Error(`unknown command: ${line}`)

@@ -1,18 +1,14 @@
 import type {
-  CardDefinition, DeclarativeEffect, ExpansionColor, ExpansionKind, GameState, PlayerId, PlayerState,
+  CardDefinition, DeclarativeEffect, ExpansionColor, ExpansionKind, PlayerId, PlayerState,
   PendingChoice, Resources, ResourceType, DrawStackId, ProductionNumber, SiteRef,
 } from './types'
 import {
   ALL_RESOURCE_TYPES, availableResources, canAfford, countResources, roomFor, stealableTypes,
-  spendFromRegions, addToRegions, shuffle, regionsBorderingCards, cityRegionIndices,
+  spendFromRegions, addToRegions, shuffle, regionsBorderingCards, cityRegionIndices, opponent, mapPlayers,
 } from './board'
-
-export { REGION_DEFINITIONS, getRegion } from './regions'
 
 // Card catalogue from the official rulebook's almanac (GAME_LOGIC.md §10).
 // Costs were read from the card icons and confirmed against the physical cards.
-
-const opponentOf = (p: PlayerId): PlayerId => (p === 'host' ? 'guest' : 'host')
 
 /** i18n key stem from a kebab-case id: 'bath-house' → 'cards.bathHouse'. */
 function keyOf(id: string): string {
@@ -131,7 +127,7 @@ export const MERCHANT = action('merchant', (state, player, params) => {
   const give = params.give ?? []
   if (take.length < 1 || take.length > 2 || give.length !== 1) return null
   if (![...take, ...give].every(r => ALL_RESOURCE_TYPES.includes(r))) return null
-  const opp = opponentOf(player)
+  const opp = opponent(player)
   const taken = countResources(take)
   if (!canAfford(availableResources(state.players[opp]), taken)) return null
   if ((Object.entries(taken) as [ResourceType, number][]).some(([r, n]) => roomFor(state.players[player], r) < n)) return null
@@ -155,7 +151,9 @@ export const SCOUT = action('scout', () => null)
 /** Whether an attack card has something to hit (DE p.11: only playable if its action can be
  *  carried out): a Knight (Black Knight), a Building (Arsonist), or a resource of the defender's
  *  that the attacker has room for (Brigands). */
-export function hasAttackTarget(cardId: string, attacker: PlayerState, defender: PlayerState): boolean {
+export function hasAttackTarget(
+  cardId: string, attacker: Pick<PlayerState, 'regions'>, defender: Pick<PlayerState, 'principality' | 'regions'>,
+): boolean {
   switch (cardId) {
     case 'black-knight': return knightSites(defender).length > 0
     case 'arsonist': return buildingSites(defender).length > 0
@@ -167,7 +165,7 @@ export function hasAttackTarget(cardId: string, attacker: PlayerState, defender:
 /** Attack: only with a target. The opponent may answer with the counter card, then you roll
  *  (the engine resolves the duel: ANSWER_ATTACK, ROLL_ATTACK). */
 const attack = (id: string) => action(id, (state, player) => {
-  const defender = opponentOf(player)
+  const defender = opponent(player)
   if (!hasAttackTarget(id, state.players[player], state.players[defender])) return null
   return {
     ...state,
@@ -189,7 +187,7 @@ export const COUNTER_CARD: Record<string, string> = { 'black-knight': HERB_WOMAN
 /** The opponent shows their hand; the Spy takes 1 Unit or Action card from it (CHOOSE_HAND_CARDS).
  *  An empty hand has nothing to show: the Spy is used up. */
 export const SPY = action('spy', (state, player) => {
-  const owner = opponentOf(player)
+  const owner = opponent(player)
   if (state.players[owner].hand.length === 0) return state
   return { ...state, pendingChoices: [...state.pendingChoices, { kind: 'handCard', player, owner, reason: 'spy' }] }
 })
@@ -205,11 +203,9 @@ export function isSpyTarget(cardId: string): boolean {
 const event = (id: string, customEffect?: CardDefinition['customEffect']) =>
   card(`event-${id}`, { category: 'event', effects: [], customEffect })
 
-const hasEffect = (cardId: string, type: DeclarativeEffect['type']) =>
-  getCard(cardId).effects.some(e => e.type === type)
-
-function mapPlayers(state: GameState, fn: (p: GameState['players']['host']) => GameState['players']['host']): GameState {
-  return { ...state, players: { host: fn(state.players.host), guest: fn(state.players.guest) } }
+/** Whether a card has an effect of this type. */
+export function hasEffect(cardId: string, type: DeclarativeEffect['type']): boolean {
+  return getCard(cardId).effects.some(e => e.type === type)
 }
 
 /** Every Region bordering a City loses 1 (once), unless protected by an Aqueduct (all
@@ -233,7 +229,7 @@ export const EVENT_PRODUCTIVE_YEAR = event('productive-year', state => mapPlayer
 
 /** Each player picks 1 resource per Abbey and Library they own; the roller picks first. */
 export const EVENT_PROGRESS = event('progress', (state, roller) => {
-  const order = [roller, opponentOf(roller)]
+  const order = [roller, opponent(roller)]
   const choices = order.flatMap(player => {
     const n = state.players[player].playedCards.filter(id => id === ABBEY.id || id === LIBRARY.id).length
     return Array.from({ length: n }, () => ({ kind: 'resource' as const, player, reason: 'progress' as const, options: ALL_RESOURCE_TYPES, takeFrom: null }))
@@ -248,10 +244,10 @@ export const EVENT_YEAR_END = event('year-end', state => ({ ...state, decks: { .
  *  units in a City with a Church are safe. Then both discard down to their hand limit at once. */
 export const EVENT_CIVIL_WAR = event('civil-war', (state, roller) => {
   const pick = (player: PlayerId): PendingChoice => {
-    const owner = opponentOf(player)
+    const owner = opponent(player)
     return { kind: 'placedCard', player, owner, reason: 'civilWar', options: civilWarTargets(state.players[owner]) }
   }
-  const order = [roller, opponentOf(roller)]
+  const order = [roller, opponent(roller)]
   return {
     ...state,
     pendingChoices: [
@@ -276,18 +272,18 @@ function civilWarTargets(player: PlayerState): SiteRef[] {
 }
 
 /** Building Sites holding a card of the given kind. */
-function sitesOf(player: PlayerState, kind: ExpansionKind): SiteRef[] {
+function sitesOf(player: Pick<PlayerState, 'principality'>, kind: ExpansionKind): SiteRef[] {
   return player.principality.flatMap((slot, slotIndex) => slot.expansionSlots.flatMap((id, expansionSlotIndex) =>
     id && getCard(id).expansionKind === kind ? [{ slotIndex, expansionSlotIndex }] : []))
 }
 
 /** Building Sites holding a Knight (the Black Knight may hit any of them). */
-export function knightSites(player: PlayerState): SiteRef[] {
+export function knightSites(player: Pick<PlayerState, 'principality'>): SiteRef[] {
   return sitesOf(player, 'knight')
 }
 
 /** Building Sites holding a Building, i.e. anything but a Knight or Fleet (the Arsonist may hit any of them). */
-export function buildingSites(player: PlayerState): SiteRef[] {
+export function buildingSites(player: Pick<PlayerState, 'principality'>): SiteRef[] {
   return sitesOf(player, 'building')
 }
 

@@ -1,6 +1,6 @@
 import type { WebSocket } from 'ws'
 import { applyAction as applyEngineAction, createInitialState } from '../../src/engine/engine'
-import type { GameAction, GameState, PlayerId } from '../../src/engine/types'
+import type { GameAction, GameState, Language, PlayerId } from '../../src/engine/types'
 import {
   DEFAULT_IDLE_TIMEOUT_MS, generateRoomId, generateToken,
   type Session,
@@ -30,7 +30,7 @@ export class SessionManager {
 
   constructor(private readonly idleTimeoutMs: number = DEFAULT_IDLE_TIMEOUT_MS) {}
 
-  createSession(vpTarget: number, language: 'en' | 'de', socket: WebSocket): CreateSessionResult {
+  createSession(vpTarget: number, language: Language, socket: WebSocket): CreateSessionResult {
     let roomId = generateRoomId()
     while (this.sessions.has(roomId)) roomId = generateRoomId()
 

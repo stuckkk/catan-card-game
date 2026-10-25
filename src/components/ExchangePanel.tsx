@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { DeckId, DrawStackId, GameAction, ResourceType, Resources } from '../engine/types'
-import { DRAW_STACK_IDS } from '../engine/cards'
-import ResourcePicker from './ResourcePicker'
+import { totalOf } from '../engine/board'
 import CardPicker from './CardPicker'
+import PaidSearch from './PaidSearch'
+import StackChips from './StackChips'
 import styles from './Panel.module.css'
 
 interface Props {
@@ -25,7 +26,6 @@ export default function ExchangePanel({ hand, deckSizes, resources, searchCost, 
 
   const cardId = cardIndex != null ? hand[cardIndex] : null
   const ready = cardId != null && deck != null
-  const totalResources = Object.values(resources).reduce((a, b) => a + b, 0)
 
   return (
     <div className={styles.panel}>
@@ -43,42 +43,26 @@ export default function ExchangePanel({ hand, deckSizes, resources, searchCost, 
 
       <div className={styles.section}>
         <span className={styles.label}>{t('game.exchange.stackLabel')}</span>
-        <div className={styles.cards}>
-          {DRAW_STACK_IDS.map(d => (
-            <button key={d} className={`${styles.deckChip} ${deck === d ? styles.selected : ''}`} onClick={() => setDeck(p => (p === d ? null : d))}>
-              <span>{t(`game.deckName.${d}`)}</span>
-              <span className={styles.deckCount}>{deckSizes[d]}</span>
-            </button>
-          ))}
-        </div>
+        <StackChips selected={deck} counts={deckSizes} onPick={d => setDeck(p => (p === d ? null : d))} />
       </div>
 
       <div className={styles.actions}>
         <button className="primary" disabled={!ready} onClick={() => ready && onAction({ type: 'EXCHANGE', cardId, deck })}>
           {t('game.exchange.top')}
         </button>
-        <button className="secondary" disabled={!ready || totalResources < searchCost} onClick={() => setSearching(s => !s)}>
+        <button className="secondary" disabled={!ready || totalOf(resources) < searchCost} onClick={() => setSearching(s => !s)}>
           {t('game.exchange.search', { cost: searchCost })}
         </button>
       </div>
 
       {searching && ready && (
-        <div className={styles.paid}>
-          <ResourcePicker
-            label={t('game.pay.label', { count: searchCost })}
-            max={searchCost}
-            available={resources}
-            value={payWith}
-            onChange={setPayWith}
-          />
-          <button
-            className="primary"
-            disabled={payWith.length !== searchCost}
-            onClick={() => onAction({ type: 'EXCHANGE', cardId, deck, payWith })}
-          >
-            {t('game.pay.confirm')}
-          </button>
-        </div>
+        <PaidSearch
+          cost={searchCost}
+          available={resources}
+          value={payWith}
+          onChange={setPayWith}
+          onConfirm={() => onAction({ type: 'EXCHANGE', cardId, deck, payWith })}
+        />
       )}
     </div>
   )

@@ -1,11 +1,10 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { Resources, ResourceType, GameAction, PlayerState } from '../engine/types'
+import type { Resources, ResourceType, GameAction } from '../engine/types'
 import { getTradeRate } from '../engine/engine'
+import { ALL_RESOURCE_TYPES } from '../engine/board'
 import { RESOURCE_ICON } from './resourceMeta'
 import styles from './TradePanel.module.css'
-
-const ALL_RESOURCES: ResourceType[] = ['lumber', 'wool', 'gold', 'brick', 'ore', 'grain']
 
 interface Props {
   resources: Resources
@@ -20,7 +19,7 @@ export default function TradePanel({ resources, playedCards, onAction }: Props) 
   const [give, setGive] = useState<ResourceType | null>(null)
   const [receive, setReceive] = useState<ResourceType | null>(null)
 
-  const rate = give ? getTradeRate({ playedCards } as PlayerState, give) : 3
+  const rate = give ? getTradeRate({ playedCards }, give) : 3
   const canTrade = give !== null && receive !== null && give !== receive && resources[give] >= rate
 
   function doTrade() {
@@ -37,17 +36,17 @@ export default function TradePanel({ resources, playedCards, onAction }: Props) 
       <div className={styles.row}>
         <span className={styles.label}>{t('game.tradeGive')}</span>
         <div className={styles.picker}>
-          {ALL_RESOURCES.map(r => (
+          {ALL_RESOURCE_TYPES.map(r => (
             <button
               key={r}
               className={`${styles.chip} ${styles.giveChip} ${give === r ? styles.selected : ''}`}
-              disabled={resources[r] < getTradeRate({ playedCards } as PlayerState, r)}
+              disabled={resources[r] < getTradeRate({ playedCards }, r)}
               onClick={() => setGive(g => (g === r ? null : r))}
               title={t(`resources.${r}`)}
             >
               <span className={styles.icon}>{RESOURCE_ICON[r]}</span>
               <span className={styles.count}>{resources[r]}</span>
-              <span className={styles.chipRate}>{t('game.tradeRate', { rate: getTradeRate({ playedCards } as PlayerState, r) })}</span>
+              <span className={styles.chipRate}>{t('game.tradeRate', { rate: getTradeRate({ playedCards }, r) })}</span>
             </button>
           ))}
         </div>
@@ -56,7 +55,7 @@ export default function TradePanel({ resources, playedCards, onAction }: Props) 
       <div className={styles.row}>
         <span className={styles.label}>{t('game.tradeReceive')}</span>
         <div className={styles.picker}>
-          {ALL_RESOURCES.map(r => (
+          {ALL_RESOURCE_TYPES.map(r => (
             <button
               key={r}
               className={`${styles.chip} ${receive === r ? styles.selected : ''} ${give === r ? styles.disabledChip : ''}`}

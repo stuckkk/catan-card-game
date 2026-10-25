@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
-import type { PlayerId, PlayerState, ProjectedState } from '../engine/types'
+import type { PlayerId, ProjectedState } from '../engine/types'
 import { availableResources, computePlayerStats, computeVP, tokenHolders } from '../engine/engine'
+import { opponent } from '../engine/board'
 import ResourceBar from './ResourceBar'
 import TokenChip from './TokenChip'
 import styles from './OpponentSummary.module.css'
@@ -16,11 +17,11 @@ interface Props {
  *  which is public, so it works off the projected view. */
 export default function OpponentSummary({ expanded, onToggle, myId, view }: Props) {
   const { t } = useTranslation()
-  const oppId: PlayerId = myId === 'host' ? 'guest' : 'host'
+  const oppId = opponent(myId)
   const opp = view.players[oppId]
   const oppHandSize = typeof opp.hand === 'number' ? opp.hand : opp.hand.length
-  const stats = computePlayerStats(opp as unknown as PlayerState)
-  const resources = availableResources(opp as unknown as PlayerState)
+  const stats = computePlayerStats(opp)
+  const resources = availableResources(opp)
   const tokens = tokenHolders(view)
 
   return (

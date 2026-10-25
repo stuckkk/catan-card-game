@@ -1,7 +1,8 @@
 import { useTranslation } from 'react-i18next'
 import { getRegion } from '../engine/regions'
 import type { PendingRegionChoice, RegionState, ResourceType } from '../engine/types'
-import { RESOURCE_ICON, RESOURCE_ORDER } from './resourceMeta'
+import { ALL_RESOURCE_TYPES } from '../engine/board'
+import { RESOURCE_ICON } from './resourceMeta'
 import styles from './RegionChoiceBar.module.css'
 
 interface Props {
@@ -16,7 +17,7 @@ interface Props {
  *  far, with Reset and Confirm (once every resource has its Region). */
 export default function RegionChoiceBar({ choice, regions, picks, onReset, onConfirm }: Props) {
   const { t } = useTranslation()
-  const types = RESOURCE_ORDER.filter(r => choice.changes[r])
+  const types = ALL_RESOURCE_TYPES.filter(r => choice.changes[r])
   const done = (r: ResourceType) => picks.filter(i => getRegion(regions[i].regionId).resourceType === r).length
   const complete = types.every(r => done(r) === Math.abs(choice.changes[r]!))
   return (

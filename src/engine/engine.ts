@@ -1,44 +1,22 @@
 import type {
   GameState, PlayerState, PlayerId, ResourceType, Resources, GameAction, ProjectedState,
-  DiceRoll, EventSymbol, ProductionNumber, DeckId, DrawStackId, CentralSlot, PlayerStats,
+  DiceRoll, EventSymbol, ProductionNumber, DeckId, DrawStackId, CentralSlot, PlayerStats, Supply, GameConfig,
   ActionCardParams, DeclarativeEffect, GameEvent, PendingChoice, PendingMasterBuilderChoice, PendingPlacedCardChoice, SiteRef,
 } from './types'
 import {
-  getCard, CARD_REGISTRY, ALL_DRAW_CARDS, DRAW_STACK_IDS, DEFAULT_EVENT_DECK, SCOUT, COUNTER_CARD, knightSites, buildingSites,
-  EVENT_CONFLICT, isSpyTarget,
+  getCard, CARD_REGISTRY, ALL_DRAW_CARDS, DRAW_STACK_IDS, DEFAULT_EVENT_DECK, ROAD, SETTLEMENT, CITY, SCOUT, COUNTER_CARD,
+  knightSites, buildingSites, EVENT_CONFLICT, isSpyTarget, hasEffect,
 } from './cards'
 import { getRegion, STARTING_REGIONS, STACK_REGIONS } from './regions'
 import {
   ALL_RESOURCE_TYPES, availableResources, canAfford, countResources, spendFromRegions, addToRegions,
   shuffle, isSettlementLike, regionsBorderingCards, returnToHand, stealableTypes, regionChoices,
+  opponent, withPlayer, mapPlayers, removeFirst, removeAll, totalOf, withSite,
 } from './board'
 
 export { availableResources } from './board'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function opponent(player: PlayerId): PlayerId {
-  return player === 'host' ? 'guest' : 'host'
-}
-
-/** Return a copy of `list` with the first occurrence of `item` removed. */
-function removeFirst(list: string[], item: string): string[] {
-  const idx = list.indexOf(item)
-  if (idx === -1) return [...list]
-  const copy = [...list]
-  copy.splice(idx, 1)
-  return copy
-}
-
-/** Remove every item of `items` (as a multiset) from `list`; null if any is missing. */
-function removeAll(list: string[], items: string[]): string[] | null {
-  let rest = [...list]
-  for (const item of items) {
-    if (!rest.includes(item)) return null
-    rest = removeFirst(rest, item)
-  }
-  return rest
-}
 
 function nanoid(): string {
   return Math.random().toString(36).slice(2, 9)
@@ -61,11 +39,13 @@ function resourceGain(from: Resources, to: Resources): Partial<Resources> {
   return out
 }
 
-function withPlayer(state: GameState, id: PlayerId, player: PlayerState): GameState {
-  return { ...state, players: { ...state.players, [id]: player } }
+/** Each player's resourceGain from `before` to `after`. */
+function gainsByPlayer(before: GameState, after: GameState): Record<PlayerId, Partial<Resources>> {
+  const gain = (p: PlayerId) => resourceGain(availableResources(before.players[p]), availableResources(after.players[p]))
+  return { host: gain('host'), guest: gain('guest') }
 }
 
-function effectsOf(player: PlayerState): DeclarativeEffect[] {
+function effectsOf(player: Pick<PlayerState, 'playedCards'>): DeclarativeEffect[] {
   return player.playedCards.flatMap(id => getCard(id).effects)
 }
 
@@ -73,7 +53,7 @@ const isDrawStack = (deck: string): deck is DrawStackId => (DRAW_STACK_IDS as st
 
 // ─── Stats / Derived Values ───────────────────────────────────────────────────
 
-export function computePlayerStats(player: PlayerState): PlayerStats {
+export function computePlayerStats(player: Pick<PlayerState, 'playedCards'>): PlayerStats {
   let vp = 0, strength = 0, commerce = 0, tournament = 0, handLimit = 3
   let strengthPerKnight = 0, commercePerFleet = 0
   const knights = player.playedCards.filter(id => getCard(id).expansionKind === 'knight').length
@@ -108,8 +88,8 @@ type BoardOnly = Pick<GameState, 'players'> | Pick<ProjectedState, 'players'>
 /** Who holds the Knight Token and the Windmill Token (GAME_LOGIC.md §7). Only uses public
  *  board state, so it works on a ProjectedState too. */
 export function tokenHolders(state: BoardOnly): { knight: PlayerId | null; windmill: PlayerId | null } {
-  const host = computePlayerStats(state.players.host as PlayerState)
-  const guest = computePlayerStats(state.players.guest as PlayerState)
+  const host = computePlayerStats(state.players.host)
+  const guest = computePlayerStats(state.players.guest)
   const hasCity = (p: PlayerId) => state.players[p].principality.some(s => s.kind === 'city')
 
   const knight = host.strengthPoints > guest.strengthPoints ? 'host'
@@ -122,7 +102,7 @@ export function tokenHolders(state: BoardOnly): { knight: PlayerId | null; windm
 
 export function computeVP(state: BoardOnly, playerId: PlayerId): number {
   const tokens = tokenHolders(state)
-  return computePlayerStats(state.players[playerId] as PlayerState).victoryPoints
+  return computePlayerStats(state.players[playerId]).victoryPoints
     + (tokens.knight === playerId ? 1 : 0)
     + (tokens.windmill === playerId ? 1 : 0)
 }
@@ -140,7 +120,7 @@ function checkVictory(state: GameState): PlayerId | null {
 }
 
 /** Bank trade rate for a resource: 3, or better with a Trade Fleet (2) or Mint (gold 1). */
-export function getTradeRate(player: PlayerState, resource: ResourceType): 1 | 2 | 3 {
+export function getTradeRate(player: Pick<PlayerState, 'playedCards'>, resource: ResourceType): 1 | 2 | 3 {
   let rate: 1 | 2 | 3 = 3
   for (const e of effectsOf(player)) {
     if (e.type === 'IMPROVED_TRADE' && e.resource === resource && e.rate < rate) rate = e.rate
@@ -149,7 +129,7 @@ export function getTradeRate(player: PlayerState, resource: ResourceType): 1 | 2
 }
 
 /** Resources a Search costs: 2, or 1 with a Town Hall. */
-export function searchCost(player: PlayerState): number {
+export function searchCost(player: Pick<PlayerState, 'playedCards'>): number {
   return effectsOf(player).some(e => e.type === 'SEARCH_DISCOUNT') ? 1 : 2
 }
 
@@ -159,6 +139,14 @@ export function setupChooser(state: Pick<GameState, 'setup'>): PlayerId | null {
   if (!picked[firstPlayer]) return firstPlayer
   if (!picked[opponent(firstPlayer)]) return opponent(firstPlayer)
   return null
+}
+
+/** Who has to act next: the searcher, the setup chooser, the owner of the head prompt, else the
+ *  active player (practice mode's hot seat shows this player). */
+export function nextActor(state: GameState): PlayerId {
+  if (state.search) return state.search.player
+  if (state.phase === 'setup') return setupChooser(state) ?? state.setup.firstPlayer
+  return state.pendingChoices[0]?.player ?? state.activePlayer
 }
 
 // ─── Production ───────────────────────────────────────────────────────────────
@@ -203,7 +191,7 @@ function makeInitialPlayer(id: PlayerId, rng: () => number): PlayerState {
 }
 
 export function createInitialState(
-  config: { vpTarget: number; language: 'en' | 'de' },
+  config: GameConfig,
   rng: () => number = Math.random,
 ): GameState {
   // All Expansion Cards form a single shuffled pile, split round-robin into 5 stacks.
@@ -265,7 +253,7 @@ function finishSetupPick(state: GameState, player: PlayerId, deck: DrawStackId, 
 
 /** Brigand Attack: count resources not next to a Garrison; above 7 loses all Ore and Wool. */
 function brigandAttack(player: PlayerState): PlayerState {
-  const guarded = regionsBorderingCards(player, id => getCard(id).effects.some(e => e.type === 'BRIGAND_PROTECTION'))
+  const guarded = regionsBorderingCards(player, id => hasEffect(id, 'BRIGAND_PROTECTION'))
   const counted = player.regions.reduce((sum, r, i) => sum + (guarded.has(i) ? 0 : r.storedResources), 0)
   if (counted <= 7) return player
   const regions = player.regions.map(region => {
@@ -284,12 +272,8 @@ function resolveEventSymbol(state: GameState, symbol: EventSymbol): GameState {
   switch (symbol) {
     case 'brigand': {
       if (state.turn <= BRIGAND_GRACE_TURNS) return { ...state, phase: 'production' }
-      const players = { host: brigandAttack(state.players.host), guest: brigandAttack(state.players.guest) }
-      const losses = {
-        host: resourceGain(availableResources(players.host), availableResources(state.players.host)),
-        guest: resourceGain(availableResources(players.guest), availableResources(state.players.guest)),
-      }
-      return logEvent({ ...state, players, phase: 'production' }, active, 'brigand', { losses })
+      const attacked = mapPlayers(state, brigandAttack)
+      return logEvent({ ...attacked, phase: 'production' }, active, 'brigand', { losses: gainsByPlayer(attacked, state) })
     }
 
     case 'commerce': {
@@ -378,12 +362,8 @@ export function applyRoll(state: GameState, roll: DiceRoll): GameState {
 }
 
 function runProduction(state: GameState, roll: ProductionNumber): GameState {
-  const players = { host: produceForPlayer(state.players.host, roll), guest: produceForPlayer(state.players.guest, roll) }
-  const gains = {
-    host: resourceGain(availableResources(state.players.host), availableResources(players.host)),
-    guest: resourceGain(availableResources(state.players.guest), availableResources(players.guest)),
-  }
-  return logEvent({ ...state, players, phase: 'action' }, state.activePlayer, 'production', { roll, gains })
+  const produced = mapPlayers(state, p => produceForPlayer(p, roll))
+  return logEvent({ ...produced, phase: 'action' }, state.activePlayer, 'production', { roll, gains: gainsByPlayer(state, produced) })
 }
 
 /** Cards in hand above the hand limit (0 if none). */
@@ -586,11 +566,19 @@ export function resolveAttackRoll(state: GameState, die: number): GameState {
 
 // ─── Building ─────────────────────────────────────────────────────────────────
 
+/** A Road, Settlement or City needs the action phase, one left in the supply and its cost. */
+function mayBuild(state: GameState, actingPlayer: PlayerId, kind: keyof Supply): boolean {
+  return state.phase === 'action' && state.supply[kind] > 0
+    && canAfford(availableResources(state.players[actingPlayer]), getCard(kind).cost!)
+}
+
+function takeFromSupply(supply: Supply, kind: keyof Supply): Supply {
+  return { ...supply, [kind]: supply[kind] - 1 }
+}
+
 function applyBuildRoad(state: GameState, actingPlayer: PlayerId, side: 'left' | 'right'): GameState {
-  if (state.phase !== 'action' || state.supply.road <= 0) return state
+  if (!mayBuild(state, actingPlayer, 'road')) return state
   const player = state.players[actingPlayer]
-  const cost = getCard('road').cost!
-  if (!canAfford(availableResources(player), cost)) return state
 
   // A road goes directly beside a Settlement/City, never next to another road or an empty site.
   const end = side === 'right' ? player.principality[player.principality.length - 1] : player.principality[0]
@@ -604,19 +592,17 @@ function applyBuildRoad(state: GameState, actingPlayer: PlayerId, side: 'left' |
 
   return {
     ...withPlayer(state, actingPlayer, {
-      ...spendFromRegions(player, cost), principality, playedCards: [...player.playedCards, 'road'],
+      ...spendFromRegions(player, ROAD.cost!), principality, playedCards: [...player.playedCards, 'road'],
     }),
-    supply: { ...state.supply, road: state.supply.road - 1 },
+    supply: takeFromSupply(state.supply, 'road'),
   }
 }
 
 function applyBuildSettlement(
   state: GameState, actingPlayer: PlayerId, slotIndex: number, scoutRegionIds?: [string, string],
 ): GameState {
-  if (state.phase !== 'action' || state.supply.settlement <= 0) return state
+  if (!mayBuild(state, actingPlayer, 'settlement')) return state
   const player = state.players[actingPlayer]
-  const cost = getCard('settlement').cost!
-  if (!canAfford(availableResources(player), cost)) return state
 
   const slot = player.principality[slotIndex]
   if (!slot || slot.kind !== 'empty-settlement') return state
@@ -641,7 +627,7 @@ function applyBuildSettlement(
     regionStack = state.regionStack.slice(0, -2)
   }
 
-  const spent = spendFromRegions(player, cost)
+  const spent = spendFromRegions(player, SETTLEMENT.cost!)
   const n = spent.regions.length
   const regions = [...spent.regions, { regionId: top, storedResources: 0 }, { regionId: bottom, storedResources: 0 }]
   // Share the neighbour's facing corners; the new Regions go on the outer side.
@@ -657,15 +643,13 @@ function applyBuildSettlement(
     }),
     regionStack,
     discardPile,
-    supply: { ...state.supply, settlement: state.supply.settlement - 1 },
+    supply: takeFromSupply(state.supply, 'settlement'),
   }
 }
 
 function applyBuildCity(state: GameState, actingPlayer: PlayerId, slotIndex: number): GameState {
-  if (state.phase !== 'action' || state.supply.city <= 0) return state
+  if (!mayBuild(state, actingPlayer, 'city')) return state
   const player = state.players[actingPlayer]
-  const cost = getCard('city').cost!
-  if (!canAfford(availableResources(player), cost)) return state
 
   const slot = player.principality[slotIndex]
   if (!slot || slot.kind !== 'settlement') return state
@@ -680,8 +664,8 @@ function applyBuildCity(state: GameState, actingPlayer: PlayerId, slotIndex: num
   playedCards[playedCards.indexOf('settlement')] = 'city'
 
   return {
-    ...withPlayer(state, actingPlayer, { ...spendFromRegions(player, cost), principality, playedCards }),
-    supply: { ...state.supply, city: state.supply.city - 1 },
+    ...withPlayer(state, actingPlayer, { ...spendFromRegions(player, CITY.cost!), principality, playedCards }),
+    supply: takeFromSupply(state.supply, 'city'),
   }
 }
 
@@ -700,17 +684,10 @@ function applyPlaceExpansion(
   if (card.expansionColor === 'red' && slot.kind !== 'city') return state
   if (slot.expansionSlots[expansionSlotIndex] !== null) return state
 
-  const principality = player.principality.map((s, i) => {
-    if (i !== slotIndex) return s
-    const slots = [...s.expansionSlots]
-    slots[expansionSlotIndex] = cardId
-    return { ...s, expansionSlots: slots }
-  })
-
   return withPlayer(state, actingPlayer, {
     ...spendFromRegions(player, card.cost ?? {}),
     hand: removeFirst(player.hand, cardId),
-    principality,
+    principality: withSite(player.principality, slotIndex, expansionSlotIndex, cardId),
     playedCards: [...player.playedCards, cardId],
   })
 }
@@ -722,13 +699,7 @@ function applyDemolish(state: GameState, actingPlayer: PlayerId, slotIndex: numb
   const cardId = slot?.expansionSlots[expansionSlotIndex]
   if (!slot || !cardId) return state
 
-  const principality = player.principality.map((s, i) => {
-    if (i !== slotIndex) return s
-    const slots = [...s.expansionSlots]
-    slots[expansionSlotIndex] = null
-    return { ...s, expansionSlots: slots }
-  })
-
+  const principality = withSite(player.principality, slotIndex, expansionSlotIndex, null)
   return {
     ...withPlayer(state, actingPlayer, { ...player, principality, playedCards: removeFirst(player.playedCards, cardId) }),
     discardPile: [...state.discardPile, cardId],
@@ -786,10 +757,6 @@ function applyRespondTrade(state: GameState, actingPlayer: PlayerId, accept: boo
   const proposer = addToRegions(spendFromRegions(state.players[offer.from], offer.give), offer.receive)
   const accepter = addToRegions(spendFromRegions(state.players[responder], offer.receive), offer.give)
   return { ...state, players: { ...state.players, [offer.from]: proposer, [responder]: accepter }, pendingTrade: null }
-}
-
-function totalOf(r: Partial<Resources>): number {
-  return Object.values(r).reduce((sum, n) => sum + (n ?? 0), 0)
 }
 
 // ─── Draw Phase (GAME_LOGIC.md §8) ────────────────────────────────────────────

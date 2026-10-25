@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { applyAction, computeVP, createInitialState } from './engine'
 import { botShouldAct, chooseBotAction } from './bot'
-import { getRegion } from './cards'
+import { getRegion } from './regions'
 import { checkInvariants, mulberry32, step } from './testing/randomBot'
 import type { GameState, PlayerId, PlayerState, Resources } from './types'
 

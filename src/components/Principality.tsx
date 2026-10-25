@@ -10,6 +10,7 @@ import RegionCard from './RegionCard'
 import CardView from './CardView'
 import CardDetail from './CardDetail'
 import BuildConfirmDialog from './BuildConfirmDialog'
+import Modal from './Modal'
 import styles from './Principality.module.css'
 import dialog from './Dialog.module.css'
 import panel from './Panel.module.css'
@@ -140,34 +141,32 @@ function ScoutPicker({ regionStack, onPick, onClose }: {
   const { t } = useTranslation()
   const [picked, setPicked] = useState<string[]>([])
   return (
-    <div className={dialog.backdrop} onClick={onClose}>
-      <div className={dialog.sheet} onClick={e => e.stopPropagation()} role="dialog" aria-modal="true">
-        <div className={dialog.title}>{t('game.scout.title')}</div>
-        <div className={panel.cards}>
-          {regionStack.map(id => {
-            const def = getRegion(id)
-            const at = picked.indexOf(id)
-            return (
-              <button
-                key={id}
-                className={`${panel.cardChip} ${at >= 0 ? panel.selected : ''}`}
-                disabled={at < 0 && picked.length >= 2}
-                onClick={() => setPicked(p => (at >= 0 ? p.filter(x => x !== id) : [...p, id]))}
-              >
-                {t(def.nameKey)} {def.productionNumber}
-                {at >= 0 && <span className={panel.deckCount}>{at === 0 ? t('game.regionAbove') : t('game.regionBelow')}</span>}
-              </button>
-            )
-          })}
-        </div>
-        <div className={dialog.actions}>
-          <button className="secondary" onClick={onClose}>{t('game.cancel')}</button>
-          <button className="primary" disabled={picked.length !== 2} onClick={() => onPick(picked as [string, string])}>
-            {t('game.confirm')}
-          </button>
-        </div>
+    <Modal onClose={onClose}>
+      <div className={dialog.title}>{t('game.scout.title')}</div>
+      <div className={panel.cards}>
+        {regionStack.map(id => {
+          const def = getRegion(id)
+          const at = picked.indexOf(id)
+          return (
+            <button
+              key={id}
+              className={`${panel.cardChip} ${at >= 0 ? panel.selected : ''}`}
+              disabled={at < 0 && picked.length >= 2}
+              onClick={() => setPicked(p => (at >= 0 ? p.filter(x => x !== id) : [...p, id]))}
+            >
+              {t(def.nameKey)} {def.productionNumber}
+              {at >= 0 && <span className={panel.deckCount}>{at === 0 ? t('game.regionAbove') : t('game.regionBelow')}</span>}
+            </button>
+          )
+        })}
       </div>
-    </div>
+      <div className={dialog.actions}>
+        <button className="secondary" onClick={onClose}>{t('game.cancel')}</button>
+        <button className="primary" disabled={picked.length !== 2} onClick={() => onPick(picked as [string, string])}>
+          {t('game.confirm')}
+        </button>
+      </div>
+    </Modal>
   )
 }
 

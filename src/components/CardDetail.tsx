@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getCard } from '../engine/cards'
 import type { DeclarativeEffect, ResourceType, Resources } from '../engine/types'
-import { RESOURCE_ORDER, basket, missingResources } from './resourceMeta'
+import { ALL_RESOURCE_TYPES } from '../engine/board'
+import { basket, missingResources } from './resourceMeta'
 import styles from './CardDetail.module.css'
 
 interface Props {
@@ -48,7 +49,7 @@ export default function CardDetail({ cardId, canPlay, canBuild, affordable = tru
   const def = getCard(cardId)
   const [confirming, setConfirming] = useState(false)
 
-  const cost = def.cost ? RESOURCE_ORDER.filter(r => (def.cost?.[r] ?? 0) > 0) : []
+  const cost = def.cost ? ALL_RESOURCE_TYPES.filter(r => (def.cost?.[r] ?? 0) > 0) : []
   const typeLabel = [
     t(`cardType.${def.expansionColor ?? def.category}`),
     def.expansionKind ? t(`cardType.${def.expansionKind}`) : null,

@@ -2,11 +2,10 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { Resources, ResourceType, GameAction } from '../engine/types'
 import { EMPTY_RESOURCES } from '../engine/types'
+import { ALL_RESOURCE_TYPES, totalOf } from '../engine/board'
 import TradePanel from './TradePanel'
 import { RESOURCE_ICON } from './resourceMeta'
 import styles from './TradeMenu.module.css'
-
-const ALL_RESOURCES: ResourceType[] = ['lumber', 'wool', 'gold', 'brick', 'ore', 'grain']
 
 interface Props {
   resources: Resources
@@ -17,14 +16,10 @@ interface Props {
   onAction: (a: GameAction) => void
 }
 
-function total(r: Resources): number {
-  return ALL_RESOURCES.reduce((sum, k) => sum + r[k], 0)
-}
-
 /** Keep only the non-zero entries, as a Partial<Resources>. */
 function trim(r: Resources): Partial<Resources> {
   const out: Partial<Resources> = {}
-  for (const k of ALL_RESOURCES) if (r[k] > 0) out[k] = r[k]
+  for (const k of ALL_RESOURCE_TYPES) if (r[k] > 0) out[k] = r[k]
   return out
 }
 
@@ -38,9 +33,9 @@ export default function TradeMenu({ resources, playedCards, offerPending, onActi
 
   const canPropose =
     !offerPending &&
-    total(give) > 0 &&
-    total(receive) > 0 &&
-    ALL_RESOURCES.every(r => give[r] <= resources[r])
+    totalOf(give) > 0 &&
+    totalOf(receive) > 0 &&
+    ALL_RESOURCE_TYPES.every(r => give[r] <= resources[r])
 
   function adjust(
     setter: typeof setGive,
@@ -71,7 +66,7 @@ export default function TradeMenu({ resources, playedCards, offerPending, onActi
       <div className={styles.tradeBlock}>
         <span className={styles.blockLabel}>{label}</span>
         <div className={styles.steppers}>
-          {ALL_RESOURCES.map(r => (
+          {ALL_RESOURCE_TYPES.map(r => (
             <div key={r} className={styles.stepper}>
               <span className={styles.icon} title={t(`resources.${r}`)}>{RESOURCE_ICON[r]}</span>
               <div className={styles.stepBtns}>
