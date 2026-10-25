@@ -101,6 +101,13 @@ export default function LobbyPage() {
     navigate('/game', { state: { role: 'practice', initialGameState: initialState } })
   }
 
+  function handleComputer() {
+    const initialState = createInitialState({ vpTarget, language: currentLanguage() })
+    sessionStore.set(null)
+    // Runs locally like Practice, with the computer in the other seat.
+    navigate('/game', { state: { role: 'computer', initialGameState: initialState } })
+  }
+
   // Phones offer their native share sheet (WhatsApp, Messages…); copying stays available.
   const canShare = typeof navigator.share === 'function'
 
@@ -168,6 +175,7 @@ export default function LobbyPage() {
 
             <div className={styles.divider}><span>{t('lobby.or')}</span></div>
 
+            <button className="secondary" onClick={handleComputer}>{t('lobby.computer')}</button>
             <button className="secondary" onClick={handlePractice}>{t('lobby.practice')}</button>
           </div>
         )}

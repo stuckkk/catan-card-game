@@ -28,6 +28,8 @@ export function describeEvent(t: TFunction, e: GameEvent, viewer: PlayerId, isPr
   const who = playerLabel(t, e.player, viewer, isPractice)
   const mine = !isPractice && e.player === viewer
   const line = (text: string, detail?: string): ActivityLine => ({ id: e.id, who, mine, text, detail })
+  /** A player's line: German conjugates the verb for "Du" (the `_self` variants). */
+  const tp = (key: string, options: Record<string, unknown> = {}) => t(key, { ...options, context: mine ? 'self' : undefined })
   const global = (text: string, detail?: string): ActivityLine => ({ id: e.id, who: null, mine: false, text, detail })
   const card = (id: unknown) => (typeof id === 'string' ? t(getCard(id).nameKey) : '?')
   const stack = (d: unknown) => t(`game.deckName.${d}`)
@@ -44,7 +46,7 @@ export function describeEvent(t: TFunction, e: GameEvent, viewer: PlayerId, isPr
 
   switch (e.type) {
     case 'ROLL_DICE':
-      return line(t('game.log.rolled', { symbol: t(`dice.${p.eventSymbol}`), number: p.productionNumber }))
+      return line(tp('game.log.rolled', { symbol: t(`dice.${p.eventSymbol}`), number: p.productionNumber }))
     case 'production': {
       const list = perPlayer(p.gains, '+')
       return global(list ? t('game.log.production', { number: p.roll, list }) : t('game.log.productionNone', { number: p.roll }))
@@ -58,50 +60,50 @@ export function describeEvent(t: TFunction, e: GameEvent, viewer: PlayerId, isPr
       return global(t('game.log.eventCard', { card: card(p.cardId) }), def ? t(def.descriptionKey) : undefined)
     }
     case 'returned-to-hand':
-      return line(t('game.log.returnedToHand', { card: card(p.cardId), reason: card(RETURN_REASON_CARD[p.reason as string]) }))
-    case 'ANSWER_ATTACK': return line(p.playCounter ? t('game.log.counterPlayed', { card: card(p.cardId) }) : t('game.log.counterDeclined'))
+      return line(tp('game.log.returnedToHand', { card: card(p.cardId), reason: card(RETURN_REASON_CARD[p.reason as string]) }))
+    case 'ANSWER_ATTACK': return line(p.playCounter ? tp('game.log.counterPlayed', { card: card(p.cardId) }) : tp('game.log.counterDeclined'))
     case 'attack-roll':
-      return line(t(p.attackerWins ? 'game.log.attackWon' : 'game.log.attackLost', { die: p.die, card: card(p.cardId) }))
-    case 'BUILD_ROAD': return line(t('game.log.buildRoad'))
-    case 'BUILD_SETTLEMENT': return line(t(p.scout ? 'game.log.buildSettlementScout' : 'game.log.buildSettlement'))
-    case 'BUILD_CITY': return line(t('game.log.buildCity'))
-    case 'PLACE_EXPANSION': return line(t('game.log.placeExpansion', { card: card(p.cardId) }))
-    case 'DEMOLISH': return line(t('game.log.demolish', { card: card(p.cardId) }))
-    case 'PLAY_ACTION_CARD': return line(t('game.log.playCard', { card: card(p.cardId) }))
+      return line(tp(p.attackerWins ? 'game.log.attackWon' : 'game.log.attackLost', { die: p.die, card: card(p.cardId) }))
+    case 'BUILD_ROAD': return line(tp('game.log.buildRoad'))
+    case 'BUILD_SETTLEMENT': return line(tp(p.scout ? 'game.log.buildSettlementScout' : 'game.log.buildSettlement'))
+    case 'BUILD_CITY': return line(tp('game.log.buildCity'))
+    case 'PLACE_EXPANSION': return line(tp('game.log.placeExpansion', { card: card(p.cardId) }))
+    case 'DEMOLISH': return line(tp('game.log.demolish', { card: card(p.cardId) }))
+    case 'PLAY_ACTION_CARD': return line(tp('game.log.playCard', { card: card(p.cardId) }))
     case 'TRADE_WITH_BANK':
-      return line(t('game.log.bankTrade', {
+      return line(tp('game.log.bankTrade', {
         give: `${p.rate}${RESOURCE_ICON[p.give as ResourceType]}`, receive: `1${RESOURCE_ICON[p.receive as ResourceType]}`,
       }))
     case 'CHOOSE_RESOURCE': {
       const key = p.reason === 'commerce' ? 'game.log.tookResource' : p.reason === 'brigands' ? 'game.log.stoleResource' : 'game.log.choseResource'
-      return line(t(key, { resource: res(p.resource) }))
+      return line(tp(key, { resource: res(p.resource) }))
     }
     case 'CHOOSE_HAND_CARDS':
-      if (p.reason === 'conflict') return line(t('game.log.conflictBuried', { count: Number(p.count), stack: stack(p.deck) }))
-      return line(p.cardId ? t('game.log.spyTook', { card: card(p.cardId) }) : t('game.log.spyNothing'))
+      if (p.reason === 'conflict') return line(tp('game.log.conflictBuried', { count: Number(p.count), stack: stack(p.deck) }))
+      return line(p.cardId ? tp('game.log.spyTook', { card: card(p.cardId) }) : tp('game.log.spyNothing'))
     case 'PROPOSE_TRADE':
-      return line(t('game.log.proposeTrade', {
+      return line(tp('game.log.proposeTrade', {
         give: basket(p.give as Partial<Resources>), receive: basket(p.receive as Partial<Resources>),
       }))
-    case 'ACCEPT_TRADE': return line(t(p.completed ? 'game.log.acceptTrade' : 'game.log.tradeFailed'))
-    case 'DECLINE_TRADE': return line(t(p.byProposer ? 'game.log.withdrawTrade' : 'game.log.declineTrade'))
-    case 'END_ACTION_PHASE': return line(t('game.log.endAction'))
+    case 'ACCEPT_TRADE': return line(tp(p.completed ? 'game.log.acceptTrade' : 'game.log.tradeFailed'))
+    case 'DECLINE_TRADE': return line(tp(p.byProposer ? 'game.log.withdrawTrade' : 'game.log.declineTrade'))
+    case 'END_ACTION_PHASE': return line(tp('game.log.endAction'))
     case 'SEARCH_STACK': {
       const key = p.purpose === 'setup' ? 'setupSearch' : p.purpose === 'masterBuilder' ? 'masterBuilderSearch' : 'search'
-      return line(t(`game.log.${key}`, { stack: stack(p.deck) }))
+      return line(tp(`game.log.${key}`, { stack: stack(p.deck) }))
     }
     case 'TAKE_FROM_SEARCH':
       if (p.purpose === 'masterBuilder') {
         return line(p.count
-          ? t('game.log.masterBuilderSwap', { stack: stack(p.deck), to: stack(p.giveBackDeck) })
-          : t('game.log.masterBuilderNothing', { stack: stack(p.deck) }))
+          ? tp('game.log.masterBuilderSwap', { stack: stack(p.deck), to: stack(p.giveBackDeck) })
+          : tp('game.log.masterBuilderNothing', { stack: stack(p.deck) }))
       }
-      return line(t('game.log.takeFromSearch', { count: Number(p.count), stack: stack(p.deck) }))
-    case 'DRAW_CARD': return line(t('game.log.drawCard', { stack: stack(p.deck) }))
-    case 'DISCARD_TO_LIMIT': return line(t('game.log.discard', { count: Number(p.count) }))
-    case 'EXCHANGE': return line(t(p.searched ? 'game.log.exchangeSearch' : 'game.log.exchange', { stack: stack(p.deck) }))
-    case 'SKIP_EXCHANGE': return line(t('game.log.skipExchange'))
-    case 'token': return line(t(p.gained ? 'game.log.tokenGained' : 'game.log.tokenLost', { token: t(`advantage.${p.token}`) }))
+      return line(tp('game.log.takeFromSearch', { count: Number(p.count), stack: stack(p.deck) }))
+    case 'DRAW_CARD': return line(tp('game.log.drawCard', { stack: stack(p.deck) }))
+    case 'DISCARD_TO_LIMIT': return line(tp('game.log.discard', { count: Number(p.count) }))
+    case 'EXCHANGE': return line(tp(p.searched ? 'game.log.exchangeSearch' : 'game.log.exchange', { stack: stack(p.deck) }))
+    case 'SKIP_EXCHANGE': return line(tp('game.log.skipExchange'))
+    case 'token': return line(tp(p.gained ? 'game.log.tokenGained' : 'game.log.tokenLost', { token: t(`advantage.${p.token}`) }))
     default: return null
   }
 }

@@ -164,7 +164,7 @@ export function setupChooser(state: Pick<GameState, 'setup'>): PlayerId | null {
 // ─── Production ───────────────────────────────────────────────────────────────
 
 /** Region indices whose production is doubled by a neighbouring production building. */
-function doubledRegions(player: PlayerState): Set<number> {
+export function doubledRegions(player: PlayerState): Set<number> {
   const out = new Set<number>()
   for (const resource of ALL_RESOURCE_TYPES) {
     const doublers = regionsBorderingCards(player, id =>
@@ -176,7 +176,7 @@ function doubledRegions(player: PlayerState): Set<number> {
   return out
 }
 
-function produceForPlayer(player: PlayerState, roll: ProductionNumber): PlayerState {
+export function produceForPlayer(player: PlayerState, roll: ProductionNumber): PlayerState {
   const doubled = doubledRegions(player)
   const regions = player.regions.map((region, i) => {
     if (getRegion(region.regionId).productionNumber !== roll) return region

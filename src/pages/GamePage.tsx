@@ -6,6 +6,7 @@ import {
   actionCardsUnlocked, searchCost, tokenHolders,
 } from '../engine/engine'
 import { COUNTER_CARD, getCard, hasAttackTarget } from '../engine/cards'
+import { botShouldAct, chooseBotAction } from '../engine/bot'
 import { ALL_RESOURCE_TYPES, roomFor } from '../engine/board'
 import type { GameState, GameAction, ProjectedState, PlayerId, PlayerState, Resources } from '../engine/types'
 import { reconnectSession } from '../network/wsSession'
@@ -42,7 +43,12 @@ import type { ActivityLine } from '../components/activityText'
 import dialog from '../components/Dialog.module.css'
 import styles from './GamePage.module.css'
 
-type ClientRole = 'host' | 'guest' | 'practice'
+type ClientRole = 'host' | 'guest' | 'practice' | 'computer'
+
+/** Against the computer, the human plays the host seat and the bot the guest seat. */
+const COMPUTER_SEAT: PlayerId = 'guest'
+/** Pause before each computer move, so the player can follow what it does. */
+const COMPUTER_DELAY_MS = 700
 
 /** Practice is a hot-seat game: the seat shown is whoever has to act next. */
 function practiceSeat(state: GameState): PlayerId {
@@ -81,11 +87,15 @@ export default function GamePage() {
   const sessionRef = useRef<NetworkSession | null>(sessionStore.get())
 
   const isPractice = role === 'practice'
+  // Practice and games against the computer run the engine in this browser.
+  const isLocal = isPractice || role === 'computer'
   const myId: PlayerId = isPractice && gameState ? practiceSeat(gameState) : role === 'guest' ? 'guest' : 'host'
 
   const dispatchAction = useCallback((action: GameAction) => {
     if (role === 'practice') {
       setGameState(prev => (prev ? applyAction(prev, practiceSeat(prev), action) : prev))
+    } else if (role === 'computer') {
+      setGameState(prev => (prev ? applyAction(prev, 'host', action) : prev))
     } else {
       sessionRef.current?.sendAction(action)
     }
@@ -138,6 +148,16 @@ export default function GamePage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [role])
 
+  // The computer's moves: one at a time, after a short pause, whenever it has to act.
+  useEffect(() => {
+    if (role !== 'computer' || !gameState || !botShouldAct(gameState, COMPUTER_SEAT)) return
+    const timer = setTimeout(() => setGameState(prev => {
+      const action = prev && chooseBotAction(prev, COMPUTER_SEAT)
+      return action ? applyAction(prev, COMPUTER_SEAT, action) : prev
+    }), COMPUTER_DELAY_MS)
+    return () => clearTimeout(timer)
+  }, [role, gameState])
+
   function leaveGame() {
     sessionStore.get()?.close()
     sessionStore.set(null)
@@ -145,9 +165,9 @@ export default function GamePage() {
     navigate('/')
   }
 
-  // Practice projects the local state exactly like the server does, so the UI only ever
+  // A local game projects its state exactly like the server does, so the UI only ever
   // works off a ProjectedState.
-  const view: ProjectedState | null = isPractice ? (gameState ? projectStateFor(gameState, myId) : null) : projected
+  const view: ProjectedState | null = isLocal ? (gameState ? projectStateFor(gameState, myId) : null) : projected
 
   const myState = view?.players[myId]
   const opponentId: PlayerId = myId === 'host' ? 'guest' : 'host'
