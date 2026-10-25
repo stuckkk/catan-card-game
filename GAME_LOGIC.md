@@ -299,10 +299,15 @@ Buildings vs Units: Knights and Fleets are **Units**; everything else is a **Bui
 * **New Regions without a Scout:** the first card drawn goes above, the second below (the PDF lets the
   player choose the side after drawing the first).
 * **Practice mode** (local, no server) is a hot-seat game: the screen always shows the seat that has to act.
+* **Computer opponent** (local, no server): the human plays one seat, a heuristic bot (`src/engine/bot.ts`) the
+  other, through the same engine and seeing only what a player would. It answers trade offers but never
+  offers any itself.
 
 ---
 
 ## 13. Not Yet Implemented
 
 * Check code base architecture/desgin/refactoring opportunities
-* Run ultrareview
+* Make a lobby to search for games/make public games
+* Make more settings configurable
+* Add stronger AI, maybe do some RL

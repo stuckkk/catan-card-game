@@ -63,6 +63,8 @@ On the free instance type the service goes to sleep after about 15 minutes witho
 
 **Practice locally** in the lobby runs the rules engine in the browser instead of on the server. It is a hot-seat game: one screen, always showing the seat that has to act.
 
+**Play against the computer** also runs in the browser, with a computer opponent in the other seat (it answers your trade offers but never makes any). Like practice mode, the game is lost if you reload the page.
+
 ## Local development
 
 Two terminals:
