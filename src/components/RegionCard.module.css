@@ -115,5 +115,5 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .produced, .gain { animation-duration: 0.01ms; }
+  :global(:root:not([data-motion='on'])) .produced, :global(:root:not([data-motion='on'])) .gain { animation-duration: 0.01ms; }
 }

@@ -146,10 +146,17 @@ label {
   padding: 16px;
 }
 
+/* Animations (a Client Setting, <html data-motion>): "Device" follows the reduced-motion setting,
+   "On" ignores it, "Off" stops them everywhere. */
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
+  :root:not([data-motion='on']) *, :root:not([data-motion='on']) *::before, :root:not([data-motion='on']) *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+:root[data-motion='off'] *, :root[data-motion='off'] *::before, :root[data-motion='off'] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
 }

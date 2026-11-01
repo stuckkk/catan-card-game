@@ -2,7 +2,9 @@ import { useTranslation } from 'react-i18next'
 import { STANDARD_RULES, VP_TARGET_MAX, VP_TARGET_MIN } from '../engine/engine'
 import type { GameRules } from '../engine/types'
 import Modal from './Modal'
+import Segmented from './Segmented'
 import dialog from './Dialog.module.css'
+import segmented from './Segmented.module.css'
 import styles from './GameRulesSheet.module.css'
 
 interface Props {
@@ -13,36 +15,7 @@ interface Props {
   onClose: () => void
 }
 
-/** One setting as a row of segments, like the lobby's other switches. */
-function Segmented<T extends string | number | boolean>({ name, label, options, value, onChange }: {
-  name: string
-  label: string
-  options: { value: T; label: string }[]
-  value: T
-  onChange: (value: T) => void
-}) {
-  return (
-    <div className={styles.setting}>
-      <span id={`${name}-label`}>{label}</span>
-      <div className={styles.segmented} role="radiogroup" aria-labelledby={`${name}-label`}>
-        {options.map(o => (
-          <label key={String(o.value)} className={styles.segment}>
-            <input
-              className={styles.visuallyHidden}
-              type="radio"
-              name={name}
-              checked={value === o.value}
-              onChange={() => onChange(o.value)}
-            />
-            {o.label}
-          </label>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-/** The lobby's ⚙️ sheet: the Game Settings for the game about to be created (GAME_LOGIC.md §12). */
+/** The lobby's Rules 📋 sheet: the Game Settings for the game about to be created (GAME_LOGIC.md §12). */
 export default function GameRulesSheet({ rules, onChange, showStartingPlayer, onClose }: Props) {
   const { t } = useTranslation()
   const set = (patch: Partial<GameRules>) => onChange({ ...rules, ...patch })
@@ -51,7 +24,7 @@ export default function GameRulesSheet({ rules, onChange, showStartingPlayer, on
     <Modal onClose={onClose}>
       <div className={dialog.title}>{t('rules.lobbyTitle')}</div>
 
-      <div className={styles.setting}>
+      <div className={segmented.setting}>
         <span id="vp-label">{t('rules.vpTarget')}</span>
         <div className={styles.stepper} role="group" aria-labelledby="vp-label">
           <button

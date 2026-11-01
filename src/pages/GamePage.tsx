@@ -6,10 +6,12 @@ import {
   computeVP, availableResources, computePlayerStats, actionCardsUnlocked, searchCost, tokenHolders,
 } from '../engine/engine'
 import { COUNTER_CARD, getCard, hasAttackTarget } from '../engine/cards'
+import { botShouldAct as mustAct } from '../engine/bot'
 import { ALL_RESOURCE_TYPES, opponent, roomFor } from '../engine/board'
 import type { GameAction, PendingChoice, ProjectedState, PlayerId, PlayerState, Resources } from '../engine/types'
 import { sessionStore } from '../network/sessionStore'
 import { clearPersisted } from '../network/persistence'
+import { TOAST_MS, useClientSettings } from '../settings/clientSettings'
 import Principality from '../components/Principality'
 import PhaseTracker from '../components/PhaseTracker'
 import TradeMenu from '../components/TradeMenu'
@@ -29,6 +31,7 @@ import Toasts from '../components/Toasts'
 import ActivityFeed from '../components/ActivityFeed'
 import BuildStrip from '../components/BuildStrip'
 import GameRulesButton from '../components/GameRulesButton'
+import SettingsButton from '../components/SettingsButton'
 import TokenChip from '../components/TokenChip'
 import { describeEvent, isToastWorthy, playerLabel } from '../components/activityText'
 import type { ActivityLine } from '../components/activityText'
@@ -83,9 +86,10 @@ function GameOver({ view, myId, isPractice, onLeave }: {
 }
 
 export default function GamePage() {
-  const { t, i18n } = useTranslation()
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const { role, isPractice, myId, view, dispatchAction, disconnected, expired } = useGameSession()
+  const settings = useClientSettings()
 
   const [opponentExpanded, setOpponentExpanded] = useState(false)
   // Card-first placement: the expansion card the player is currently placing on the board.
@@ -158,13 +162,38 @@ export default function GamePage() {
     const seen = seenLog.current
     const fresh = eventLog.filter(e => !seen.has(e.id))
     fresh.forEach(e => seen.add(e.id))
+    // Notifications off: nothing pops up; the activity feed still lists everything.
+    if (settings.toasts === 'off') return
     const lines = fresh
       .filter(e => isToastWorthy(e, myId, isPractice))
       .map(e => describeEvent(t, e, myId, isPractice))
       .filter((l): l is ActivityLine => l !== null)
     if (lines.length > 0) setToasts(prev => [...prev, ...lines].slice(-3))
-  }, [eventLog, myId, isPractice, t])
+  }, [eventLog, myId, isPractice, t, settings.toasts])
   const dismissToast = useCallback((id: string) => setToasts(prev => prev.filter(x => x.id !== id)), [])
+
+  // Your-turn alert (online only; locally it is always someone at this screen's move): a short
+  // vibration when it becomes my move, and a marked tab title while the tab is in the background.
+  const alertOn = settings.turnAlert && (role === 'host' || role === 'guest')
+  const needsMe = alertOn && !!view && mustAct(view, myId)
+  // null until the first state, so arriving at (or reloading) a game I must act in doesn't buzz.
+  const neededMe = useRef<boolean | null>(null)
+  useEffect(() => {
+    if (!view) return
+    if (needsMe && neededMe.current === false) navigator.vibrate?.(200)
+    neededMe.current = needsMe
+  }, [needsMe, view])
+  useEffect(() => {
+    if (!needsMe) return
+    const original = document.title
+    const update = () => { document.title = document.hidden ? `● ${t('game.yourTurn')}` : original }
+    update()
+    document.addEventListener('visibilitychange', update)
+    return () => {
+      document.removeEventListener('visibilitychange', update)
+      document.title = original
+    }
+  }, [needsMe, t])
 
   // VP for the local player, including the Knight/Windmill tokens (public board state only).
   const myVP = view ? computeVP(view, myId) : 0
@@ -248,16 +277,8 @@ export default function GamePage() {
         </div>
 
         <div className={styles.headerEnd}>
-          {/* Shows the current language; a tap switches to the other one. */}
-          <button
-            className={styles.langButton}
-            onClick={() => i18n.changeLanguage(i18n.language.startsWith('de') ? 'en' : 'de')}
-            aria-label={t('lobby.language')}
-            title={t('lobby.language')}
-          >
-            {i18n.language.startsWith('de') ? 'DE' : 'EN'}
-          </button>
           <GameRulesButton config={view.config} myId={myId} isPractice={isPractice} />
+          <SettingsButton />
           <div className={styles.myScore}>
             <span className={styles.myScoreLabel}>{t('game.you')}</span>
             <span className={styles.vp}>{t('game.vpOfTarget', { count: myVP, target: view.config.vpTarget })}</span>
@@ -272,7 +293,7 @@ export default function GamePage() {
       </header>
 
       <div className={styles.toastArea}>
-        <Toasts toasts={toasts} onDismiss={dismissToast} />
+        <Toasts toasts={toasts} onDismiss={dismissToast} durations={TOAST_MS[settings.toasts === 'short' ? 'short' : 'normal']} />
       </div>
 
       {/* My board: the sea the principality sits on. Sized to fit this area (container query). */}

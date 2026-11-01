@@ -18,7 +18,7 @@
   gap: 20px;
 }
 
-/* Title, rules overview and language switch share the first row, so the actions start high on a phone. */
+/* Title, rules overview and settings share the first row, so the actions start high on a phone. */
 .header {
   display: grid;
   grid-template-columns: 1fr auto;
@@ -34,23 +34,6 @@
   align-items: center;
   gap: 8px;
 }
-
-.langSwitch {
-  display: flex;
-  border: 1px solid var(--color-border);
-  border-radius: 999px;
-  overflow: hidden;
-}
-
-.lang {
-  padding: 4px 12px;
-  border-radius: 0;
-  background: transparent;
-  color: var(--color-text-muted);
-  font-size: 13px;
-  font-weight: 700;
-}
-.lang[aria-pressed='true'] { background: var(--foam); color: var(--sea-deep); }
 
 /* The one bold thing on this page: the title, set like a map's cartouche. */
 .title {
@@ -154,7 +137,7 @@
 /* The chosen opponent's one-line explanation; reserves two lines so Start doesn't jump. */
 .tiles + .hint { min-height: calc(2 * 1.35em); }
 
-/* Game Settings: "Rules ⚙️" on the left, a one-line summary on the right; opens the sheet. */
+/* Game Settings: "Rules 📋" on the left, a one-line summary on the right; opens the sheet. */
 .rulesRow {
   display: flex;
   align-items: center;

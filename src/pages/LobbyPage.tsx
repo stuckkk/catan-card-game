@@ -7,17 +7,17 @@ import type { PublicGameSummary } from '../network/protocol'
 import { sessionStore } from '../network/sessionStore'
 import { clearPersisted, savePersisted } from '../network/persistence'
 import { createInitialState, hasCustomRules, STANDARD_RULES } from '../engine/engine'
+import { loadLobbyChoices, saveLobbyChoices } from '../settings/clientSettings'
+import type { Opponent } from '../settings/clientSettings'
 import type { GameRules, Language } from '../engine/types'
 import HelpButton from '../components/HelpButton'
 import GameRulesSheet from '../components/GameRulesSheet'
+import SettingsButton from '../components/SettingsButton'
 import type { ClientRole } from './useGameSession'
 import styles from './LobbyPage.module.css'
 
 type LobbyMode = 'idle' | 'hosting' | 'joining' | 'error'
 type ErrorKey = 'connectionLost' | 'roomNotFound' | 'sessionExpired' | 'serverUnreachable'
-/** Who the new game is against: an online opponent (by invite only, or anyone via the Open Games
- *  list), the computer, or nobody (hot-seat practice). */
-type Opponent = 'private' | 'public' | 'computer' | 'practice'
 
 const OPPONENTS: { value: Opponent; icon: string; labelKey: string; hintKey: string }[] = [
   { value: 'private', icon: '👥', labelKey: 'lobby.opponentPrivate', hintKey: 'lobby.opponentPrivateHint' },
@@ -42,9 +42,11 @@ export default function LobbyPage() {
   const navigate = useNavigate()
 
   const [mode, setMode] = useState<LobbyMode>('idle')
-  const [rules, setRules] = useState<GameRules>(STANDARD_RULES)
+  // The last opponent and Game Settings come back on the next visit (this browser only).
+  const [remembered] = useState(loadLobbyChoices)
+  const [rules, setRules] = useState<GameRules>(remembered.rules)
   const [rulesOpen, setRulesOpen] = useState(false)
-  const [opponent, setOpponent] = useState<Opponent>('private')
+  const [opponent, setOpponent] = useState<Opponent>(remembered.opponent)
   const [inviteUrl, setInviteUrl] = useState('')
   const [manualRoomId, setManualRoomId] = useState('')
   const [copied, setCopied] = useState(false)
@@ -52,6 +54,8 @@ export default function LobbyPage() {
   const [publicGames, setPublicGames] = useState<PublicGameSummary[]>([])
   const [listFailed, setListFailed] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
+
+  useEffect(() => saveLobbyChoices({ opponent, rules }), [opponent, rules])
 
   // Auto-join when arriving via invite link - also when it's pasted into a tab that already
   // shows the lobby: only the #hash changes then, so the page isn't reloaded.
@@ -196,10 +200,7 @@ export default function LobbyPage() {
           <div className={styles.headerTools}>
             {/* The rules overview explains the rules in general, with the rulebook values; a game's own settings are in its 📜. */}
             <HelpButton vpTarget={STANDARD_RULES.vpTarget} />
-            <div className={styles.langSwitch} role="group" aria-label={t('lobby.language')}>
-              <button className={styles.lang} aria-pressed={i18n.language === 'en'} onClick={() => i18n.changeLanguage('en')}>EN</button>
-              <button className={styles.lang} aria-pressed={i18n.language.startsWith('de')} onClick={() => i18n.changeLanguage('de')}>DE</button>
-            </div>
+            <SettingsButton />
           </div>
           <h1 className={styles.title}>{t('lobby.title')}</h1>
           <p className={styles.tagline}>{t('lobby.tagline')}</p>
@@ -260,7 +261,7 @@ export default function LobbyPage() {
               <p className={styles.hint}>{t(OPPONENTS.find(o => o.value === opponent)!.hintKey)}</p>
 
               <button className={styles.rulesRow} onClick={() => setRulesOpen(true)}>
-                <span className={styles.rulesLabel}>{t('rules.open')} <span aria-hidden="true">⚙️</span></span>
+                <span className={styles.rulesLabel}>{t('rules.open')} <span aria-hidden="true">📋</span></span>
                 <span className={styles.rulesSummary}>
                   {t('lobby.vpShort', { count: rules.vpTarget })}
                   {' · '}

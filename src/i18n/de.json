@@ -63,6 +63,23 @@
     "reset": "Standardregeln",
     "done": "Fertig"
   },
+  "settings": {
+    "title": "Einstellungen",
+    "on": "An",
+    "off": "Aus",
+    "computerSpeed": "Tempo des Computers",
+    "slow": "Langsam",
+    "normal": "Normal",
+    "fast": "Schnell",
+    "turnAlert": "Hinweis, wenn du dran bist",
+    "turnAlertHint": "Online-Spiele: Das Handy vibriert und der Tab-Titel ändert sich, sobald du dran bist.",
+    "motion": "Animationen",
+    "motionSystem": "Gerät",
+    "confirmBuilds": "Bauen bestätigen",
+    "confirmBuildsHint": "Aus: Was du dir leisten kannst, wird beim ersten Tippen gebaut.",
+    "toasts": "Meldungen",
+    "short": "Kurz"
+  },
   "game": {
     "yourTurn": "Du bist dran",
     "opponentTurn": "Gegner ist dran",
@@ -388,7 +405,7 @@
       "open": "Spielregeln",
       "title": "So wird gespielt",
       "goalTitle": "Ziel",
-      "adjustable": "Einige Regeln lassen sich für jedes Spiel anpassen („Regeln ⚙️“ in der Lobby). Im Spiel zeigt 📜 die Regeln des jeweiligen Spiels.",
+      "adjustable": "Einige Regeln lassen sich für jedes Spiel anpassen („Regeln 📋“ in der Lobby). Im Spiel zeigt 📜 die Regeln des jeweiligen Spiels.",
       "goal": "Wer als Erster während des eigenen Zuges das Siegpunktziel erreicht, gewinnt (Regelheft: {{target}}; unter „Regeln“ einstellbar). Eine Siedlung zählt 1, eine Stadt 2, Ritter- und Windmühlenplättchen je 1, und manche Stadtausbauten zeigen ebenfalls Siegpunkte.",
       "turnTitle": "Dein Zug",
       "step": {

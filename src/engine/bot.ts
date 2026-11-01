@@ -55,8 +55,11 @@ const ACTION_CARD_VALUE: Record<string, number> = {
 
 // ─── Entry point ──────────────────────────────────────────────────────────────
 
-/** Whether the bot has to act now: its own prompt, search or turn, or a trade offer to answer. */
-export function botShouldAct(state: GameState, bot: PlayerId): boolean {
+/** What deciding whose move it is reads: a GameState, or the ProjectedState a player's screen has. */
+type TurnView = Pick<GameState, 'winner' | 'pendingTrade' | 'pendingChoices' | 'search' | 'phase' | 'setup' | 'activePlayer'>
+
+/** Whether the bot (or a player) has to act now: its own prompt, search or turn, or a trade offer to answer. */
+export function botShouldAct(state: TurnView, bot: PlayerId): boolean {
   if (state.winner) return false
   if (offerToAnswer(state, bot)) return true
   const head = openPrompt(state)
@@ -69,7 +72,7 @@ export function botShouldAct(state: GameState, bot: PlayerId): boolean {
 /** The head prompt, unless it is a Master Builder turn whose stack is already open (then the
  *  search is what's left to do). A prompt comes before an open search: e.g. the Region pick for
  *  a Search's payment. */
-function openPrompt(state: GameState): PendingChoice | null {
+function openPrompt(state: TurnView): PendingChoice | null {
   const head = state.pendingChoices[0]
   return head && !(head.kind === 'masterBuilder' && state.search) ? head : null
 }
@@ -87,7 +90,7 @@ function hideOrder(state: GameState): GameState {
   return { ...state, regionStack: [...state.regionStack].sort() }
 }
 
-function offerToAnswer(state: GameState, bot: PlayerId): boolean {
+function offerToAnswer(state: TurnView, bot: PlayerId): boolean {
   return !!state.pendingTrade && state.pendingTrade.from !== bot && !state.pendingChoices.some(c => c.kind === 'region')
 }
 

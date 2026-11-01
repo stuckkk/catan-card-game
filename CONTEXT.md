@@ -30,6 +30,9 @@ _Avoid_: Game browser, server list, matchmaking
 **Game Settings**: The rule variants the Host chooses when creating a Session — Victory Point target, when Action Cards unlock, Brigand protection, who starts. Fixed for the whole Session; defaults follow the rulebook (GAME_LOGIC.md §12).
 _Avoid_: Options, house rules, config, preferences
 
+**Client Settings**: How one browser shows and plays the game — language, computer speed, the your-turn alert, animations, build confirmation, notifications. Stored in that browser only; never change the rules or what the opponent sees. The lobby also remembers its last opponent and Game Settings there.
+_Avoid_: Game Settings, options, preferences
+
 **Projected State**: The full Game State with the *other* player's Hand redacted (replaced by a count), sent by the server to each viewer after every state change. A player's own Hand is always visible to them.
 _Avoid_: Client state, guest state, masked state
 

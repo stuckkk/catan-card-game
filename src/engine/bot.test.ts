@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { applyAction, computeVP, createInitialState } from './engine'
+import { applyAction, computeVP, createInitialState, projectStateFor } from './engine'
 import { botShouldAct, chooseBotAction } from './bot'
 import { getRegion } from './regions'
 import { checkInvariants, mulberry32, step } from './testing/randomBot'
@@ -74,6 +74,15 @@ describe('computer opponent', () => {
 
   it('waits while it is not its move', () => {
     expect(chooseBotAction(midGame({ activePlayer: 'host' }), 'guest')).toBeNull()
+  })
+
+  // The your-turn alert asks the same question of a player's ProjectedState.
+  it("tells whose move it is from a player's projected state too", () => {
+    const s = midGame({ activePlayer: 'host' })
+    expect(botShouldAct(projectStateFor(s, 'host'), 'host')).toBe(true)
+    expect(botShouldAct(projectStateFor(s, 'guest'), 'guest')).toBe(false)
+    const offered: GameState = { ...s, pendingTrade: { from: 'host', give: { brick: 1 }, receive: { wool: 1 } } }
+    expect(botShouldAct(projectStateFor(offered, 'guest'), 'guest')).toBe(true)
   })
 
   it.each(Array.from({ length: 20 }, (_, i) => i + 1))('seed %i: bot vs bot plays to a win without getting stuck', seed => {

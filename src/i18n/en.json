@@ -63,6 +63,23 @@
     "reset": "Reset to rulebook",
     "done": "Done"
   },
+  "settings": {
+    "title": "Settings",
+    "on": "On",
+    "off": "Off",
+    "computerSpeed": "Computer speed",
+    "slow": "Slow",
+    "normal": "Normal",
+    "fast": "Fast",
+    "turnAlert": "Your-turn alert",
+    "turnAlertHint": "Online games: the phone vibrates and the tab title changes when it's your move.",
+    "motion": "Animations",
+    "motionSystem": "Device",
+    "confirmBuilds": "Confirm builds",
+    "confirmBuildsHint": "Off: a build you can afford happens on the first tap.",
+    "toasts": "Notifications",
+    "short": "Short"
+  },
   "game": {
     "yourTurn": "Your turn",
     "opponentTurn": "Opponent's turn",
@@ -350,7 +367,7 @@
       "open": "How to play",
       "title": "How to play",
       "goalTitle": "Goal",
-      "adjustable": "Some rules can be adjusted for each game (Rules ⚙️ in the lobby). During a game, 📜 shows the rules that game uses.",
+      "adjustable": "Some rules can be adjusted for each game (Rules 📋 in the lobby). During a game, 📜 shows the rules that game uses.",
       "goal": "Be the first to reach the victory point target during your own turn (rulebook: {{target}}; adjustable under Rules). A Settlement is worth 1, a City 2, the Knight and Windmill Tokens 1 each, and some City Expansions show victory points too.",
       "turnTitle": "Your turn",
       "step": {

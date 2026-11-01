@@ -62,5 +62,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .toast { animation: none; }
+  :global(:root:not([data-motion='on'])) .toast { animation: none; }
 }
+:global(:root[data-motion='off']) .toast { animation: none; }

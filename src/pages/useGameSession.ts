@@ -7,13 +7,12 @@ import { reconnectSession } from '../network/wsSession'
 import type { NetworkSession } from '../network/wsSession'
 import { sessionStore } from '../network/sessionStore'
 import { loadPersisted } from '../network/persistence'
+import { COMPUTER_DELAY_MS, useClientSettings } from '../settings/clientSettings'
 
 export type ClientRole = 'host' | 'guest' | 'practice' | 'computer'
 
 /** Against the computer, the human plays the host seat and the bot the guest seat. */
 const COMPUTER_SEAT: PlayerId = 'guest'
-/** Pause before each computer move, so the player can follow what it does. */
-const COMPUTER_DELAY_MS = 700
 
 /** Where the game comes from: the engine in this browser (practice, against the computer) or the
  *  server (host, guest). Either way the page gets the viewer's projected state and one way to act. */
@@ -44,6 +43,8 @@ export function useGameSession() {
   const [expired, setExpired] = useState(false)
 
   const sessionRef = useRef<NetworkSession | null>(sessionStore.get())
+  // Pause before each computer move, so the player can follow what it does (a Client Setting).
+  const computerDelay = COMPUTER_DELAY_MS[useClientSettings().computerSpeed]
 
   const isPractice = role === 'practice'
   // Practice and games against the computer run the engine in this browser.
@@ -103,9 +104,9 @@ export function useGameSession() {
     const timer = setTimeout(() => setGameState(prev => {
       const action = prev && chooseBotAction(prev, COMPUTER_SEAT)
       return action ? applyAction(prev, COMPUTER_SEAT, action) : prev
-    }), COMPUTER_DELAY_MS)
+    }), computerDelay)
     return () => clearTimeout(timer)
-  }, [role, gameState])
+  }, [role, gameState, computerDelay])
 
   // A local game projects its state exactly like the server does, so the UI only ever
   // works off a ProjectedState.

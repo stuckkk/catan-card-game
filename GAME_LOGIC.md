@@ -290,7 +290,7 @@ Buildings vs Units: Knights and Fleets are **Units**; everything else is a **Bui
 
 ## 12. Deviations & Additions (not from the PDF)
 
-* **Game Settings:** the Host chooses these when creating a game (lobby ⚙️); they are fixed for the whole
+* **Game Settings:** the Host chooses these when creating a game (lobby: Rules 📋); they are fixed for the whole
   Session. Defaults follow the rulebook. In practice mode the first player is always random.
   * **VP target:** any whole number 5–20 (default 12).
   * **Action cards:** at 7 combined VP (default), or **from the start** — then all Action Cards, attacks
