@@ -308,6 +308,5 @@ Buildings vs Units: Knights and Fleets are **Units**; everything else is a **Bui
 ## 13. Not Yet Implemented
 
 * Check code base architecture/desgin/refactoring opportunities
-* Make a lobby to search for games/make public games
 * Make more settings configurable
 * Add stronger AI, maybe do some RL

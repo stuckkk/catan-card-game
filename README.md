@@ -40,7 +40,7 @@ Sessions are held in memory only, so restarting the server ends any in-progress 
 
 ### Exposing the server
 
-The server has no accounts or authentication: anyone who can reach the port can create or join a game. If you put it on the internet, run it behind a reverse proxy with TLS. The client switches to `wss://` automatically when the page is served over HTTPS; make sure the proxy forwards WebSocket upgrades on `/ws`.
+The server has no accounts or authentication: anyone who can reach the port can create or join a game, and sees every public game in the Open games list (`GET /api/games`). If you put it on the internet, run it behind a reverse proxy with TLS. The client switches to `wss://` automatically when the page is served over HTTPS; make sure the proxy forwards WebSocket upgrades on `/ws`.
 
 ### Deploying on Render
 
@@ -57,13 +57,16 @@ On the free instance type the service goes to sleep after about 15 minutes witho
 
 ## How to play
 
-1. Open the server in a browser and choose **Create Game**. Pick a victory point target (7, 12 or 13; the rulebook uses 12).
-2. Share the invite link with your opponent. Opening it joins the game automatically; alternatively they can paste the room code under **Join Game**.
+1. Open the server in a browser. Under **New Game**, pick an opponent and a victory point target (7, 12 or 13; the rulebook uses 12), then press **Start**:
+   - **Friend**: a private game; only people with your invite link or room code can join.
+   - **Public**: the game is also listed under **Open games** at the top of the lobby for everyone on the same server.
+   - **Computer** and **Hot-seat**: see below.
+2. Share the invite link with your opponent. Opening it joins the game automatically; alternatively they can enter the room code under **Have a code?**, or pick a public game from **Open games** (refreshed every 5 seconds, or with **Refresh**). **Cancel** on the waiting screen ends a game nobody has joined yet.
 3. If a player reloads the page or briefly loses connection, they rejoin the same seat.
 
-**Practice locally** in the lobby runs the rules engine in the browser instead of on the server. It is a hot-seat game: one screen, always showing the seat that has to act.
+**Hot-seat** runs the rules engine in the browser instead of on the server. It is a hot-seat game: one screen, always showing the seat that has to act.
 
-**Play against the computer** also runs in the browser, with a computer opponent in the other seat (it answers your trade offers but never makes any). Like practice mode, the game is lost if you reload the page.
+**Computer** also runs in the browser, with a computer opponent in the other seat (it answers your trade offers but never makes any). Like hot-seat mode, the game is lost if you reload the page.
 
 ## Local development
 

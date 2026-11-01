@@ -98,7 +98,7 @@ Default viewport is a phone (390×844) — the app is played on phones.
 | command | what it does |
 |---|---|
 | `load <state.json>` | open practice mode on that state |
-| `lobby` | open the lobby (then `button practice` = the human way into practice mode) |
+| `lobby` | open the lobby (then `click text=Hot-seat` + `button ^start$` = the human way into practice mode) |
 | `card <n>` | tap the n-th card (0-based) of a card grid — in the open dialog if any |
 | `button <regex>` | click a button by accessible name, dialog first (case-insensitive) |
 | `click <selector>` | any Playwright selector |
@@ -112,7 +112,7 @@ Exit code 1 if a command failed or the page logged an error.
 
 ## Run (human path)
 
-`npm run dev` → http://localhost:5173 → "Practice locally" (hot-seat, no server). Online play
+`npm run dev` → http://localhost:5173 → New Game → "Hot-seat" → Start (no server). Online play
 needs `npm run dev:server` too (see README).
 
 ## Test

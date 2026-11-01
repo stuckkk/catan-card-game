@@ -7,7 +7,7 @@ const PORT = Number(process.env.PORT) || 8080
 const IDLE_TIMEOUT_MS = Number(process.env.SESSION_IDLE_TIMEOUT_MS) || DEFAULT_IDLE_TIMEOUT_MS
 
 const sessionManager = new SessionManager(IDLE_TIMEOUT_MS)
-const httpServer = createHttpServer()
+const httpServer = createHttpServer(sessionManager)
 attachWebSocketServer(httpServer, sessionManager)
 
 httpServer.listen(PORT, () => {

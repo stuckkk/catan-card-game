@@ -18,8 +18,14 @@ _Avoid_: Client, player 2, joiner
 **Invite Link**: A URL containing the Room ID in the URL hash (`#join=<roomId>`), issued by the server at Session creation. Shared out-of-band (e.g. WhatsApp, text). Opening it auto-joins the Guest to the Session.
 _Avoid_: Game link, share link, join link
 
-**Room ID**: The short, server-generated identifier for a Session. Embedded in the Invite Link and also accepted as a manually pasted code in the lobby.
+**Room ID**: The short, server-generated identifier for a Session. Embedded in the Invite Link and also accepted as a manually pasted code in the lobby. For a Public Session it is also shown in the Open Games list.
 _Avoid_: Offer code, answer code, room code, lobby id
+
+**Public Session / Private Session**: The Host's choice at creation. A Private Session can only be joined via its Invite Link or Room ID; a Public Session can additionally be joined from the Open Games list. Either way it is a two-player Session; visibility only affects how the Guest finds it.
+_Avoid_: Open game, listed game, hidden game
+
+**Open Games list**: The lobby's list of Public Sessions on this server that are still waiting for a Guest and whose Host is connected, showing Room ID, Victory Point target and waiting time. Refreshed automatically every 5 seconds and on demand. A Session leaves it once a Guest joins, while its Host is disconnected, or when the Host cancels (which ends a Session nobody has joined yet).
+_Avoid_: Game browser, server list, matchmaking
 
 **Projected State**: The full Game State with the *other* player's Hand redacted (replaced by a count), sent by the server to each viewer after every state change. A player's own Hand is always visible to them.
 _Avoid_: Client state, guest state, masked state

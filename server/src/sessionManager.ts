@@ -1,6 +1,7 @@
 import type { WebSocket } from 'ws'
 import { applyAction as applyEngineAction, createInitialState } from '../../src/engine/engine'
 import type { GameAction, GameState, Language, PlayerId } from '../../src/engine/types'
+import type { PublicGameSummary } from '../../src/network/protocol'
 import {
   DEFAULT_IDLE_TIMEOUT_MS, generateRoomId, generateToken,
   type Session,
@@ -30,7 +31,7 @@ export class SessionManager {
 
   constructor(private readonly idleTimeoutMs: number = DEFAULT_IDLE_TIMEOUT_MS) {}
 
-  createSession(vpTarget: number, language: Language, socket: WebSocket): CreateSessionResult {
+  createSession(vpTarget: number, language: Language, isPublic: boolean, socket: WebSocket): CreateSessionResult {
     let roomId = generateRoomId()
     while (this.sessions.has(roomId)) roomId = generateRoomId()
 
@@ -40,6 +41,7 @@ export class SessionManager {
       roomId,
       state,
       createdAt: Date.now(),
+      isPublic,
       players: {
         host: { token, socket },
         guest: null,
@@ -83,6 +85,26 @@ export class SessionManager {
 
     const anyConnected = (['host', 'guest'] as const).some(id => session.players[id]?.socket)
     if (!anyConnected) this.startIdleTimer(roomId, session)
+  }
+
+  /** An explicit `leave`. Before a guest has joined, nobody can play the session any more, so it
+   *  is deleted at once (a cancelled game can't be joined); afterwards it is a plain disconnect. */
+  leave(roomId: string, playerId: PlayerId): void {
+    const session = this.sessions.get(roomId)
+    if (!session) return
+    if (session.players.guest) return this.disconnect(roomId, playerId)
+
+    this.clearIdleTimer(session)
+    this.sessions.delete(roomId)
+  }
+
+  /** Public sessions still waiting for a guest whose host is connected, longest-waiting first. */
+  listPublicGames(): PublicGameSummary[] {
+    const now = Date.now()
+    return [...this.sessions.values()]
+      .filter(s => s.isPublic && !s.players.guest && s.players.host?.socket)
+      .sort((a, b) => a.createdAt - b.createdAt)
+      .map(s => ({ roomId: s.roomId, vpTarget: s.state.config.vpTarget, waitingMs: now - s.createdAt }))
   }
 
   applyAction(roomId: string, actingPlayer: PlayerId, action: GameAction): GameState | null {

@@ -5,7 +5,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { createHttpServer } from '../src/httpServer'
 import { attachWebSocketServer } from '../src/wsServer'
 import { SessionManager } from '../src/sessionManager'
-import type { ClientMessage, ServerMessage } from '../../src/network/protocol'
+import type { ClientMessage, PublicGameSummary, ServerMessage } from '../../src/network/protocol'
 
 /** Buffers every message from connection time so waitFor never races a listener
  *  being attached after the message already arrived. */
@@ -56,10 +56,11 @@ describe('server integration: host/guest game over real WebSocket connections', 
   let port: number
 
   beforeAll(async () => {
-    // Static serving isn't exercised by this test (only /ws traffic), so point it at any
-    // real directory to satisfy sirv's eager directory scan.
-    httpServer = createHttpServer(process.cwd())
-    attachWebSocketServer(httpServer, new SessionManager())
+    const sessionManager = new SessionManager()
+    // Static serving isn't exercised by this test (only /ws and /api traffic), so point it
+    // at any real directory to satisfy sirv's eager directory scan.
+    httpServer = createHttpServer(sessionManager, process.cwd())
+    attachWebSocketServer(httpServer, sessionManager)
     await new Promise<void>(resolve => httpServer.listen(0, resolve))
     port = (httpServer.address() as AddressInfo).port
   })
@@ -68,7 +69,7 @@ describe('server integration: host/guest game over real WebSocket connections', 
 
   it('drives a full create -> join -> action -> reconnect flow', async () => {
     const host = await connect(port)
-    host.send({ type: 'create_session', vpTarget: 12, language: 'en' })
+    host.send({ type: 'create_session', vpTarget: 12, language: 'en', isPublic: false })
     const created = await waitFor(host, 'session_created')
     expect(created.playerId).toBe('host')
     const hostInitialState = await waitFor(host, 'state_update')
@@ -130,5 +131,50 @@ describe('server integration: host/guest game over real WebSocket connections', 
     await waitFor(client, 'session_expired')
 
     client.close()
+  })
+
+  it('lists public sessions waiting for a guest at /api/games, never private ones', async () => {
+    const listedRoomIds = async () => {
+      const res = await fetch(`http://localhost:${port}/api/games`)
+      expect(res.headers.get('content-type')).toContain('application/json')
+      const games = (await res.json()) as PublicGameSummary[]
+      return games.map(g => g.roomId)
+    }
+
+    const publicHost = await connect(port)
+    publicHost.send({ type: 'create_session', vpTarget: 13, language: 'en', isPublic: true })
+    const publicRoom = await waitFor(publicHost, 'session_created')
+
+    const privateHost = await connect(port)
+    privateHost.send({ type: 'create_session', vpTarget: 12, language: 'en', isPublic: false })
+    const privateRoom = await waitFor(privateHost, 'session_created')
+
+    const listed = await listedRoomIds()
+    expect(listed).toContain(publicRoom.roomId)
+    expect(listed).not.toContain(privateRoom.roomId)
+
+    const guest = await connect(port)
+    guest.send({ type: 'join_session', roomId: publicRoom.roomId })
+    await waitFor(guest, 'session_joined')
+    expect(await listedRoomIds()).not.toContain(publicRoom.roomId)
+
+    publicHost.close()
+    privateHost.close()
+    guest.close()
+  })
+
+  it('deletes a session whose host leaves before a guest joined', async () => {
+    const host = await connect(port)
+    host.send({ type: 'create_session', vpTarget: 12, language: 'en', isPublic: true })
+    const created = await waitFor(host, 'session_created')
+    host.send({ type: 'leave' })
+
+    const guest = await connect(port)
+    guest.send({ type: 'join_session', roomId: created.roomId })
+    const error = await waitFor(guest, 'error')
+    expect(error.code).toBe('ROOM_NOT_FOUND')
+
+    host.close()
+    guest.close()
   })
 })

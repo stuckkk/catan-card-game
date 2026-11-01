@@ -11,6 +11,8 @@ export interface Session {
   roomId: string
   state: GameState
   createdAt: number
+  /** Public sessions are listed in every lobby's Open Games list while waiting for a guest. */
+  isPublic: boolean
   players: Record<PlayerId, SessionPlayer | null>
   /** Set only while no player has a live socket; cleared on any connect/reconnect. */
   idleTimer: ReturnType<typeof setTimeout> | null

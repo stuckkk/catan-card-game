@@ -1,5 +1,5 @@
 import type { GameAction, Language, PlayerId, ProjectedState } from '../engine/types'
-import type { ClientMessage, ServerMessage } from './protocol'
+import type { ClientMessage, PublicGameSummary, ServerMessage } from './protocol'
 
 export interface NetworkSession {
   roomId: string
@@ -170,9 +170,11 @@ function handshake(
   })
 }
 
-export async function createSession(opts: { vpTarget: number; language: Language }): Promise<NetworkSession> {
+export async function createSession(
+  opts: { vpTarget: number; language: Language; isPublic: boolean },
+): Promise<NetworkSession> {
   const { socket, message } = await handshake(
-    { type: 'create_session', vpTarget: opts.vpTarget, language: opts.language },
+    { type: 'create_session', vpTarget: opts.vpTarget, language: opts.language, isPublic: opts.isPublic },
     'session_created',
   )
   const created = message as Extract<ServerMessage, { type: 'session_created' }>
@@ -192,4 +194,11 @@ export async function reconnectSession(roomId: string, token: string, playerId: 
   const { socket } = await handshake({ type: 'reconnect', roomId, token }, 'reconnected')
   const session = new WsSession(socket, roomId, token, playerId)
   return session.toNetworkSession()
+}
+
+/** The Open Games list: public sessions on this server still waiting for a guest. */
+export async function fetchPublicGames(): Promise<PublicGameSummary[]> {
+  const res = await fetch('/api/games', { cache: 'no-store' })
+  if (!res.ok) throw new SessionFailure('UNREACHABLE', 'Could not reach the server.')
+  return res.json()
 }
