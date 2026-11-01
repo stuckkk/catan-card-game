@@ -16,7 +16,7 @@ describe('SessionManager', () => {
   })
 
   it('creates a session with a host token and a fresh initial state', () => {
-    const result = manager.createSession(12, 'en', fakeSocket())
+    const result = manager.createSession(12, 'en', false, fakeSocket())
     expect(result.playerId).toBe('host')
     expect(result.roomId).toHaveLength(6)
     expect(result.token).toBeTruthy()
@@ -27,7 +27,7 @@ describe('SessionManager', () => {
   })
 
   it('lets a guest join an existing room', () => {
-    const { roomId } = manager.createSession(12, 'en', fakeSocket())
+    const { roomId } = manager.createSession(12, 'en', false, fakeSocket())
     const result = manager.joinSession(roomId, fakeSocket())
     expect(result).toMatchObject({ ok: true, playerId: 'guest' })
   })
@@ -38,21 +38,21 @@ describe('SessionManager', () => {
   })
 
   it('rejects a second guest joining an already-full room', () => {
-    const { roomId } = manager.createSession(12, 'en', fakeSocket())
+    const { roomId } = manager.createSession(12, 'en', false, fakeSocket())
     manager.joinSession(roomId, fakeSocket())
     const second = manager.joinSession(roomId, fakeSocket())
     expect(second).toEqual({ ok: false, code: 'ROOM_FULL' })
   })
 
   it('reconnects a player who presents the correct token', () => {
-    const { roomId, token } = manager.createSession(12, 'en', fakeSocket())
+    const { roomId, token } = manager.createSession(12, 'en', false, fakeSocket())
     manager.disconnect(roomId, 'host')
     const result = manager.reconnect(roomId, token, fakeSocket())
     expect(result).toEqual({ ok: true, playerId: 'host' })
   })
 
   it('rejects reconnect with an invalid token', () => {
-    const { roomId } = manager.createSession(12, 'en', fakeSocket())
+    const { roomId } = manager.createSession(12, 'en', false, fakeSocket())
     const result = manager.reconnect(roomId, 'wrong-token', fakeSocket())
     expect(result).toEqual({ ok: false, code: 'INVALID_TOKEN' })
   })
@@ -63,7 +63,7 @@ describe('SessionManager', () => {
   })
 
   it('applies an action through the engine and returns the updated state', () => {
-    const { roomId } = manager.createSession(12, 'en', fakeSocket())
+    const { roomId } = manager.createSession(12, 'en', false, fakeSocket())
     const before = manager.getSession(roomId)!.state
     expect(before.phase).toBe('setup')
     // Both players take their starting cards (first player first, different stacks), then roll.
@@ -84,12 +84,74 @@ describe('SessionManager', () => {
     expect(next).toBeNull()
   })
 
+  describe('public games list', () => {
+    it('lists public sessions waiting for a guest, but not private ones', () => {
+      const publicGame = manager.createSession(13, 'en', true, fakeSocket())
+      manager.createSession(12, 'en', false, fakeSocket())
+
+      expect(manager.listPublicGames()).toEqual([
+        { roomId: publicGame.roomId, vpTarget: 13, waitingMs: expect.any(Number) },
+      ])
+    })
+
+    it('drops a public session once a guest joins', () => {
+      const { roomId } = manager.createSession(12, 'en', true, fakeSocket())
+      manager.joinSession(roomId, fakeSocket())
+      expect(manager.listPublicGames()).toEqual([])
+    })
+
+    it('hides a public session while its host is disconnected, and shows it again on reconnect', () => {
+      const { roomId, token } = manager.createSession(12, 'en', true, fakeSocket())
+      manager.disconnect(roomId, 'host')
+      expect(manager.listPublicGames()).toEqual([])
+
+      manager.reconnect(roomId, token, fakeSocket())
+      expect(manager.listPublicGames().map(g => g.roomId)).toEqual([roomId])
+    })
+
+    it('orders the longest-waiting session first', () => {
+      vi.useFakeTimers()
+      try {
+        const older = manager.createSession(12, 'en', true, fakeSocket())
+        vi.advanceTimersByTime(5000)
+        const newer = manager.createSession(12, 'en', true, fakeSocket())
+        vi.advanceTimersByTime(1000)
+
+        expect(manager.listPublicGames()).toEqual([
+          { roomId: older.roomId, vpTarget: 12, waitingMs: 6000 },
+          { roomId: newer.roomId, vpTarget: 12, waitingMs: 1000 },
+        ])
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+  })
+
+  describe('leave', () => {
+    it('deletes the session when the host leaves before a guest joined', () => {
+      const { roomId } = manager.createSession(12, 'en', true, fakeSocket())
+      manager.leave(roomId, 'host')
+      expect(manager.getSession(roomId)).toBeUndefined()
+      expect(manager.joinSession(roomId, fakeSocket())).toEqual({ ok: false, code: 'ROOM_NOT_FOUND' })
+    })
+
+    it('only disconnects the player once a guest has joined', () => {
+      const { roomId } = manager.createSession(12, 'en', false, fakeSocket())
+      manager.joinSession(roomId, fakeSocket())
+      manager.leave(roomId, 'guest')
+
+      const session = manager.getSession(roomId)
+      expect(session).toBeDefined()
+      expect(session!.players.guest?.socket).toBeNull()
+    })
+  })
+
   describe('idle-timeout expiry', () => {
     beforeEach(() => vi.useFakeTimers())
     afterEach(() => vi.useRealTimers())
 
     it('deletes a session after the idle timeout once every player has disconnected', () => {
-      const { roomId } = manager.createSession(12, 'en', fakeSocket())
+      const { roomId } = manager.createSession(12, 'en', false, fakeSocket())
       manager.disconnect(roomId, 'host')
 
       vi.advanceTimersByTime(IDLE_TIMEOUT_MS - 1)
@@ -100,7 +162,7 @@ describe('SessionManager', () => {
     })
 
     it('does not expire a session while any player is still connected', () => {
-      const { roomId } = manager.createSession(12, 'en', fakeSocket())
+      const { roomId } = manager.createSession(12, 'en', false, fakeSocket())
       manager.joinSession(roomId, fakeSocket())
       manager.disconnect(roomId, 'host')
 
@@ -109,7 +171,7 @@ describe('SessionManager', () => {
     })
 
     it('cancels the idle timer if the player reconnects in time', () => {
-      const { roomId, token } = manager.createSession(12, 'en', fakeSocket())
+      const { roomId, token } = manager.createSession(12, 'en', false, fakeSocket())
       manager.disconnect(roomId, 'host')
 
       vi.advanceTimersByTime(IDLE_TIMEOUT_MS / 2)
@@ -120,7 +182,7 @@ describe('SessionManager', () => {
     })
 
     it('treats an explicit leave the same as a disconnect (does not immediately kill the session)', () => {
-      const { roomId } = manager.createSession(12, 'en', fakeSocket())
+      const { roomId } = manager.createSession(12, 'en', false, fakeSocket())
       manager.disconnect(roomId, 'host') // `leave` handling reuses disconnect()
       expect(manager.getSession(roomId)).toBeDefined()
 

@@ -52,7 +52,7 @@ export function handleClientMessage(
 ): void {
   switch (message.type) {
     case 'create_session': {
-      const { roomId, token, playerId } = manager.createSession(message.vpTarget, message.language, socket)
+      const { roomId, token, playerId } = manager.createSession(message.vpTarget, message.language, message.isPublic === true, socket)
       conn.roomId = roomId
       conn.playerId = playerId
       send(socket, { type: 'session_created', roomId, token, playerId })
@@ -99,7 +99,7 @@ export function handleClientMessage(
 
     case 'leave': {
       if (conn.roomId && conn.playerId) {
-        manager.disconnect(conn.roomId, conn.playerId)
+        manager.leave(conn.roomId, conn.playerId)
         notifyPeer(manager, conn.roomId, conn.playerId, { type: 'peer_disconnected' })
       }
       return

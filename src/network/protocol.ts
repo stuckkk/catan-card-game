@@ -2,7 +2,7 @@ import type { GameAction, Language, PlayerId, ProjectedState } from '../engine/t
 
 /** Messages a client sends to the server over the WebSocket connection. */
 export type ClientMessage =
-  | { type: 'create_session'; vpTarget: number; language: Language }
+  | { type: 'create_session'; vpTarget: number; language: Language; isPublic: boolean }
   | { type: 'join_session'; roomId: string }
   | { type: 'reconnect'; roomId: string; token: string }
   | { type: 'action'; action: GameAction }
@@ -20,3 +20,11 @@ export type ServerMessage =
   | { type: 'peer_disconnected' }
   | { type: 'session_expired' }
   | { type: 'error'; code: ServerErrorCode; message: string }
+
+/** One entry of the Open Games list, served by `GET /api/games`. */
+export interface PublicGameSummary {
+  roomId: string
+  vpTarget: number
+  /** How long the session has been waiting for a guest; computed on the server. */
+  waitingMs: number
+}

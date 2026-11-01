@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
-import { createSession, joinSession, SessionFailure } from '../network/wsSession'
+import { createSession, fetchPublicGames, joinSession, SessionFailure } from '../network/wsSession'
 import type { NetworkSession } from '../network/wsSession'
+import type { PublicGameSummary } from '../network/protocol'
 import { sessionStore } from '../network/sessionStore'
-import { savePersisted } from '../network/persistence'
+import { clearPersisted, savePersisted } from '../network/persistence'
 import { createInitialState } from '../engine/engine'
 import type { Language } from '../engine/types'
 import type { ClientRole } from './useGameSession'
@@ -12,6 +13,20 @@ import styles from './LobbyPage.module.css'
 
 type LobbyMode = 'idle' | 'hosting' | 'joining' | 'error'
 type ErrorKey = 'connectionLost' | 'roomNotFound' | 'sessionExpired' | 'serverUnreachable'
+/** Who the new game is against: an online opponent (by invite only, or anyone via the Open Games
+ *  list), the computer, or nobody (hot-seat practice). */
+type Opponent = 'private' | 'public' | 'computer' | 'practice'
+
+const OPPONENTS: { value: Opponent; icon: string; labelKey: string; hintKey: string }[] = [
+  { value: 'private', icon: '👥', labelKey: 'lobby.opponentPrivate', hintKey: 'lobby.opponentPrivateHint' },
+  { value: 'public', icon: '🌍', labelKey: 'lobby.opponentPublic', hintKey: 'lobby.opponentPublicHint' },
+  { value: 'computer', icon: '🤖', labelKey: 'lobby.opponentComputer', hintKey: 'lobby.opponentComputerHint' },
+  { value: 'practice', icon: '🪑', labelKey: 'lobby.opponentPractice', hintKey: 'lobby.opponentPracticeHint' },
+]
+
+const VP_TARGETS = [7, 12, 13]
+
+const PUBLIC_GAMES_REFRESH_MS = 5_000
 
 function errorKeyForCode(code: string): ErrorKey {
   switch (code) {
@@ -28,10 +43,14 @@ export default function LobbyPage() {
 
   const [mode, setMode] = useState<LobbyMode>('idle')
   const [vpTarget, setVpTarget] = useState(12)
+  const [opponent, setOpponent] = useState<Opponent>('private')
   const [inviteUrl, setInviteUrl] = useState('')
   const [manualRoomId, setManualRoomId] = useState('')
   const [copied, setCopied] = useState(false)
   const [errorKey, setErrorKey] = useState<ErrorKey>('connectionLost')
+  const [publicGames, setPublicGames] = useState<PublicGameSummary[]>([])
+  const [listFailed, setListFailed] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
 
   // Auto-join when arriving via invite link - also when it's pasted into a tab that already
   // shows the lobby: only the #hash changes then, so the page isn't reloaded.
@@ -48,6 +67,30 @@ export default function LobbyPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  const refreshPublicGames = useCallback(async () => {
+    try {
+      setPublicGames(await fetchPublicGames())
+      setListFailed(false)
+    } catch {
+      setListFailed(true)
+    }
+  }, [])
+
+  // The Open Games list only matters on the idle lobby screen: refresh it on arrival and then
+  // every few seconds, and stop as soon as the player hosts, joins or hits an error.
+  useEffect(() => {
+    if (mode !== 'idle') return
+    refreshPublicGames()
+    const timer = setInterval(refreshPublicGames, PUBLIC_GAMES_REFRESH_MS)
+    return () => clearInterval(timer)
+  }, [mode, refreshPublicGames])
+
+  async function handleManualRefresh() {
+    setRefreshing(true)
+    await refreshPublicGames()
+    setRefreshing(false)
+  }
+
   function currentLanguage(): Language {
     return i18n.language.startsWith('de') ? 'de' : 'en'
   }
@@ -63,11 +106,12 @@ export default function LobbyPage() {
     setMode('error')
   }
 
-  async function handleCreateGame() {
+  async function handleCreateGame(isPublic: boolean) {
+    setInviteUrl('')
     setMode('hosting')
 
     try {
-      const session = await createSession({ vpTarget, language: currentLanguage() })
+      const session = await createSession({ vpTarget, language: currentLanguage(), isPublic })
       adoptSession(session)
       setInviteUrl(session.inviteUrl ?? '')
 
@@ -79,6 +123,16 @@ export default function LobbyPage() {
     } catch (err) {
       failWith(err)
     }
+  }
+
+  /** Leaving before anyone joined ends the session on the server, so it drops off the Open Games
+   *  list and its invite link stops working. */
+  function handleCancelHosting() {
+    sessionStore.get()?.close()
+    sessionStore.set(null)
+    clearPersisted()
+    setInviteUrl('')
+    setMode('idle')
   }
 
   async function handleJoin(roomId: string) {
@@ -102,6 +156,16 @@ export default function LobbyPage() {
     const initialState = createInitialState({ vpTarget, language: currentLanguage() })
     sessionStore.set(null)
     navigate('/game', { state: { role, initialGameState: initialState } })
+  }
+
+  function handleStart() {
+    if (opponent === 'computer' || opponent === 'practice') startLocalGame(opponent)
+    else handleCreateGame(opponent === 'public')
+  }
+
+  function waitingLabel(waitingMs: number): string {
+    const minutes = Math.floor(waitingMs / 60_000)
+    return minutes < 1 ? t('lobby.waitingJustNow') : t('lobby.waitingMinutes', { count: minutes })
   }
 
   // Phones offer their native share sheet (WhatsApp, Messages…); copying stays available.
@@ -135,50 +199,99 @@ export default function LobbyPage() {
 
         {mode === 'idle' && (
           <div className={styles.actions}>
-            <section className={styles.option}>
-              <h2>{t('lobby.createGame')}</h2>
-              <div className={styles.inline}>
-                <div className={styles.field}>
-                  <label htmlFor="vp-target">{t('lobby.vpTarget')}</label>
-                  <select id="vp-target" value={vpTarget} onChange={e => setVpTarget(Number(e.target.value))}>
-                    <option value={7}>7</option>
-                    <option value={12}>12</option>
-                    <option value={13}>13</option>
-                  </select>
-                </div>
-                <button className="primary" onClick={handleCreateGame}>{t('lobby.createGame')}</button>
-              </div>
-            </section>
-
-            <section className={styles.option}>
-              <h2>{t('lobby.joinGame')}</h2>
-              <div className={styles.inline}>
-                <div className={styles.field}>
-                  <label htmlFor="room-code">{t('lobby.pasteRoomCode')}</label>
-                  <input
-                    id="room-code"
-                    type="text"
-                    value={manualRoomId}
-                    onChange={e => setManualRoomId(e.target.value)}
-                    placeholder={t('lobby.roomCode')}
-                  />
-                </div>
-                <button className="primary" onClick={() => handleJoin(manualRoomId)} disabled={!manualRoomId.trim()}>
-                  {t('lobby.connect')}
+            {/* Open games come first: the quickest way into a game, when there is one. When there
+                is none it shrinks to a single line that still offers the manual refresh. */}
+            <section className={publicGames.length ? styles.openGames : styles.openGamesEmpty}>
+              <div className={styles.listHeader}>
+                <h2>
+                  <span aria-hidden="true">🌍 </span>
+                  {listFailed ? t('lobby.listUnavailable')
+                    : publicGames.length ? t('lobby.openGames') : t('lobby.noOpenGames')}
+                </h2>
+                <button className="secondary" onClick={handleManualRefresh} disabled={refreshing}>
+                  {t('lobby.refresh')}
                 </button>
               </div>
+              {!listFailed && publicGames.length > 0 && (
+                <ul className={styles.games}>
+                  {publicGames.map(g => (
+                    <li key={g.roomId} className={styles.game}>
+                      <span className={styles.gameInfo}>
+                        <span className={styles.gameCode}>{g.roomId}</span>
+                        <span className={styles.gameMeta}>
+                          {t('lobby.vpShort', { count: g.vpTarget })} · {waitingLabel(g.waitingMs)}
+                        </span>
+                      </span>
+                      <button className="primary" onClick={() => handleJoin(g.roomId)}>{t('lobby.join')}</button>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </section>
 
-            <div className={styles.divider}><span>{t('lobby.or')}</span></div>
+            <section className={styles.option}>
+              <h2>{t('lobby.newGame')}</h2>
+              <fieldset className={styles.tiles}>
+                <legend className={styles.visuallyHidden}>{t('lobby.opponent')}</legend>
+                {OPPONENTS.map(o => (
+                  <label key={o.value} className={styles.tile}>
+                    <input
+                      className={styles.visuallyHidden}
+                      type="radio"
+                      name="opponent"
+                      value={o.value}
+                      checked={opponent === o.value}
+                      onChange={() => setOpponent(o.value)}
+                    />
+                    <span className={styles.tileIcon} aria-hidden="true">{o.icon}</span>
+                    <span className={styles.tileLabel}>{t(o.labelKey)}</span>
+                  </label>
+                ))}
+              </fieldset>
+              <p className={styles.hint}>{t(OPPONENTS.find(o => o.value === opponent)!.hintKey)}</p>
 
-            <button className="secondary" onClick={() => startLocalGame('computer')}>{t('lobby.computer')}</button>
-            <button className="secondary" onClick={() => startLocalGame('practice')}>{t('lobby.practice')}</button>
+              <div className={styles.vp}>
+                <span id="vp-label">{t('lobby.vpTarget')}</span>
+                <div className={styles.segmented} role="radiogroup" aria-labelledby="vp-label">
+                  {VP_TARGETS.map(vp => (
+                    <label key={vp} className={styles.segment}>
+                      <input
+                        className={styles.visuallyHidden}
+                        type="radio"
+                        name="vp-target"
+                        value={vp}
+                        checked={vpTarget === vp}
+                        onChange={() => setVpTarget(vp)}
+                      />
+                      {vp}
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <button className="primary" onClick={handleStart}>{t('lobby.start')}</button>
+            </section>
+
+            <div className={styles.codeRow}>
+              <label htmlFor="room-code">{t('lobby.haveCode')}</label>
+              <input
+                id="room-code"
+                type="text"
+                value={manualRoomId}
+                onChange={e => setManualRoomId(e.target.value)}
+                placeholder={t('lobby.roomCode')}
+              />
+              <button className="secondary" onClick={() => handleJoin(manualRoomId)} disabled={!manualRoomId.trim()}>
+                {t('lobby.join')}
+              </button>
+            </div>
           </div>
         )}
 
         {mode === 'hosting' && (
           <div className="card">
             <h2>{t('lobby.waitingForGuest')}</h2>
+            {opponent === 'public' && <p className={styles.hint}>{t('lobby.publicListed')}</p>}
             <div className={styles.field}>
               <label>{t('lobby.inviteLink')}</label>
               <textarea rows={3} readOnly value={inviteUrl} />
@@ -192,6 +305,9 @@ export default function LobbyPage() {
               </div>
             </div>
             <p className={styles.hint}>{t('lobby.shareLink')}</p>
+            <button className="secondary" onClick={handleCancelHosting} disabled={!inviteUrl}>
+              {t('lobby.cancel')}
+            </button>
           </div>
         )}
 
