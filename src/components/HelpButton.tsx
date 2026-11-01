@@ -27,6 +27,7 @@ export default function HelpButton({ vpTarget }: { vpTarget: number }) {
       {open && (
         <Modal onClose={() => setOpen(false)}>
           <div className={dialog.title}>{t('game.help.title')}</div>
+          <p className={dialog.hint}>{t('game.help.adjustable')}</p>
 
           <section className={styles.section}>
             <h3>{t('game.help.goalTitle')}</h3>

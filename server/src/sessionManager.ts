@@ -1,6 +1,6 @@
 import type { WebSocket } from 'ws'
-import { applyAction as applyEngineAction, createInitialState } from '../../src/engine/engine'
-import type { GameAction, GameState, Language, PlayerId } from '../../src/engine/types'
+import { applyAction as applyEngineAction, createInitialState, hasCustomRules } from '../../src/engine/engine'
+import type { GameAction, GameRules, GameState, Language, PlayerId } from '../../src/engine/types'
 import type { PublicGameSummary } from '../../src/network/protocol'
 import {
   DEFAULT_IDLE_TIMEOUT_MS, generateRoomId, generateToken,
@@ -31,12 +31,13 @@ export class SessionManager {
 
   constructor(private readonly idleTimeoutMs: number = DEFAULT_IDLE_TIMEOUT_MS) {}
 
-  createSession(vpTarget: number, language: Language, isPublic: boolean, socket: WebSocket): CreateSessionResult {
+  /** The Game Settings come from the client; the engine falls back to the rulebook for invalid ones. */
+  createSession(rules: Partial<GameRules>, language: Language, isPublic: boolean, socket: WebSocket): CreateSessionResult {
     let roomId = generateRoomId()
     while (this.sessions.has(roomId)) roomId = generateRoomId()
 
     const token = generateToken()
-    const state = createInitialState({ vpTarget, language })
+    const state = createInitialState({ ...rules, language })
     this.sessions.set(roomId, {
       roomId,
       state,
@@ -104,7 +105,12 @@ export class SessionManager {
     return [...this.sessions.values()]
       .filter(s => s.isPublic && !s.players.guest && s.players.host?.socket)
       .sort((a, b) => a.createdAt - b.createdAt)
-      .map(s => ({ roomId: s.roomId, vpTarget: s.state.config.vpTarget, waitingMs: now - s.createdAt }))
+      .map(s => ({
+        roomId: s.roomId,
+        vpTarget: s.state.config.vpTarget,
+        customRules: hasCustomRules(s.state.config),
+        waitingMs: now - s.createdAt,
+      }))
   }
 
   applyAction(roomId: string, actingPlayer: PlayerId, action: GameAction): GameState | null {

@@ -1,4 +1,4 @@
-import type { GameAction, Language, PlayerId, ProjectedState } from '../engine/types'
+import type { GameAction, GameRules, Language, PlayerId, ProjectedState } from '../engine/types'
 import type { ClientMessage, PublicGameSummary, ServerMessage } from './protocol'
 
 export interface NetworkSession {
@@ -171,10 +171,10 @@ function handshake(
 }
 
 export async function createSession(
-  opts: { vpTarget: number; language: Language; isPublic: boolean },
+  opts: { rules: GameRules; language: Language; isPublic: boolean },
 ): Promise<NetworkSession> {
   const { socket, message } = await handshake(
-    { type: 'create_session', vpTarget: opts.vpTarget, language: opts.language, isPublic: opts.isPublic },
+    { type: 'create_session', rules: opts.rules, language: opts.language, isPublic: opts.isPublic },
     'session_created',
   )
   const created = message as Extract<ServerMessage, { type: 'session_created' }>

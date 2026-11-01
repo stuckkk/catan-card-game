@@ -28,7 +28,7 @@ import ChoiceModal from '../components/ChoiceModal'
 import Toasts from '../components/Toasts'
 import ActivityFeed from '../components/ActivityFeed'
 import BuildStrip from '../components/BuildStrip'
-import HelpButton from '../components/HelpButton'
+import GameRulesButton from '../components/GameRulesButton'
 import TokenChip from '../components/TokenChip'
 import { describeEvent, isToastWorthy, playerLabel } from '../components/activityText'
 import type { ActivityLine } from '../components/activityText'
@@ -257,7 +257,7 @@ export default function GamePage() {
           >
             {i18n.language.startsWith('de') ? 'DE' : 'EN'}
           </button>
-          <HelpButton vpTarget={view.config.vpTarget} />
+          <GameRulesButton config={view.config} myId={myId} isPractice={isPractice} />
           <div className={styles.myScore}>
             <span className={styles.myScoreLabel}>{t('game.you')}</span>
             <span className={styles.vp}>{t('game.vpOfTarget', { count: myVP, target: view.config.vpTarget })}</span>

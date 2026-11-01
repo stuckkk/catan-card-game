@@ -6,8 +6,10 @@ import type { NetworkSession } from '../network/wsSession'
 import type { PublicGameSummary } from '../network/protocol'
 import { sessionStore } from '../network/sessionStore'
 import { clearPersisted, savePersisted } from '../network/persistence'
-import { createInitialState } from '../engine/engine'
-import type { Language } from '../engine/types'
+import { createInitialState, hasCustomRules, STANDARD_RULES } from '../engine/engine'
+import type { GameRules, Language } from '../engine/types'
+import HelpButton from '../components/HelpButton'
+import GameRulesSheet from '../components/GameRulesSheet'
 import type { ClientRole } from './useGameSession'
 import styles from './LobbyPage.module.css'
 
@@ -23,8 +25,6 @@ const OPPONENTS: { value: Opponent; icon: string; labelKey: string; hintKey: str
   { value: 'computer', icon: '🤖', labelKey: 'lobby.opponentComputer', hintKey: 'lobby.opponentComputerHint' },
   { value: 'practice', icon: '🪑', labelKey: 'lobby.opponentPractice', hintKey: 'lobby.opponentPracticeHint' },
 ]
-
-const VP_TARGETS = [7, 12, 13]
 
 const PUBLIC_GAMES_REFRESH_MS = 5_000
 
@@ -42,7 +42,8 @@ export default function LobbyPage() {
   const navigate = useNavigate()
 
   const [mode, setMode] = useState<LobbyMode>('idle')
-  const [vpTarget, setVpTarget] = useState(12)
+  const [rules, setRules] = useState<GameRules>(STANDARD_RULES)
+  const [rulesOpen, setRulesOpen] = useState(false)
   const [opponent, setOpponent] = useState<Opponent>('private')
   const [inviteUrl, setInviteUrl] = useState('')
   const [manualRoomId, setManualRoomId] = useState('')
@@ -91,6 +92,9 @@ export default function LobbyPage() {
     setRefreshing(false)
   }
 
+  // Hot-seat practice has no "me": who starts is always random there.
+  const gameRules: GameRules = opponent === 'practice' ? { ...rules, startingPlayer: 'random' } : rules
+
   function currentLanguage(): Language {
     return i18n.language.startsWith('de') ? 'de' : 'en'
   }
@@ -111,7 +115,7 @@ export default function LobbyPage() {
     setMode('hosting')
 
     try {
-      const session = await createSession({ vpTarget, language: currentLanguage(), isPublic })
+      const session = await createSession({ rules: gameRules, language: currentLanguage(), isPublic })
       adoptSession(session)
       setInviteUrl(session.inviteUrl ?? '')
 
@@ -153,7 +157,7 @@ export default function LobbyPage() {
   /** No network session and no persistence: a hot-seat board to learn on (practice), or a game
    *  against the computer in the other seat. */
   function startLocalGame(role: Extract<ClientRole, 'practice' | 'computer'>) {
-    const initialState = createInitialState({ vpTarget, language: currentLanguage() })
+    const initialState = createInitialState({ ...gameRules, language: currentLanguage() })
     sessionStore.set(null)
     navigate('/game', { state: { role, initialGameState: initialState } })
   }
@@ -189,9 +193,13 @@ export default function LobbyPage() {
     <div className={styles.page}>
       <div className={styles.container}>
         <div className={styles.header}>
-          <div className={styles.langSwitch} role="group" aria-label={t('lobby.language')}>
-            <button className={styles.lang} aria-pressed={i18n.language === 'en'} onClick={() => i18n.changeLanguage('en')}>EN</button>
-            <button className={styles.lang} aria-pressed={i18n.language.startsWith('de')} onClick={() => i18n.changeLanguage('de')}>DE</button>
+          <div className={styles.headerTools}>
+            {/* The rules overview explains the rules in general, with the rulebook values; a game's own settings are in its 📜. */}
+            <HelpButton vpTarget={STANDARD_RULES.vpTarget} />
+            <div className={styles.langSwitch} role="group" aria-label={t('lobby.language')}>
+              <button className={styles.lang} aria-pressed={i18n.language === 'en'} onClick={() => i18n.changeLanguage('en')}>EN</button>
+              <button className={styles.lang} aria-pressed={i18n.language.startsWith('de')} onClick={() => i18n.changeLanguage('de')}>DE</button>
+            </div>
           </div>
           <h1 className={styles.title}>{t('lobby.title')}</h1>
           <p className={styles.tagline}>{t('lobby.tagline')}</p>
@@ -219,7 +227,8 @@ export default function LobbyPage() {
                       <span className={styles.gameInfo}>
                         <span className={styles.gameCode}>{g.roomId}</span>
                         <span className={styles.gameMeta}>
-                          {t('lobby.vpShort', { count: g.vpTarget })} · {waitingLabel(g.waitingMs)}
+                          {t('lobby.vpShort', { count: g.vpTarget })}
+                          {g.customRules && <> · {t('rules.customShort')}</>} · {waitingLabel(g.waitingMs)}
                         </span>
                       </span>
                       <button className="primary" onClick={() => handleJoin(g.roomId)}>{t('lobby.join')}</button>
@@ -250,24 +259,22 @@ export default function LobbyPage() {
               </fieldset>
               <p className={styles.hint}>{t(OPPONENTS.find(o => o.value === opponent)!.hintKey)}</p>
 
-              <div className={styles.vp}>
-                <span id="vp-label">{t('lobby.vpTarget')}</span>
-                <div className={styles.segmented} role="radiogroup" aria-labelledby="vp-label">
-                  {VP_TARGETS.map(vp => (
-                    <label key={vp} className={styles.segment}>
-                      <input
-                        className={styles.visuallyHidden}
-                        type="radio"
-                        name="vp-target"
-                        value={vp}
-                        checked={vpTarget === vp}
-                        onChange={() => setVpTarget(vp)}
-                      />
-                      {vp}
-                    </label>
-                  ))}
-                </div>
-              </div>
+              <button className={styles.rulesRow} onClick={() => setRulesOpen(true)}>
+                <span className={styles.rulesLabel}>{t('rules.open')} <span aria-hidden="true">⚙️</span></span>
+                <span className={styles.rulesSummary}>
+                  {t('lobby.vpShort', { count: rules.vpTarget })}
+                  {' · '}
+                  {hasCustomRules(gameRules) ? t('rules.custom') : t('rules.rulebook')}
+                </span>
+              </button>
+              {rulesOpen && (
+                <GameRulesSheet
+                  rules={rules}
+                  onChange={setRules}
+                  showStartingPlayer={opponent !== 'practice'}
+                  onClose={() => setRulesOpen(false)}
+                />
+              )}
 
               <button className="primary" onClick={handleStart}>{t('lobby.start')}</button>
             </section>

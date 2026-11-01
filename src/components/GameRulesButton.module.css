@@ -1,0 +1,11 @@
+.list { display: flex; flex-direction: column; gap: 8px; font-size: 15px; }
+.row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--color-border);
+}
+.row:last-child { border-bottom: none; padding-bottom: 0; }
+.row dt { color: var(--color-text-muted); }
+.row dd { font-weight: 700; text-align: right; }

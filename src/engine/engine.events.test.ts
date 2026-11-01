@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { applyAction, applyRoll, rollDice, tokenHolders } from './engine'
+import { applyAction, applyRoll, rollDice, tokenHolders, STANDARD_RULES } from './engine'
 import { emptyDecks, regionsWith, settlementA, road, settlementB, playedFor, makePlayer, makeState, res, roll } from './testing/fixtures'
 import type { GameState, PlayerState, PlayerId, CentralSlot } from './types'
 
@@ -45,6 +45,16 @@ describe('Brigand Attack', () => {
     const state = makeState({ phase: 'roll', turn: 4, players: { host: makePlayer('host', { regions: rich() }), guest: makePlayer('guest') } })
     const next = applyRoll(state, roll('brigand', 6))
     expect(res(next.players.host).ore).toBe(3)
+  })
+
+  it('follows the Brigand protection setting: none, or each player’s first four turns', () => {
+    const atTurn = (turn: number, brigandGraceTurns: 0 | 4) => makeState({
+      phase: 'roll', turn, config: { ...STANDARD_RULES, brigandGraceTurns, language: 'en' },
+      players: { host: makePlayer('host', { regions: rich() }), guest: makePlayer('guest') },
+    })
+    expect(res(applyRoll(atTurn(1, 0), roll('brigand', 6)).players.host).ore).toBe(0)
+    expect(res(applyRoll(atTurn(8, 4), roll('brigand', 6)).players.host).ore).toBe(3)
+    expect(res(applyRoll(atTurn(9, 4), roll('brigand', 6)).players.host).ore).toBe(0)
   })
 
   it('takes all Ore and Wool from a player with more than 7, then production still happens', () => {

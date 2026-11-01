@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useLocation } from 'react-router-dom'
-import { applyAction, nextActor, projectStateFor } from '../engine/engine'
+import { applyAction, nextActor, normalizeRules, projectStateFor } from '../engine/engine'
 import { botShouldAct, chooseBotAction } from '../engine/bot'
 import type { GameState, GameAction, ProjectedState, PlayerId } from '../engine/types'
 import { reconnectSession } from '../network/wsSession'
@@ -34,7 +34,11 @@ export function useGameSession() {
 
   // Practice mode runs the engine locally; Host/Guest only ever hold what the
   // server last projected to them.
-  const [gameState, setGameState] = useState<GameState | null>(nav.initialGameState ?? null)
+  // A reload restores the game from history.state, possibly saved by an older version without some
+  // Game Settings: those fall back to the rulebook, as that game was played with.
+  const [gameState, setGameState] = useState<GameState | null>(() => nav.initialGameState
+    ? { ...nav.initialGameState, config: { ...normalizeRules(nav.initialGameState.config), language: nav.initialGameState.config.language } }
+    : null)
   const [projected, setProjected] = useState<ProjectedState | null>(null)
   const [disconnected, setDisconnected] = useState(false)
   const [expired, setExpired] = useState(false)

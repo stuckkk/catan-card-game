@@ -52,7 +52,7 @@ export function handleClientMessage(
 ): void {
   switch (message.type) {
     case 'create_session': {
-      const { roomId, token, playerId } = manager.createSession(message.vpTarget, message.language, message.isPublic === true, socket)
+      const { roomId, token, playerId } = manager.createSession(message.rules ?? {}, message.language, message.isPublic === true, socket)
       conn.roomId = roomId
       conn.playerId = playerId
       send(socket, { type: 'session_created', roomId, token, playerId })

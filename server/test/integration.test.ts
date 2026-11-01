@@ -5,6 +5,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { createHttpServer } from '../src/httpServer'
 import { attachWebSocketServer } from '../src/wsServer'
 import { SessionManager } from '../src/sessionManager'
+import { STANDARD_RULES } from '../../src/engine/engine'
 import type { ClientMessage, PublicGameSummary, ServerMessage } from '../../src/network/protocol'
 
 /** Buffers every message from connection time so waitFor never races a listener
@@ -69,7 +70,7 @@ describe('server integration: host/guest game over real WebSocket connections', 
 
   it('drives a full create -> join -> action -> reconnect flow', async () => {
     const host = await connect(port)
-    host.send({ type: 'create_session', vpTarget: 12, language: 'en', isPublic: false })
+    host.send({ type: 'create_session', rules: { ...STANDARD_RULES, vpTarget: 12 }, language: 'en', isPublic: false })
     const created = await waitFor(host, 'session_created')
     expect(created.playerId).toBe('host')
     const hostInitialState = await waitFor(host, 'state_update')
@@ -142,11 +143,11 @@ describe('server integration: host/guest game over real WebSocket connections', 
     }
 
     const publicHost = await connect(port)
-    publicHost.send({ type: 'create_session', vpTarget: 13, language: 'en', isPublic: true })
+    publicHost.send({ type: 'create_session', rules: { ...STANDARD_RULES, vpTarget: 13 }, language: 'en', isPublic: true })
     const publicRoom = await waitFor(publicHost, 'session_created')
 
     const privateHost = await connect(port)
-    privateHost.send({ type: 'create_session', vpTarget: 12, language: 'en', isPublic: false })
+    privateHost.send({ type: 'create_session', rules: { ...STANDARD_RULES, vpTarget: 12 }, language: 'en', isPublic: false })
     const privateRoom = await waitFor(privateHost, 'session_created')
 
     const listed = await listedRoomIds()
@@ -165,7 +166,7 @@ describe('server integration: host/guest game over real WebSocket connections', 
 
   it('deletes a session whose host leaves before a guest joined', async () => {
     const host = await connect(port)
-    host.send({ type: 'create_session', vpTarget: 12, language: 'en', isPublic: true })
+    host.send({ type: 'create_session', rules: { ...STANDARD_RULES, vpTarget: 12 }, language: 'en', isPublic: true })
     const created = await waitFor(host, 'session_created')
     host.send({ type: 'leave' })
 

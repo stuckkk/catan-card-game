@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { applyAction, applyRoll, resolveAttackRoll, projectStateFor, tokenHolders } from './engine'
+import { applyAction, applyRoll, resolveAttackRoll, projectStateFor, tokenHolders, STANDARD_RULES } from './engine'
 import { ALL_DRAW_CARDS, DEFAULT_EVENT_DECK } from './cards'
 import { emptyDecks, regionsWith, settlementA, road, settlementB, playedFor, makePlayer, makeState, unlocked, res, roll } from './testing/fixtures'
 import type { GameAction, GameState, PlayerState, PlayerId, ResourceType, DrawStackId, CentralSlot } from './types'
@@ -11,6 +11,14 @@ describe('action cards', () => {
     const host = makePlayer('host', { hand: ['caravan'], regions: regionsWith({ ore: 2 }) })
     const s = makeState({ players: { host, guest: makePlayer('guest') } })  // 2 + 2 VP
     expect(applyAction(s, 'host', { type: 'PLAY_ACTION_CARD', cardId: 'caravan', params: { give: ['ore'], receive: ['wool'] } })).toBe(s)
+  })
+
+  it('are playable from the start when the Game Settings say so', () => {
+    const host = makePlayer('host', { hand: ['caravan'], regions: regionsWith({ ore: 2 }) })
+    const s = makeState({ config: { ...STANDARD_RULES, actionCardsFromStart: true, language: 'en' }, players: { host, guest: makePlayer('guest') } })
+    const next = applyAction(s, 'host', { type: 'PLAY_ACTION_CARD', cardId: 'caravan', params: { give: ['ore'], receive: ['wool'] } })
+    expect(next.players.host.hand).toEqual([])
+    expect(res(next.players.host)).toMatchObject({ ore: 1, wool: 1 })
   })
 
   it('Caravan trades up to 2 resources for 2 others and is discarded', () => {
