@@ -1,19 +1,18 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useLocation } from 'react-router-dom'
-import { applyAction, nextActor, projectStateFor } from '../engine/engine'
+import { applyAction, nextActor, normalizeRules, projectStateFor } from '../engine/engine'
 import { botShouldAct, chooseBotAction } from '../engine/bot'
 import type { GameState, GameAction, ProjectedState, PlayerId } from '../engine/types'
 import { reconnectSession } from '../network/wsSession'
 import type { NetworkSession } from '../network/wsSession'
 import { sessionStore } from '../network/sessionStore'
-import { loadPersisted } from '../network/persistence'
+import { loadLocalGame, loadPersisted, saveLocalGame } from '../network/persistence'
+import { COMPUTER_DELAY_MS, useClientSettings } from '../settings/clientSettings'
 
 export type ClientRole = 'host' | 'guest' | 'practice' | 'computer'
 
 /** Against the computer, the human plays the host seat and the bot the guest seat. */
 const COMPUTER_SEAT: PlayerId = 'guest'
-/** Pause before each computer move, so the player can follow what it does. */
-const COMPUTER_DELAY_MS = 700
 
 /** Where the game comes from: the engine in this browser (practice, against the computer) or the
  *  server (host, guest). Either way the page gets the viewer's projected state and one way to act. */
@@ -34,12 +33,24 @@ export function useGameSession() {
 
   // Practice mode runs the engine locally; Host/Guest only ever hold what the
   // server last projected to them.
-  const [gameState, setGameState] = useState<GameState | null>(nav.initialGameState ?? null)
+  // history.state only holds the game as it started; a reload continues from the state saved
+  // after its last action (saveLocalGame). Either may come from an older version without some
+  // Game Settings: those fall back to the rulebook, as that game was played with.
+  const [gameState, setGameState] = useState<GameState | null>(() => {
+    const initial = nav.initialGameState
+    if (!initial) return null
+    const state = loadLocalGame(initial.sessionId) ?? initial
+    return { ...state, config: { ...normalizeRules(state.config), language: state.config.language } }
+  })
   const [projected, setProjected] = useState<ProjectedState | null>(null)
   const [disconnected, setDisconnected] = useState(false)
   const [expired, setExpired] = useState(false)
+  // Our own connection to the server (online games); it reconnects by itself.
+  const [reconnecting, setReconnecting] = useState(false)
 
   const sessionRef = useRef<NetworkSession | null>(sessionStore.get())
+  // Pause before each computer move, so the player can follow what it does (a Client Setting).
+  const computerDelay = COMPUTER_DELAY_MS[useClientSettings().computerSpeed]
 
   const isPractice = role === 'practice'
   // Practice and games against the computer run the engine in this browser.
@@ -71,6 +82,7 @@ export function useGameSession() {
       session.onPeerConnect(() => setDisconnected(false))
       session.onPeerDisconnect(() => setDisconnected(true))
       session.onSessionExpired(() => setExpired(true))
+      session.onConnectionChange(connected => setReconnecting(!connected))
     }
 
     const existing = sessionStore.get()
@@ -93,19 +105,24 @@ export function useGameSession() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [role])
 
+  // A local game lives only in this browser: keep it for a reload.
+  useEffect(() => {
+    if (isLocal && gameState) saveLocalGame(gameState)
+  }, [isLocal, gameState])
+
   // The computer's moves: one at a time, after a short pause, whenever it has to act.
   useEffect(() => {
     if (role !== 'computer' || !gameState || !botShouldAct(gameState, COMPUTER_SEAT)) return
     const timer = setTimeout(() => setGameState(prev => {
       const action = prev && chooseBotAction(prev, COMPUTER_SEAT)
       return action ? applyAction(prev, COMPUTER_SEAT, action) : prev
-    }), COMPUTER_DELAY_MS)
+    }), computerDelay)
     return () => clearTimeout(timer)
-  }, [role, gameState])
+  }, [role, gameState, computerDelay])
 
   // A local game projects its state exactly like the server does, so the UI only ever
   // works off a ProjectedState.
   const view: ProjectedState | null = isLocal ? (gameState ? projectStateFor(gameState, myId) : null) : projected
 
-  return { role, isPractice, myId, view, dispatchAction, disconnected, expired }
+  return { role, isPractice, myId, view, dispatchAction, disconnected, reconnecting, expired }
 }

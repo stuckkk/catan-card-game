@@ -17,6 +17,23 @@ const ERROR_MESSAGES: Record<ServerErrorCode, string> = {
   ROOM_FULL: 'That session already has two players.',
   INVALID_TOKEN: 'Reconnect token was not recognized.',
   MALFORMED_MESSAGE: 'Malformed message.',
+  SERVER_FULL: 'The server has no room for another game right now.',
+}
+
+/** The shape check for what arrives off the wire. An action's own fields are the engine's to
+ *  judge: it refuses what it can't apply, and wsServer catches what it trips over. */
+function isClientMessage(message: unknown): message is ClientMessage {
+  if (typeof message !== 'object' || message === null) return false
+  const m = message as Record<string, unknown>
+  const isString = (v: unknown) => typeof v === 'string'
+  switch (m.type) {
+    case 'create_session': return m.rules === undefined || (typeof m.rules === 'object' && m.rules !== null)
+    case 'join_session': return isString(m.roomId)
+    case 'reconnect': return isString(m.roomId) && isString(m.token)
+    case 'action': return typeof m.action === 'object' && m.action !== null && isString((m.action as { type?: unknown }).type)
+    case 'leave': return true
+    default: return false
+  }
 }
 
 function sendState(manager: SessionManager, roomId: string, viewer: PlayerId, socket: WebSocket): void {
@@ -48,11 +65,17 @@ export function handleClientMessage(
   manager: SessionManager,
   socket: WebSocket,
   conn: ConnectionState,
-  message: ClientMessage,
+  message: unknown,
 ): void {
+  if (!isClientMessage(message)) return sendError(socket, 'MALFORMED_MESSAGE')
+  // One seat per connection: the client opens a new connection for every session.
+  if (conn.roomId && message.type !== 'action' && message.type !== 'leave') return sendError(socket, 'MALFORMED_MESSAGE')
+
   switch (message.type) {
     case 'create_session': {
-      const { roomId, token, playerId } = manager.createSession(message.vpTarget, message.language, message.isPublic === true, socket)
+      const language = message.language === 'de' ? 'de' : 'en'
+      if (manager.isFull) return sendError(socket, 'SERVER_FULL')
+      const { roomId, token, playerId } = manager.createSession(message.rules ?? {}, language, message.isPublic === true, socket)
       conn.roomId = roomId
       conn.playerId = playerId
       send(socket, { type: 'session_created', roomId, token, playerId })
@@ -98,8 +121,7 @@ export function handleClientMessage(
     }
 
     case 'leave': {
-      if (conn.roomId && conn.playerId) {
-        manager.leave(conn.roomId, conn.playerId)
+      if (conn.roomId && conn.playerId && manager.leave(conn.roomId, conn.playerId, socket)) {
         notifyPeer(manager, conn.roomId, conn.playerId, { type: 'peer_disconnected' })
       }
       return

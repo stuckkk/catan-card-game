@@ -1,6 +1,6 @@
 import type {
   GameState, PlayerState, PlayerId, ResourceType, Resources, GameAction, ProjectedState,
-  DiceRoll, EventSymbol, ProductionNumber, DeckId, DrawStackId, CentralSlot, PlayerStats, Supply, GameConfig,
+  DiceRoll, EventSymbol, ProductionNumber, DeckId, DrawStackId, CentralSlot, PlayerStats, Supply, GameConfig, GameRules,
   ActionCardParams, DeclarativeEffect, GameEvent, PendingChoice, PendingMasterBuilderChoice, PendingPlacedCardChoice, SiteRef,
 } from './types'
 import {
@@ -107,9 +107,10 @@ export function computeVP(state: BoardOnly, playerId: PlayerId): number {
     + (tokens.windmill === playerId ? 1 : 0)
 }
 
-/** Action Cards are locked until both players together have at least 7 VP (Scout excepted). */
-export function actionCardsUnlocked(state: BoardOnly): boolean {
-  return computeVP(state, 'host') + computeVP(state, 'guest') >= 7
+/** Action Cards are locked until both players together have at least 7 VP (Scout excepted),
+ *  unless the Game Settings unlock them from the start. */
+export function actionCardsUnlocked(state: Pick<GameState | ProjectedState, 'players' | 'config'>): boolean {
+  return state.config.actionCardsFromStart || computeVP(state, 'host') + computeVP(state, 'guest') >= 7
 }
 
 /** Victory is only checked for the active player, during their own turn (GAME_LOGIC.md §1). */
@@ -190,22 +191,54 @@ function makeInitialPlayer(id: PlayerId, rng: () => number): PlayerState {
   return { id, hand: [], principality, regions, playedCards: ['settlement', 'road', 'settlement'] }
 }
 
+// ─── Game Settings (GAME_LOGIC.md §12) ────────────────────────────────────────
+
+export const STANDARD_RULES: GameRules = {
+  vpTarget: 12,
+  actionCardsFromStart: false,
+  brigandGraceTurns: 2,
+  startingPlayer: 'random',
+}
+
+export const VP_TARGET_MIN = 5
+export const VP_TARGET_MAX = 20
+
+/** Game Settings as the engine accepts them: anything missing or invalid falls back to the rulebook. */
+export function normalizeRules(rules: Partial<GameRules>): GameRules {
+  const vp = typeof rules.vpTarget === 'number' ? Math.round(rules.vpTarget) : NaN
+  return {
+    vpTarget: Number.isFinite(vp) ? Math.min(VP_TARGET_MAX, Math.max(VP_TARGET_MIN, vp)) : STANDARD_RULES.vpTarget,
+    actionCardsFromStart: rules.actionCardsFromStart === true,
+    brigandGraceTurns: rules.brigandGraceTurns === 0 || rules.brigandGraceTurns === 4 ? rules.brigandGraceTurns : 2,
+    startingPlayer: rules.startingPlayer === 'host' || rules.startingPlayer === 'guest' ? rules.startingPlayer : 'random',
+  }
+}
+
+/** Whether any Game Setting besides the VP target differs from the rulebook. */
+export function hasCustomRules(rules: GameRules): boolean {
+  return rules.actionCardsFromStart !== STANDARD_RULES.actionCardsFromStart
+    || rules.brigandGraceTurns !== STANDARD_RULES.brigandGraceTurns
+    || rules.startingPlayer !== STANDARD_RULES.startingPlayer
+}
+
 export function createInitialState(
-  config: GameConfig,
+  config: Partial<GameRules> & Pick<GameConfig, 'language'>,
   rng: () => number = Math.random,
 ): GameState {
+  const rules = normalizeRules(config)
   // All Expansion Cards form a single shuffled pile, split round-robin into 5 stacks.
   const stacks: Record<DrawStackId, string[]> = {
     'stack-1': [], 'stack-2': [], 'stack-3': [], 'stack-4': [], 'stack-5': [],
   }
   shuffle(ALL_DRAW_CARDS, rng).forEach((id, i) => stacks[DRAW_STACK_IDS[i % 5]].push(id))
 
-  // Stand-in for the rulebook's die roll for first player.
-  const firstPlayer: PlayerId = rng() < 0.5 ? 'host' : 'guest'
+  // Stand-in for the rulebook's die roll for first player, unless the Host chose who starts.
+  const firstPlayer: PlayerId = rules.startingPlayer !== 'random' ? rules.startingPlayer
+    : rng() < 0.5 ? 'host' : 'guest'
 
   return {
     sessionId: nanoid(),
-    config: { vpTarget: config.vpTarget, language: config.language },
+    config: { ...rules, language: config.language },
     players: { host: makeInitialPlayer('host', rng), guest: makeInitialPlayer('guest', rng) },
     activePlayer: firstPlayer,
     phase: 'setup',
@@ -263,15 +296,14 @@ function brigandAttack(player: PlayerState): PlayerState {
   return { ...player, regions }
 }
 
-/** No Brigand Attacks in each player's first two turns (until the first player's 3rd turn). */
-const BRIGAND_GRACE_TURNS = 4
-
 function resolveEventSymbol(state: GameState, symbol: EventSymbol): GameState {
   const active = state.activePlayer
 
   switch (symbol) {
     case 'brigand': {
-      if (state.turn <= BRIGAND_GRACE_TURNS) return { ...state, phase: 'production' }
+      // No Brigand Attacks in each player's first turns (rulebook: two, until the first player's 3rd
+      // turn); `turn` counts both players' turns.
+      if (state.turn <= 2 * state.config.brigandGraceTurns) return { ...state, phase: 'production' }
       const attacked = mapPlayers(state, brigandAttack)
       return logEvent({ ...attacked, phase: 'production' }, active, 'brigand', { losses: gainsByPlayer(attacked, state) })
     }

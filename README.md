@@ -35,6 +35,7 @@ docker run -p 8080:8080 catan-card-game
 
 - `PORT`: port to listen on (default `8080`).
 - `SESSION_IDLE_TIMEOUT_MS`: how long an in-memory session survives with nobody connected before it's dropped (default 30 minutes).
+- `MAX_SESSIONS`: how many sessions the server holds at once (default 500); beyond that, new games are refused until one ends.
 
 Sessions are held in memory only, so restarting the server ends any in-progress games. `GET /healthz` returns `200 ok` and can be used for container or proxy health checks.
 
@@ -66,7 +67,7 @@ On the free instance type the service goes to sleep after about 15 minutes witho
 
 **Hot-seat** runs the rules engine in the browser instead of on the server. It is a hot-seat game: one screen, always showing the seat that has to act.
 
-**Computer** also runs in the browser, with a computer opponent in the other seat (it answers your trade offers but never makes any). Like hot-seat mode, the game is lost if you reload the page.
+**Computer** also runs in the browser, with a computer opponent in the other seat (it answers your trade offers but never makes any). Like hot-seat mode, the game survives a reload of the page, but only in that browser tab and until you return to the lobby.
 
 ## Local development
 
@@ -86,6 +87,8 @@ npm test              # run all tests once (Vitest)
 npm run test:watch    # tests in watch mode
 npm run lint          # ESLint
 ```
+
+Pull requests run lint, tests and the build in GitHub Actions (`.github/workflows/ci.yml`).
 
 ### Project layout
 

@@ -1,9 +1,9 @@
 import type { WebSocket } from 'ws'
-import { applyAction as applyEngineAction, createInitialState } from '../../src/engine/engine'
-import type { GameAction, GameState, Language, PlayerId } from '../../src/engine/types'
+import { applyAction as applyEngineAction, createInitialState, hasCustomRules } from '../../src/engine/engine'
+import type { GameAction, GameRules, GameState, Language, PlayerId } from '../../src/engine/types'
 import type { PublicGameSummary } from '../../src/network/protocol'
 import {
-  DEFAULT_IDLE_TIMEOUT_MS, generateRoomId, generateToken,
+  DEFAULT_IDLE_TIMEOUT_MS, DEFAULT_MAX_SESSIONS, generateRoomId, generateToken,
   type Session,
 } from './session'
 
@@ -29,14 +29,23 @@ export type ReconnectResult =
 export class SessionManager {
   private sessions = new Map<string, Session>()
 
-  constructor(private readonly idleTimeoutMs: number = DEFAULT_IDLE_TIMEOUT_MS) {}
+  constructor(
+    private readonly idleTimeoutMs: number = DEFAULT_IDLE_TIMEOUT_MS,
+    private readonly maxSessions: number = DEFAULT_MAX_SESSIONS,
+  ) {}
 
-  createSession(vpTarget: number, language: Language, isPublic: boolean, socket: WebSocket): CreateSessionResult {
+  /** No room for another session: the limit bounds the server's memory. */
+  get isFull(): boolean {
+    return this.sessions.size >= this.maxSessions
+  }
+
+  /** The Game Settings come from the client; the engine falls back to the rulebook for invalid ones. */
+  createSession(rules: Partial<GameRules>, language: Language, isPublic: boolean, socket: WebSocket): CreateSessionResult {
     let roomId = generateRoomId()
     while (this.sessions.has(roomId)) roomId = generateRoomId()
 
     const token = generateToken()
-    const state = createInitialState({ vpTarget, language })
+    const state = createInitialState({ ...rules, language })
     this.sessions.set(roomId, {
       roomId,
       state,
@@ -75,27 +84,34 @@ export class SessionManager {
   }
 
   /** Marks a player's socket as disconnected; starts the idle timer once nobody is connected.
-   *  Used for both an unexpected socket close and an explicit `leave` message. */
-  disconnect(roomId: string, playerId: PlayerId): void {
+   *  Used for both an unexpected socket close and an explicit `leave` message. Given the `socket`
+   *  that closed, it only counts if that is still the seat's socket: after a reconnect the
+   *  replaced socket may close late, and must not take the new one down with it.
+   *  Returns whether the seat was vacated. */
+  disconnect(roomId: string, playerId: PlayerId, socket?: WebSocket): boolean {
     const session = this.sessions.get(roomId)
-    if (!session) return
+    if (!session) return false
 
     const player = session.players[playerId]
+    if (socket && player?.socket !== socket) return false
     if (player) player.socket = null
 
     const anyConnected = (['host', 'guest'] as const).some(id => session.players[id]?.socket)
     if (!anyConnected) this.startIdleTimer(roomId, session)
+    return true
   }
 
   /** An explicit `leave`. Before a guest has joined, nobody can play the session any more, so it
-   *  is deleted at once (a cancelled game can't be joined); afterwards it is a plain disconnect. */
-  leave(roomId: string, playerId: PlayerId): void {
+   *  is deleted at once (a cancelled game can't be joined); afterwards it is a plain disconnect.
+   *  Returns whether the seat was vacated (see `disconnect`). */
+  leave(roomId: string, playerId: PlayerId, socket?: WebSocket): boolean {
     const session = this.sessions.get(roomId)
-    if (!session) return
-    if (session.players.guest) return this.disconnect(roomId, playerId)
+    if (!session) return false
+    if (session.players.guest) return this.disconnect(roomId, playerId, socket)
 
     this.clearIdleTimer(session)
     this.sessions.delete(roomId)
+    return true
   }
 
   /** Public sessions still waiting for a guest whose host is connected, longest-waiting first. */
@@ -104,7 +120,12 @@ export class SessionManager {
     return [...this.sessions.values()]
       .filter(s => s.isPublic && !s.players.guest && s.players.host?.socket)
       .sort((a, b) => a.createdAt - b.createdAt)
-      .map(s => ({ roomId: s.roomId, vpTarget: s.state.config.vpTarget, waitingMs: now - s.createdAt }))
+      .map(s => ({
+        roomId: s.roomId,
+        vpTarget: s.state.config.vpTarget,
+        customRules: hasCustomRules(s.state.config),
+        waitingMs: now - s.createdAt,
+      }))
   }
 
   applyAction(roomId: string, actingPlayer: PlayerId, action: GameAction): GameState | null {

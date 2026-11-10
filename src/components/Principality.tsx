@@ -6,6 +6,7 @@ import type {
 import { getCard } from '../engine/cards'
 import { canAfford } from '../engine/board'
 import { getRegion } from '../engine/regions'
+import { useClientSettings } from '../settings/clientSettings'
 import RegionCard from './RegionCard'
 import CardView from './CardView'
 import CardDetail from './CardDetail'
@@ -260,6 +261,13 @@ export default function Principality({
   }
   const isReady = (kind: BuildKind) =>
     !!resources && canAfford(resources, getCard(kind).cost ?? {}) && !buildBlocker(kind)
+  // With "Confirm builds" off, a build that can happen happens at once; otherwise the dialog asks
+  // first, and always explains what's missing.
+  const { confirmBuilds } = useClientSettings()
+  function requestBuild(kind: BuildKind, action: GameAction) {
+    if (!confirmBuilds && isReady(kind)) onAction(action)
+    else setPendingBuild({ kind, action })
+  }
 
   // Resolve the card being placed (card-first flow) to its colour for valid-slot highlighting.
   const placingCard = placingCardId ? getCard(placingCardId) : null
@@ -357,7 +365,7 @@ export default function Principality({
           <div key={`s${k}`} className={styles.axisCell} style={{ gridColumn: 2 * k + 2, gridRow: 3 }}>
             <SettlementCore
               slot={slot} idx={idx} canBuild={canBuild} hasScout={hasScout} regionStack={regionStack}
-              isReady={isReady} onRequestBuild={(kind, action) => setPendingBuild({ kind, action })} onAction={onAction}
+              isReady={isReady} onRequestBuild={requestBuild} onAction={onAction}
             />
           </div>
         ))}
@@ -389,7 +397,7 @@ export default function Principality({
             <button
               className={`${styles.buildRoad} ${isReady('road') ? '' : styles.unaffordable}`}
               title={t('cards.road.name')}
-              onClick={() => setPendingBuild({ kind: 'road', action: { type: 'BUILD_ROAD', side: 'left' } })}
+              onClick={() => requestBuild('road', { type: 'BUILD_ROAD', side: 'left' })}
             >
               +
             </button>
@@ -400,7 +408,7 @@ export default function Principality({
             <button
               className={`${styles.buildRoad} ${isReady('road') ? '' : styles.unaffordable}`}
               title={t('cards.road.name')}
-              onClick={() => setPendingBuild({ kind: 'road', action: { type: 'BUILD_ROAD', side: 'right' } })}
+              onClick={() => requestBuild('road', { type: 'BUILD_ROAD', side: 'right' })}
             >
               +
             </button>

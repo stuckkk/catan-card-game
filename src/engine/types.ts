@@ -154,8 +154,17 @@ export interface DiceRoll {
 
 export type Language = 'en' | 'de'
 
-export interface GameConfig {
+/** The Game Settings the Host picks at creation (GAME_LOGIC.md §12); fixed for the Session. */
+export interface GameRules {
   vpTarget: number
+  /** All Action Cards playable from the first turn instead of at 7 combined VP. */
+  actionCardsFromStart: boolean
+  /** Turns per player in which a Brigand Attack is ignored. */
+  brigandGraceTurns: 0 | 2 | 4
+  startingPlayer: 'random' | PlayerId
+}
+
+export interface GameConfig extends GameRules {
   /** Language preference for the session */
   language: Language
 }

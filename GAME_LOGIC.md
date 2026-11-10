@@ -16,8 +16,8 @@ the engine does not support yet are listed in **§13 Not Yet Implemented**.
 ## 1. Victory
 
 * **Players:** 2, alternating turns.
-* **Target:** 12 VP (p.5, p.18). The target stays configurable per Session in the lobby (default 12;
-  options 7 / 12 / 13), as the PDF suggests lower totals for new players (p.18 tip). See §12.
+* **Target:** 12 VP (p.5, p.18). The target is a Game Setting chosen in the lobby (any whole number
+  5–20, default 12), as the PDF suggests lower totals for new players (p.18 tip). See §12.
 * **Win condition:** the game ends as soon as the **active player** has reached the target **during their
   own turn** (p.18). Victory is only checked for the active player; a player who reaches the target during
   the opponent's turn (e.g. a token changing hands) wins if they still have it during their own turn.
@@ -76,7 +76,7 @@ Field 1. The PDF does not list the Region stack's numbers; the app uses the set 
 1. Each player gets their starting set. The Road sits in the middle with a Settlement at each end; the 6
    starting Regions are arranged **in any order the player chooses** on the six corner spaces (3 above,
    3 below the axis). Every starting Region holds **1** resource (so each player starts with 1 of each).
-2. Determine the first player (PDF: highest Production Die roll; app: random, see §12).
+2. Determine the first player (PDF: highest Production Die roll; app: random or chosen by the Host, see §12).
 3. The **first player** chooses one expansion stack, looks through it **without changing its order**, and
    takes **3** cards of their choice into hand. Then the **second player** does the same with a
    **different** stack. Stacks are returned without shuffling.
@@ -126,7 +126,8 @@ Six faces; the Event Card face (`?`) appears **twice** (see §12). All events af
 * **Brigand Attack (club):** each player counts the resources on all their Regions, **not counting Regions
   next to one of their Garrisons**. A player with **more than 7** counted resources loses **all Ore and
   all Wool** — from every region, protected ones included. **No Brigand Attacks in the first two turns of
-  each player**: the result is ignored (no re-roll) until the first player's third turn.
+  each player**: the result is ignored (no re-roll) until the first player's third turn. (Game Setting:
+  off / 2 / 4 turns, see §12.)
 * **Trade Advantage / Commerce (windmill):** the Windmill Token holder takes any 1 resource of their choice
   from the opponent. No holder → nothing happens.
 * **Tournament (knight's head):** the player with the strictly higher total **Tournament Points** (red
@@ -179,7 +180,8 @@ back to the middle (nobody holds it).
 * **Trade with the opponent:** any terms both agree on. Only the active player offers trades, at any time
   during their turn (DE p.10).
 * **Action Cards** (yellow) cost nothing to play and go to the discard pile afterwards.
-  * They can only be played once the **combined VP of both players is at least 7**.
+  * They can only be played once the **combined VP of both players is at least 7** (Game Setting: or
+    from the start, see §12).
     *Exception:* Scout may always be played when building a Settlement.
   * Unless the card says otherwise, they are played after the dice have been resolved.
   * An Action Card may only be played if its action can be carried out (DE p.11).
@@ -288,8 +290,16 @@ Buildings vs Units: Knights and Fleets are **Units**; everything else is a **Bui
 
 ## 12. Deviations & Additions (not from the PDF)
 
-* **VP target** configurable in the lobby (7 / 12 / 13, default 12).
-* **First player** is chosen at random instead of by a die roll.
+* **Game Settings:** the Host chooses these when creating a game (lobby: Rules 📋); they are fixed for the whole
+  Session. Defaults follow the rulebook. In practice mode the first player is always random.
+  * **VP target:** any whole number 5–20 (default 12).
+  * **Action cards:** at 7 combined VP (default), or **from the start** — then all Action Cards, attacks
+    included, are playable from the first turn (as in the Rivals for Catan introductory game).
+  * **Brigand protection:** Brigand Attacks are ignored (no re-roll) in each player's first **0, 2
+    (default) or 4** turns.
+  * **Who starts:** random (default), the Host, or the Guest (against the computer: the human or the
+    computer). The first player also picks starting cards first (§2).
+* **First player** is chosen at random instead of by a die roll (unless the Host chose who starts).
 * **Event die:** the `?` face appears twice (the PDF lists five events but not the face distribution).
 * **Region stack production numbers** (the PDF does not list them; the starting sets are in §2):
   Fields 3 & 5, Mountains 4 & 6, Pasture 1 & 5, Forest 2 & 6, Hills 3 & 4, Gold Field 2.
@@ -307,6 +317,42 @@ Buildings vs Units: Knights and Fleets are **Units**; everything else is a **Bui
 
 ## 13. Not Yet Implemented
 
-* Check code base architecture/desgin/refactoring opportunities
-* Make more settings configurable
-* Add stronger AI, maybe do some RL
+Items marked **(rules)** change game behaviour and are specified here before they are coded.
+
+**Rules**
+* **(rules)** New Regions without a Scout: let the player choose the side after drawing the first (§12).
+* **(rules)** Theme sets of the German rulebook (Cannon, University, Metropolis …).
+* **(rules)** Optional turn timer as a Game Setting; what happens at timeout is undecided.
+* German Knight names: 8 of 9 not yet checked against the physical cards.
+
+**Engine**
+* Seeded RNG in the Game State (dice, attack die, Scout reshuffle), so a game is reproducible from
+  its seed and actions. Prerequisite for the next three.
+* Full action history: replay after the game, export of a game for bug reports.
+* Undo in local games (never past a roll or a draw).
+* Interactive tutorial: a scripted first game against the computer.
+
+**Computer opponent**
+* Difficulty levels.
+* Stronger play: plan several builds per turn, save up for a City, offer trades.
+* Tune the weights in `src/engine/bot.ts` by self-play; reinforcement learning only after that.
+* Computer joins a public game that nobody else has joined.
+
+**Players**
+* Rematch from the game-over screen.
+* End-of-game statistics (production per Region, dice, VP over time).
+* Card almanac in the app (all cards with cost, effect, count).
+* Installable app (PWA); local games playable offline.
+* Player names and preset emotes (no free-text chat).
+* Read-only spectator link.
+* Sound effects, as a Client Setting.
+* Hint button in local games (the computer's suggestion for your move).
+
+**Technical**
+* Accessibility: focus trap and Escape in dialogs, keyboard play, screen-reader labels for Regions,
+  colour-blind check of the resource colours.
+* Page metadata: favicon, description, `lang` following the UI language.
+* Stale docs: README's VP targets ("7, 12 or 13"), ADR-0004 (Host picks more than the VP target).
+* Major dependency upgrades (Vite 8, Vitest 5, ESLint 10, TypeScript 7).
+* Optional session snapshot to disk, so a server restart does not end games.
+* Per-client limits on session creation (today only a global limit, `MAX_SESSIONS`).

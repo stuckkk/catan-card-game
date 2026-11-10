@@ -1,14 +1,14 @@
-import type { GameAction, Language, PlayerId, ProjectedState } from '../engine/types'
+import type { GameAction, GameRules, Language, PlayerId, ProjectedState } from '../engine/types'
 
 /** Messages a client sends to the server over the WebSocket connection. */
 export type ClientMessage =
-  | { type: 'create_session'; vpTarget: number; language: Language; isPublic: boolean }
+  | { type: 'create_session'; rules: GameRules; language: Language; isPublic: boolean }
   | { type: 'join_session'; roomId: string }
   | { type: 'reconnect'; roomId: string; token: string }
   | { type: 'action'; action: GameAction }
   | { type: 'leave' }
 
-export type ServerErrorCode = 'ROOM_NOT_FOUND' | 'ROOM_FULL' | 'INVALID_TOKEN' | 'MALFORMED_MESSAGE'
+export type ServerErrorCode = 'ROOM_NOT_FOUND' | 'ROOM_FULL' | 'INVALID_TOKEN' | 'MALFORMED_MESSAGE' | 'SERVER_FULL'
 
 /** Messages the server sends to a client over the WebSocket connection. */
 export type ServerMessage =
@@ -25,6 +25,8 @@ export type ServerMessage =
 export interface PublicGameSummary {
   roomId: string
   vpTarget: number
+  /** Any Game Setting besides the VP target differs from the rulebook. */
+  customRules: boolean
   /** How long the session has been waiting for a guest; computed on the server. */
   waitingMs: number
 }

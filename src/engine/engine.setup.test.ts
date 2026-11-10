@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { applyAction, computePlayerStats, computeVP, projectStateFor, tokenHolders, createInitialState, setupChooser } from './engine'
+import { applyAction, computePlayerStats, computeVP, projectStateFor, tokenHolders, createInitialState, setupChooser, STANDARD_RULES, normalizeRules, hasCustomRules } from './engine'
 import { ALL_DRAW_CARDS, DEFAULT_EVENT_DECK, CARD_REGISTRY } from './cards'
 import { STACK_REGIONS, getRegion } from './regions'
 import { emptyDecks, BOARD_REGIONS, regionsWith, settlementA, road, settlementB, playedFor, makePlayer, makeState, res } from './testing/fixtures'
@@ -125,7 +125,7 @@ describe('victory', () => {
   }
 
   it('declares the active player the winner once they reach the target', () => {
-    const state = makeState({ config: { vpTarget: 6, language: 'en' }, players: { host: winningBoard(), guest: makePlayer('guest') } })
+    const state = makeState({ config: { ...STANDARD_RULES, vpTarget: 6, language: 'en' }, players: { host: winningBoard(), guest: makePlayer('guest') } })
     const next = applyAction(state, 'host', { type: 'TRADE_WITH_BANK', give: 'lumber', receive: 'ore' })
     expect(next).toBe(state)  // invalid trade: nothing changed, no check
     const s2 = { ...state, players: { ...state.players, host: { ...state.players.host, regions: regionsWith({ lumber: 3 }) } } }
@@ -134,7 +134,7 @@ describe('victory', () => {
 
   it('does not declare a winner during the opponent’s turn', () => {
     const state = makeState({
-      config: { vpTarget: 6, language: 'en' },
+      config: { ...STANDARD_RULES, vpTarget: 6, language: 'en' },
       activePlayer: 'guest',
       players: { host: winningBoard(), guest: makePlayer('guest', { regions: regionsWith({ lumber: 3 }) }) },
     })
@@ -173,6 +173,37 @@ describe('createInitialState', () => {
     const numbers = (p: PlayerState) => Object.fromEntries(p.regions.map(r => [getRegion(r.regionId).resourceType, getRegion(r.regionId).productionNumber]))
     expect(numbers(s.players.host)).toEqual({ grain: 1, ore: 2, wool: 3, lumber: 4, brick: 5, gold: 6 })
     expect(numbers(s.players.guest)).toEqual({ grain: 2, ore: 3, wool: 4, lumber: 5, brick: 6, gold: 1 })
+  })
+})
+
+describe('Game Settings', () => {
+  it('fall back to the rulebook for anything missing or invalid, and clamp the VP target to 5–20', () => {
+    expect(normalizeRules({})).toEqual(STANDARD_RULES)
+    expect(normalizeRules({ vpTarget: 3 }).vpTarget).toBe(5)
+    expect(normalizeRules({ vpTarget: 99 }).vpTarget).toBe(20)
+    expect(normalizeRules({ vpTarget: 9.6 }).vpTarget).toBe(10)
+    expect(normalizeRules({ vpTarget: NaN }).vpTarget).toBe(12)
+    expect(normalizeRules({ vpTarget: null as unknown as number }).vpTarget).toBe(12)
+    expect(normalizeRules({ vpTarget: '9' as unknown as number }).vpTarget).toBe(12)
+    expect(normalizeRules({ brigandGraceTurns: 3 as 2 }).brigandGraceTurns).toBe(2)
+    expect(normalizeRules({ startingPlayer: 'nobody' as 'host' }).startingPlayer).toBe('random')
+    expect(normalizeRules({ actionCardsFromStart: 'yes' as unknown as boolean }).actionCardsFromStart).toBe(false)
+  })
+
+  it('are stored in the config, with the chosen player starting and picking first', () => {
+    for (const startingPlayer of ['host', 'guest'] as const) {
+      const s = createInitialState({ language: 'de', vpTarget: 9, actionCardsFromStart: true, brigandGraceTurns: 0, startingPlayer })
+      expect(s.config).toEqual({ language: 'de', vpTarget: 9, actionCardsFromStart: true, brigandGraceTurns: 0, startingPlayer })
+      expect(s.setup.firstPlayer).toBe(startingPlayer)
+      expect(s.activePlayer).toBe(startingPlayer)
+    }
+  })
+
+  it('count as custom only when something besides the VP target differs from the rulebook', () => {
+    expect(hasCustomRules({ ...STANDARD_RULES, vpTarget: 7 })).toBe(false)
+    expect(hasCustomRules({ ...STANDARD_RULES, actionCardsFromStart: true })).toBe(true)
+    expect(hasCustomRules({ ...STANDARD_RULES, brigandGraceTurns: 4 })).toBe(true)
+    expect(hasCustomRules({ ...STANDARD_RULES, startingPlayer: 'guest' })).toBe(true)
   })
 })
 

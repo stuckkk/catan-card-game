@@ -9,7 +9,7 @@ A two-player digital adaptation of the Catan Card Game (Kosmos, 2005; authoritat
 **Session**: A single playthrough of the game between two players, from lobby creation to victory. Both browsers connect to the server over a WebSocket, identified by a shared Room ID; the server runs the authoritative rules engine and is the sole source of truth for the Session's Game State.
 _Avoid_: Game, match, room
 
-**Host**: The player who created the Session, choosing its Victory Point target and receiving the Invite Link to share. Symmetric with the Guest for all in-game actions — the server runs the rules engine, not the Host's browser.
+**Host**: The player who created the Session, choosing its Game Settings and receiving the Invite Link to share. Symmetric with the Guest for all in-game actions — the server runs the rules engine, not the Host's browser.
 _Avoid_: Server, player 1, creator
 
 **Guest**: The player who joined the Session via an Invite Link or Room ID. Symmetric with the Host for all in-game actions — receives a Projected State from the server and sends Actions to the server for validation.
@@ -24,8 +24,14 @@ _Avoid_: Offer code, answer code, room code, lobby id
 **Public Session / Private Session**: The Host's choice at creation. A Private Session can only be joined via its Invite Link or Room ID; a Public Session can additionally be joined from the Open Games list. Either way it is a two-player Session; visibility only affects how the Guest finds it.
 _Avoid_: Open game, listed game, hidden game
 
-**Open Games list**: The lobby's list of Public Sessions on this server that are still waiting for a Guest and whose Host is connected, showing Room ID, Victory Point target and waiting time. Refreshed automatically every 5 seconds and on demand. A Session leaves it once a Guest joins, while its Host is disconnected, or when the Host cancels (which ends a Session nobody has joined yet).
+**Open Games list**: The lobby's list of Public Sessions on this server that are still waiting for a Guest and whose Host is connected, showing Room ID, Victory Point target, a "custom rules" note when any other Game Setting differs from the rulebook, and waiting time. Refreshed automatically every 5 seconds and on demand. A Session leaves it once a Guest joins, while its Host is disconnected, or when the Host cancels (which ends a Session nobody has joined yet).
 _Avoid_: Game browser, server list, matchmaking
+
+**Game Settings**: The rule variants the Host chooses when creating a Session — Victory Point target, when Action Cards unlock, Brigand protection, who starts. Fixed for the whole Session; defaults follow the rulebook (GAME_LOGIC.md §12).
+_Avoid_: Options, house rules, config, preferences
+
+**Client Settings**: How one browser shows and plays the game — language, computer speed, the your-turn alert, animations, build confirmation, notifications. Stored in that browser only; never change the rules or what the opponent sees. The lobby also remembers its last opponent and Game Settings there.
+_Avoid_: Game Settings, options, preferences
 
 **Projected State**: The full Game State with the *other* player's Hand redacted (replaced by a count), sent by the server to each viewer after every state change. A player's own Hand is always visible to them.
 _Avoid_: Client state, guest state, masked state
@@ -104,7 +110,7 @@ _Avoid_: Discard, waste, cap
 
 ### Points & Advantages
 
-**Victory Points (VP)**: The win condition currency. Target is configurable per Session (default 12).
+**Victory Points (VP)**: The win condition currency. Target is a Game Setting (5–20, default 12).
 _Avoid_: Points, score
 
 **Strength Points**: The black number by the iron fist on Knights (plus Smithy bonus), deciding the Knight Token.
@@ -136,7 +142,7 @@ _Avoid_: Number roll, die roll
 **Event Roll**: The result of the Event Die (Brigand Attack, Commerce, Tournament, Year of Plenty, or Event Card on two faces). Processed before the Production Roll.
 _Avoid_: Symbol roll, special die
 
-**Brigand Attack**: Event-die result: a player with more than 7 resources (not counting Regions next to their Garrisons) loses all Ore and Wool. Ignored in each player's first two turns.
+**Brigand Attack**: Event-die result: a player with more than 7 resources (not counting Regions next to their Garrisons) loses all Ore and Wool. Ignored in each player's first two turns (rulebook; a Game Setting can make it 0 or 4).
 _Avoid_: Bandit, robber
 
 **Year of Plenty**: Event-die result: each player gains 1 resource of choice.

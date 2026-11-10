@@ -1,4 +1,4 @@
-import { availableResources } from '../engine'
+import { availableResources, STANDARD_RULES } from '../engine'
 import type { GameState, PlayerState, PlayerId, Resources, ResourceType, RegionState, DiceRoll, DeckId, CentralSlot } from '../types'
 
 // Deterministic builders for the engine tests (no RNG).
@@ -64,7 +64,7 @@ export function makePlayer(id: PlayerId, over: Partial<PlayerState> = {}): Playe
 export function makeState(over: Partial<GameState> = {}): GameState {
   return {
     sessionId: 'test',
-    config: { vpTarget: 12, language: 'en' },
+    config: { ...STANDARD_RULES, language: 'en' },
     players: { host: makePlayer('host'), guest: makePlayer('guest') },
     activePlayer: 'host',
     phase: 'action',

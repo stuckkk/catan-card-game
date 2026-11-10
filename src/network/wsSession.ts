@@ -1,4 +1,4 @@
-import type { GameAction, Language, PlayerId, ProjectedState } from '../engine/types'
+import type { GameAction, GameRules, Language, PlayerId, ProjectedState } from '../engine/types'
 import type { ClientMessage, PublicGameSummary, ServerMessage } from './protocol'
 
 export interface NetworkSession {
@@ -15,6 +15,8 @@ export interface NetworkSession {
   /** Fires when the *other* player disconnects — not our own connection. */
   onPeerDisconnect: (cb: () => void) => void
   onSessionExpired: (cb: () => void) => void
+  /** Fires when *our own* connection drops (false) and when it is back (true). */
+  onConnectionChange: (cb: (connected: boolean) => void) => void
   onError: (cb: (err: { code: string; message: string }) => void) => void
   close: () => void
 }
@@ -35,22 +37,26 @@ interface Handlers {
   peerConnect: (() => void) | null
   peerDisconnect: (() => void) | null
   sessionExpired: (() => void) | null
+  connection: ((connected: boolean) => void) | null
   error: ((err: { code: string; message: string }) => void) | null
 }
 
-const RECONNECT_DELAY_MS = 1000
+/** Pause before each reconnect attempt: quick at first, then every 5 s. */
+const RECONNECT_DELAYS_MS = [1000, 2000, 5000]
 
 /**
  * Owns one logical session's WebSocket connection, including transparent reconnection
  * after a transient network blip (using the token captured at construction time). The
- * app only ever sees `peer_connected`/`peer_disconnected` for the *other* player; our own
- * connection dropping and silently reconnecting is invisible unless it ultimately fails.
+ * app sees `peer_connected`/`peer_disconnected` for the *other* player, and our own
+ * connection dropping and coming back through `onConnectionChange`.
  */
 class WsSession {
   private socket: WebSocket
   private closedByUser = false
+  private connected = true
+  private reconnectAttempts = 0
   private handlers: Handlers = {
-    stateUpdate: null, peerConnect: null, peerDisconnect: null, sessionExpired: null, error: null,
+    stateUpdate: null, peerConnect: null, peerDisconnect: null, sessionExpired: null, connection: null, error: null,
   }
   // The server pushes state_update proactively (at creation/join, and after every action) -
   // not on demand. A subscriber that registers after one already arrived (e.g. GamePage
@@ -73,12 +79,21 @@ class WsSession {
     socket.onclose = () => this.scheduleReconnect()
   }
 
+  private setConnected(connected: boolean): void {
+    if (this.connected === connected) return
+    this.connected = connected
+    this.handlers.connection?.(connected)
+  }
+
   private scheduleReconnect(): void {
     if (this.closedByUser) return
-    setTimeout(() => this.attemptReconnect(), RECONNECT_DELAY_MS)
+    this.setConnected(false)
+    const delay = RECONNECT_DELAYS_MS[Math.min(this.reconnectAttempts++, RECONNECT_DELAYS_MS.length - 1)]
+    setTimeout(() => this.attemptReconnect(), delay)
   }
 
   private attemptReconnect(): void {
+    if (this.closedByUser) return
     const socket = new WebSocket(wsUrl())
     socket.onopen = () => {
       const message: ClientMessage = { type: 'reconnect', roomId: this.roomId, token: this.token }
@@ -90,6 +105,8 @@ class WsSession {
       if (message.type === 'reconnected') {
         this.socket = socket
         this.wireSocket(socket)
+        this.reconnectAttempts = 0
+        this.setConnected(true)
       } else if (message.type === 'session_expired') {
         this.handlers.sessionExpired?.()
       } else if (message.type === 'error') {
@@ -142,6 +159,10 @@ class WsSession {
       onPeerConnect: cb => { this.handlers.peerConnect = cb },
       onPeerDisconnect: cb => { this.handlers.peerDisconnect = cb },
       onSessionExpired: cb => { this.handlers.sessionExpired = cb },
+      onConnectionChange: cb => {
+        this.handlers.connection = cb
+        cb(this.connected)
+      },
       onError: cb => { this.handlers.error = cb },
       close: () => this.close(),
     }
@@ -154,7 +175,8 @@ function handshake(
   return new Promise((resolve, reject) => {
     const socket = new WebSocket(wsUrl())
     socket.onopen = () => socket.send(JSON.stringify(send))
-    socket.onerror = () => reject(new SessionFailure('UNREACHABLE', 'Could not reach the server.'))
+    // Also a connection that closes before answering: rejecting twice is harmless.
+    socket.onerror = socket.onclose = () => reject(new SessionFailure('UNREACHABLE', 'Could not reach the server.'))
     socket.onmessage = event => {
       const message: ServerMessage = JSON.parse(event.data)
       if (message.type === expectedSuccessType) {
@@ -171,10 +193,10 @@ function handshake(
 }
 
 export async function createSession(
-  opts: { vpTarget: number; language: Language; isPublic: boolean },
+  opts: { rules: GameRules; language: Language; isPublic: boolean },
 ): Promise<NetworkSession> {
   const { socket, message } = await handshake(
-    { type: 'create_session', vpTarget: opts.vpTarget, language: opts.language, isPublic: opts.isPublic },
+    { type: 'create_session', rules: opts.rules, language: opts.language, isPublic: opts.isPublic },
     'session_created',
   )
   const created = message as Extract<ServerMessage, { type: 'session_created' }>
