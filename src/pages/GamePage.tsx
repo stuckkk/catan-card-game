@@ -10,7 +10,7 @@ import { botShouldAct as mustAct } from '../engine/bot'
 import { ALL_RESOURCE_TYPES, opponent, roomFor } from '../engine/board'
 import type { GameAction, PendingChoice, ProjectedState, PlayerId, PlayerState, Resources } from '../engine/types'
 import { sessionStore } from '../network/sessionStore'
-import { clearPersisted } from '../network/persistence'
+import { clearLocalGame, clearPersisted } from '../network/persistence'
 import { TOAST_MS, useClientSettings } from '../settings/clientSettings'
 import Principality from '../components/Principality'
 import PhaseTracker from '../components/PhaseTracker'
@@ -88,7 +88,7 @@ function GameOver({ view, myId, isPractice, onLeave }: {
 export default function GamePage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const { role, isPractice, myId, view, dispatchAction, disconnected, expired } = useGameSession()
+  const { role, isPractice, myId, view, dispatchAction, disconnected, reconnecting, expired } = useGameSession()
   const settings = useClientSettings()
 
   const [opponentExpanded, setOpponentExpanded] = useState(false)
@@ -107,6 +107,7 @@ export default function GamePage() {
     sessionStore.get()?.close()
     sessionStore.set(null)
     clearPersisted()
+    clearLocalGame()
     navigate('/')
   }
 
@@ -245,8 +246,9 @@ export default function GamePage() {
 
   return (
     <div className={styles.page}>
-      {disconnected && (
-        <div className={styles.disconnectBanner}>{t('game.disconnected')}</div>
+      {/* My own connection comes first: while it is down, nothing I tap reaches the server. */}
+      {(reconnecting || disconnected) && (
+        <div className={styles.disconnectBanner}>{t(reconnecting ? 'game.reconnecting' : 'game.disconnected')}</div>
       )}
 
       {winner && <GameOver view={view} myId={myId} isPractice={isPractice} onLeave={leaveGame} />}

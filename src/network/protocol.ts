@@ -8,7 +8,7 @@ export type ClientMessage =
   | { type: 'action'; action: GameAction }
   | { type: 'leave' }
 
-export type ServerErrorCode = 'ROOM_NOT_FOUND' | 'ROOM_FULL' | 'INVALID_TOKEN' | 'MALFORMED_MESSAGE'
+export type ServerErrorCode = 'ROOM_NOT_FOUND' | 'ROOM_FULL' | 'INVALID_TOKEN' | 'MALFORMED_MESSAGE' | 'SERVER_FULL'
 
 /** Messages the server sends to a client over the WebSocket connection. */
 export type ServerMessage =

@@ -16,12 +16,14 @@ export function createHttpServer(
   const serveStatic = sirv(staticDir, { single: true })
 
   return createServer((req, res) => {
-    if (req.url === '/healthz') {
+    // The path without its query string (a monitoring probe may append one).
+    const pathname = (req.url ?? '').split('?')[0]
+    if (pathname === '/healthz') {
       res.writeHead(200, { 'Content-Type': 'text/plain' })
       res.end('ok')
       return
     }
-    if (req.url === '/api/games' && req.method === 'GET') {
+    if (pathname === '/api/games' && req.method === 'GET') {
       res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' })
       res.end(JSON.stringify(sessionManager.listPublicGames()))
       return

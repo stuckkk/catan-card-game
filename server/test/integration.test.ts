@@ -12,6 +12,8 @@ import type { ClientMessage, PublicGameSummary, ServerMessage } from '../../src/
  *  being attached after the message already arrived. */
 interface Client {
   send: (message: ClientMessage) => void
+  /** Anything at all, as a broken or hostile client might send it. */
+  sendRaw: (data: string) => void
   close: () => void
   received: ServerMessage[]
 }
@@ -24,6 +26,7 @@ function connect(port: number): Promise<Client> {
     socket.once('open', () => resolve({
       received,
       send: message => socket.send(JSON.stringify(message)),
+      sendRaw: data => socket.send(data),
       close: () => socket.close(),
     }))
     socket.once('error', reject)
@@ -177,5 +180,59 @@ describe('server integration: host/guest game over real WebSocket connections', 
 
     host.close()
     guest.close()
+  })
+
+  it('answers malformed messages with an error and keeps running', async () => {
+    const host = await connect(port)
+    host.send({ type: 'create_session', rules: STANDARD_RULES, language: 'en', isPublic: false })
+    const created = await waitFor(host, 'session_created')
+    await waitFor(host, 'state_update')
+    const guest = await connect(port)
+    guest.send({ type: 'join_session', roomId: created.roomId })
+    await waitFor(guest, 'session_joined')
+
+    const malformed = [
+      'not json',
+      'null',
+      '42',
+      '{}',
+      '{"type":"action"}',
+      '{"type":"action","action":null}',
+      '{"type":"action","action":{"type":"CHOOSE_HAND_CARDS"}}',
+      '{"type":"action","action":{"type":"TAKE_FROM_SEARCH"}}',
+      '{"type":"action","action":{"type":"DISCARD_TO_LIMIT"}}',
+      '{"type":"action","action":{"type":"PROPOSE_TRADE"}}',
+      '{"type":"join_session"}',
+      '{"type":"reconnect"}',
+    ]
+    for (const data of malformed) {
+      host.sendRaw(data)
+      guest.sendRaw(data)
+    }
+
+    // Still serving: a new client gets a proper answer, and the game is still there.
+    const other = await connect(port)
+    other.send({ type: 'join_session', roomId: created.roomId })
+    expect((await waitFor(other, 'error')).code).toBe('ROOM_FULL')
+    expect(host.received.some(m => m.type === 'error' && m.code === 'MALFORMED_MESSAGE')).toBe(true)
+
+    host.close()
+    guest.close()
+    other.close()
+  })
+
+  it('refuses a second session on a connection that already has a seat', async () => {
+    const host = await connect(port)
+    host.send({ type: 'create_session', rules: STANDARD_RULES, language: 'en', isPublic: false })
+    await waitFor(host, 'session_created')
+    host.send({ type: 'create_session', rules: STANDARD_RULES, language: 'en', isPublic: false })
+    expect((await waitFor(host, 'error')).code).toBe('MALFORMED_MESSAGE')
+    host.close()
+  })
+
+  it('answers the health check and the games list with a query string', async () => {
+    expect(await (await fetch(`http://localhost:${port}/healthz?probe=1`)).text()).toBe('ok')
+    const games = await fetch(`http://localhost:${port}/api/games?t=1`)
+    expect(games.headers.get('content-type')).toContain('application/json')
   })
 })

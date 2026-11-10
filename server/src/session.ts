@@ -19,6 +19,7 @@ export interface Session {
 }
 
 export const DEFAULT_IDLE_TIMEOUT_MS = 30 * 60 * 1000
+export const DEFAULT_MAX_SESSIONS = 500
 
 export function generateToken(): string {
   return randomBytes(24).toString('base64url')

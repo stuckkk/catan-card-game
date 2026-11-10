@@ -195,4 +195,27 @@ describe('SessionManager', () => {
       expect(manager.getSession(roomId)).toBeUndefined()
     })
   })
+
+  it('keeps a reconnected seat when the replaced socket closes afterwards', () => {
+    const oldSocket = fakeSocket()
+    const { roomId, token } = manager.createSession({ vpTarget: 12 }, 'en', false, oldSocket)
+    const newSocket = fakeSocket()
+    manager.reconnect(roomId, token, newSocket)
+
+    expect(manager.disconnect(roomId, 'host', oldSocket)).toBe(false)
+    expect(manager.getSession(roomId)?.players.host?.socket).toBe(newSocket)
+    expect(manager.disconnect(roomId, 'host', newSocket)).toBe(true)
+    expect(manager.getSession(roomId)?.players.host?.socket).toBeNull()
+  })
+
+  it('is full once the session limit is reached', () => {
+    const small = new SessionManager(IDLE_TIMEOUT_MS, 2)
+    small.createSession({}, 'en', false, fakeSocket())
+    expect(small.isFull).toBe(false)
+    const second = small.createSession({}, 'en', false, fakeSocket())
+    expect(small.isFull).toBe(true)
+
+    small.leave(second.roomId, 'host')
+    expect(small.isFull).toBe(false)
+  })
 })

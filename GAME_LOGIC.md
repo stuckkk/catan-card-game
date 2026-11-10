@@ -317,5 +317,42 @@ Buildings vs Units: Knights and Fleets are **Units**; everything else is a **Bui
 
 ## 13. Not Yet Implemented
 
-* Check code base architecture/desgin/refactoring opportunities
-* Add stronger AI, maybe do some RL
+Items marked **(rules)** change game behaviour and are specified here before they are coded.
+
+**Rules**
+* **(rules)** New Regions without a Scout: let the player choose the side after drawing the first (§12).
+* **(rules)** Theme sets of the German rulebook (Cannon, University, Metropolis …).
+* **(rules)** Optional turn timer as a Game Setting; what happens at timeout is undecided.
+* German Knight names: 8 of 9 not yet checked against the physical cards.
+
+**Engine**
+* Seeded RNG in the Game State (dice, attack die, Scout reshuffle), so a game is reproducible from
+  its seed and actions. Prerequisite for the next three.
+* Full action history: replay after the game, export of a game for bug reports.
+* Undo in local games (never past a roll or a draw).
+* Interactive tutorial: a scripted first game against the computer.
+
+**Computer opponent**
+* Difficulty levels.
+* Stronger play: plan several builds per turn, save up for a City, offer trades.
+* Tune the weights in `src/engine/bot.ts` by self-play; reinforcement learning only after that.
+* Computer joins a public game that nobody else has joined.
+
+**Players**
+* Rematch from the game-over screen.
+* End-of-game statistics (production per Region, dice, VP over time).
+* Card almanac in the app (all cards with cost, effect, count).
+* Installable app (PWA); local games playable offline.
+* Player names and preset emotes (no free-text chat).
+* Read-only spectator link.
+* Sound effects, as a Client Setting.
+* Hint button in local games (the computer's suggestion for your move).
+
+**Technical**
+* Accessibility: focus trap and Escape in dialogs, keyboard play, screen-reader labels for Regions,
+  colour-blind check of the resource colours.
+* Page metadata: favicon, description, `lang` following the UI language.
+* Stale docs: README's VP targets ("7, 12 or 13"), ADR-0004 (Host picks more than the VP target).
+* Major dependency upgrades (Vite 8, Vitest 5, ESLint 10, TypeScript 7).
+* Optional session snapshot to disk, so a server restart does not end games.
+* Per-client limits on session creation (today only a global limit, `MAX_SESSIONS`).

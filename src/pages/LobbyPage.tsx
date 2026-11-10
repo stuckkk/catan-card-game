@@ -17,7 +17,7 @@ import type { ClientRole } from './useGameSession'
 import styles from './LobbyPage.module.css'
 
 type LobbyMode = 'idle' | 'hosting' | 'joining' | 'error'
-type ErrorKey = 'connectionLost' | 'roomNotFound' | 'sessionExpired' | 'serverUnreachable'
+type ErrorKey = 'connectionLost' | 'roomNotFound' | 'sessionExpired' | 'serverUnreachable' | 'serverFull'
 
 const OPPONENTS: { value: Opponent; icon: string; labelKey: string; hintKey: string }[] = [
   { value: 'private', icon: '👥', labelKey: 'lobby.opponentPrivate', hintKey: 'lobby.opponentPrivateHint' },
@@ -33,6 +33,7 @@ function errorKeyForCode(code: string): ErrorKey {
     case 'ROOM_NOT_FOUND': return 'roomNotFound'
     case 'SESSION_EXPIRED': return 'sessionExpired'
     case 'UNREACHABLE': return 'serverUnreachable'
+    case 'SERVER_FULL': return 'serverFull'
     default: return 'connectionLost'
   }
 }
@@ -158,7 +159,7 @@ export default function LobbyPage() {
     }
   }
 
-  /** No network session and no persistence: a hot-seat board to learn on (practice), or a game
+  /** No network session (the game is kept in this tab only, see saveLocalGame): a hot-seat board to learn on (practice), or a game
    *  against the computer in the other seat. */
   function startLocalGame(role: Extract<ClientRole, 'practice' | 'computer'>) {
     const initialState = createInitialState({ ...gameRules, language: currentLanguage() })

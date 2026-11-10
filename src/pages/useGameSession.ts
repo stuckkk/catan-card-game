@@ -6,7 +6,7 @@ import type { GameState, GameAction, ProjectedState, PlayerId } from '../engine/
 import { reconnectSession } from '../network/wsSession'
 import type { NetworkSession } from '../network/wsSession'
 import { sessionStore } from '../network/sessionStore'
-import { loadPersisted } from '../network/persistence'
+import { loadLocalGame, loadPersisted, saveLocalGame } from '../network/persistence'
 import { COMPUTER_DELAY_MS, useClientSettings } from '../settings/clientSettings'
 
 export type ClientRole = 'host' | 'guest' | 'practice' | 'computer'
@@ -33,14 +33,20 @@ export function useGameSession() {
 
   // Practice mode runs the engine locally; Host/Guest only ever hold what the
   // server last projected to them.
-  // A reload restores the game from history.state, possibly saved by an older version without some
+  // history.state only holds the game as it started; a reload continues from the state saved
+  // after its last action (saveLocalGame). Either may come from an older version without some
   // Game Settings: those fall back to the rulebook, as that game was played with.
-  const [gameState, setGameState] = useState<GameState | null>(() => nav.initialGameState
-    ? { ...nav.initialGameState, config: { ...normalizeRules(nav.initialGameState.config), language: nav.initialGameState.config.language } }
-    : null)
+  const [gameState, setGameState] = useState<GameState | null>(() => {
+    const initial = nav.initialGameState
+    if (!initial) return null
+    const state = loadLocalGame(initial.sessionId) ?? initial
+    return { ...state, config: { ...normalizeRules(state.config), language: state.config.language } }
+  })
   const [projected, setProjected] = useState<ProjectedState | null>(null)
   const [disconnected, setDisconnected] = useState(false)
   const [expired, setExpired] = useState(false)
+  // Our own connection to the server (online games); it reconnects by itself.
+  const [reconnecting, setReconnecting] = useState(false)
 
   const sessionRef = useRef<NetworkSession | null>(sessionStore.get())
   // Pause before each computer move, so the player can follow what it does (a Client Setting).
@@ -76,6 +82,7 @@ export function useGameSession() {
       session.onPeerConnect(() => setDisconnected(false))
       session.onPeerDisconnect(() => setDisconnected(true))
       session.onSessionExpired(() => setExpired(true))
+      session.onConnectionChange(connected => setReconnecting(!connected))
     }
 
     const existing = sessionStore.get()
@@ -98,6 +105,11 @@ export function useGameSession() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [role])
 
+  // A local game lives only in this browser: keep it for a reload.
+  useEffect(() => {
+    if (isLocal && gameState) saveLocalGame(gameState)
+  }, [isLocal, gameState])
+
   // The computer's moves: one at a time, after a short pause, whenever it has to act.
   useEffect(() => {
     if (role !== 'computer' || !gameState || !botShouldAct(gameState, COMPUTER_SEAT)) return
@@ -112,5 +124,5 @@ export function useGameSession() {
   // works off a ProjectedState.
   const view: ProjectedState | null = isLocal ? (gameState ? projectStateFor(gameState, myId) : null) : projected
 
-  return { role, isPractice, myId, view, dispatchAction, disconnected, expired }
+  return { role, isPractice, myId, view, dispatchAction, disconnected, reconnecting, expired }
 }
