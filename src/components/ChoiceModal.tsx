@@ -17,7 +17,7 @@ interface Props {
   onAction: (a: GameAction) => void
 }
 
-/** The dialog for a mandatory pick. Region picks happen on the board instead (RegionChoiceBar).
+/** The dialog for a mandatory pick. Region picks happen on the board instead (RegionChoiceBar, NewRegionsBar).
  *  Keyed by the log length, so a new prompt of the same kind starts with a fresh selection. */
 export default function ChoiceModal({ choice, view, myId, hand, onAction }: Props) {
   const key = view.eventLog.length
@@ -51,6 +51,7 @@ export default function ChoiceModal({ choice, view, myId, hand, onAction }: Prop
         </Modal>
       )
     case 'region':
+    case 'newRegions':
       return null
   }
 }

@@ -6,16 +6,19 @@ export type ClientMessage =
   | { type: 'join_session'; roomId: string }
   | { type: 'reconnect'; roomId: string; token: string }
   | { type: 'action'; action: GameAction }
+  /** After a game is over: offer a rematch, or accept the opponent's offer. */
+  | { type: 'rematch' }
   | { type: 'leave' }
 
-export type ServerErrorCode = 'ROOM_NOT_FOUND' | 'ROOM_FULL' | 'INVALID_TOKEN' | 'MALFORMED_MESSAGE' | 'SERVER_FULL'
+export type ServerErrorCode = 'ROOM_NOT_FOUND' | 'ROOM_FULL' | 'INVALID_TOKEN' | 'MALFORMED_MESSAGE' | 'SERVER_FULL' | 'RATE_LIMITED'
 
 /** Messages the server sends to a client over the WebSocket connection. */
 export type ServerMessage =
   | { type: 'session_created'; roomId: string; token: string; playerId: PlayerId }
   | { type: 'session_joined'; roomId: string; token: string; playerId: PlayerId }
   | { type: 'reconnected'; playerId: PlayerId }
-  | { type: 'state_update'; state: ProjectedState }
+  /** `rematchOfferedBy`: after a game is over, the player who wants a rematch (if any). */
+  | { type: 'state_update'; state: ProjectedState; rematchOfferedBy?: PlayerId }
   | { type: 'peer_connected' }
   | { type: 'peer_disconnected' }
   | { type: 'session_expired' }

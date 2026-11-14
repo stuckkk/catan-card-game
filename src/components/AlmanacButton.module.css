@@ -1,0 +1,17 @@
+.list { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+
+.card {
+  padding: 8px 10px;
+  border-left: 4px solid var(--card-color);
+  border-radius: var(--radius-md);
+  background: var(--sea-mid);
+  font-size: 14px;
+}
+.green { --card-color: var(--color-green-card); }
+.red { --card-color: var(--color-red-card); }
+.action { --card-color: var(--color-yellow-card); }
+.event { --card-color: var(--foam-muted); }
+
+.head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.meta { display: flex; gap: 8px; color: var(--color-text-muted); white-space: nowrap; }
+.effects { color: var(--color-text-muted); }

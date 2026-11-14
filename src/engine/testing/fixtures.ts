@@ -1,4 +1,4 @@
-import { availableResources, STANDARD_RULES } from '../engine'
+import { availableResources, emptyStats, STANDARD_RULES } from '../engine'
 import type { GameState, PlayerState, PlayerId, Resources, ResourceType, RegionState, DiceRoll, DeckId, CentralSlot } from '../types'
 
 // Deterministic builders for the engine tests (no RNG).
@@ -81,6 +81,8 @@ export function makeState(over: Partial<GameState> = {}): GameState {
     pendingTrade: null,
     pendingChoices: [],
     eventLog: [],
+    stats: emptyStats(),
+    rngState: 1,
     ...over,
   }
 }

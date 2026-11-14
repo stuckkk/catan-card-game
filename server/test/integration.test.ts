@@ -5,6 +5,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { createHttpServer } from '../src/httpServer'
 import { attachWebSocketServer } from '../src/wsServer'
 import { SessionManager } from '../src/sessionManager'
+import { CreationLimiter } from '../src/creationLimiter'
 import { STANDARD_RULES } from '../../src/engine/engine'
 import type { ClientMessage, PublicGameSummary, ServerMessage } from '../../src/network/protocol'
 
@@ -58,13 +59,15 @@ function waitFor<T extends ServerMessage['type']>(
 describe('server integration: host/guest game over real WebSocket connections', () => {
   let httpServer: Server
   let port: number
+  let sessionManager: SessionManager
 
   beforeAll(async () => {
-    const sessionManager = new SessionManager()
+    sessionManager = new SessionManager()
     // Static serving isn't exercised by this test (only /ws and /api traffic), so point it
     // at any real directory to satisfy sirv's eager directory scan.
     httpServer = createHttpServer(sessionManager, process.cwd())
-    attachWebSocketServer(httpServer, sessionManager)
+    // Every test connects from this machine: no limit on new sessions here.
+    attachWebSocketServer(httpServer, sessionManager, new CreationLimiter(Infinity))
     await new Promise<void>(resolve => httpServer.listen(0, resolve))
     port = (httpServer.address() as AddressInfo).port
   })
@@ -228,6 +231,57 @@ describe('server integration: host/guest game over real WebSocket connections', 
     host.send({ type: 'create_session', rules: STANDARD_RULES, language: 'en', isPublic: false })
     expect((await waitFor(host, 'error')).code).toBe('MALFORMED_MESSAGE')
     host.close()
+  })
+
+  it('starts a rematch once both players of a finished game ask for it', async () => {
+    const host = await connect(port)
+    host.send({ type: 'create_session', rules: { ...STANDARD_RULES, vpTarget: 9 }, language: 'en', isPublic: false })
+    const { roomId } = await waitFor(host, 'session_created')
+    const guest = await connect(port)
+    guest.send({ type: 'join_session', roomId })
+    await waitFor(guest, 'session_joined')
+
+    // Not while the game is running.
+    host.received.length = 0
+    host.send({ type: 'rematch' })
+    host.send({ type: 'action', action: { type: 'SWAP_STARTING_REGIONS', a: 0, b: 1 } })
+    expect((await waitFor(host, 'state_update')).rematchOfferedBy).toBeUndefined()
+
+    const session = sessionManager.getSession(roomId)!
+    session.state = { ...session.state, winner: 'guest', turn: 40 }
+    host.received.length = 0
+    guest.received.length = 0
+    host.send({ type: 'rematch' })
+    expect(await waitFor(guest, 'state_update')).toMatchObject({ rematchOfferedBy: 'host', state: { winner: 'guest' } })
+    await waitFor(host, 'state_update')
+
+    guest.send({ type: 'rematch' })
+    const fresh = await waitFor(host, 'state_update')
+    expect(fresh.rematchOfferedBy).toBeUndefined()
+    expect(fresh.state).toMatchObject({ winner: null, phase: 'setup', turn: 0, config: { vpTarget: 9 } })
+    host.close()
+    guest.close()
+  })
+
+  it('refuses more new sessions from one address than the limit allows', async () => {
+    const manager = new SessionManager()
+    const limited = createHttpServer(manager, process.cwd())
+    attachWebSocketServer(limited, manager, new CreationLimiter(1, 60_000))
+    await new Promise<void>(resolve => limited.listen(0, resolve))
+    try {
+      const limitedPort = (limited.address() as AddressInfo).port
+      const create: ClientMessage = { type: 'create_session', rules: STANDARD_RULES, language: 'en', isPublic: false }
+      const first = await connect(limitedPort)
+      first.send(create)
+      await waitFor(first, 'session_created')
+      const second = await connect(limitedPort)
+      second.send(create)
+      expect((await waitFor(second, 'error')).code).toBe('RATE_LIMITED')
+      first.close()
+      second.close()
+    } finally {
+      await new Promise<void>(resolve => limited.close(() => resolve()))
+    }
   })
 
   it('answers the health check and the games list with a query string', async () => {

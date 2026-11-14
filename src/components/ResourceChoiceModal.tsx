@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import type { GameAction, PendingResourceChoice } from '../engine/types'
 import { RESOURCE_ICON } from './resourceMeta'
+import { useDialog } from './useDialog'
 import styles from './ResourceChoiceModal.module.css'
 
 interface Props {
@@ -14,10 +15,11 @@ interface Props {
 export default function ResourceChoiceModal({ choice, onAction }: Props) {
   const { t } = useTranslation()
   const titleKey = `game.chooseResource.${choice.reason}Title`
+  const ref = useDialog<HTMLDivElement>()
 
   return (
-    <div className={styles.backdrop} role="dialog" aria-modal="true">
-      <div className={styles.sheet}>
+    <div className={styles.backdrop}>
+      <div className={styles.sheet} ref={ref} tabIndex={-1} style={{ outline: 'none' }} role="dialog" aria-modal="true" aria-label={t(titleKey)}>
         <div className={styles.title}>{t(titleKey)}</div>
         <div className={styles.picker}>
           {choice.options.map(r => (

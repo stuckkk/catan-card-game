@@ -8,14 +8,7 @@ import type { GameAction, GameState, PlayerId, PlayerState, ResourceType } from 
 // Simple random bots for simulated games: they shake out soft-locks and broken invariants
 // across the full rule set, and are the baseline the computer opponent is measured against.
 
-export function mulberry32(seed: number): () => number {
-  return () => {
-    seed |= 0; seed = (seed + 0x6d2b79f5) | 0
-    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed)
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
-  }
-}
+export { mulberry32 } from '../board'
 
 const sorted = (a: string[]) => [...a].sort()
 
@@ -153,6 +146,9 @@ export function step(s: GameState, rng: () => number): GameState {
     if (choice.reason === 'spy') return applyAction(s, p, { type: 'CHOOSE_HAND_CARDS', cardIds: hand.filter(isSpyTarget).slice(0, 1) })
     const toDeck = DRAW_STACK_IDS[Math.floor(rng() * 5)]
     return applyAction(s, p, { type: 'CHOOSE_HAND_CARDS', cardIds: hand.slice(0, 2), toDeck })
+  }
+  if (choice?.kind === 'newRegions') {
+    return applyAction(s, p, { type: 'PLACE_NEW_REGIONS', above: me.regions[choice.regionIndices[rng() < 0.5 ? 0 : 1]].regionId })
   }
   if (choice?.kind === 'discard') return applyAction(s, p, discardExcess(me))
   switch (s.phase) {

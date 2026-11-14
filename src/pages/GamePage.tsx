@@ -26,11 +26,15 @@ import DiceDisplay from '../components/DiceDisplay'
 import OpponentSummary from '../components/OpponentSummary'
 import OpponentVillage from '../components/OpponentVillage'
 import RegionChoiceBar from '../components/RegionChoiceBar'
+import NewRegionsBar from '../components/NewRegionsBar'
+import GameStatsPanel from '../components/GameStatsPanel'
+import TutorialCoach from '../tutorial/TutorialCoach'
 import ChoiceModal from '../components/ChoiceModal'
 import Toasts from '../components/Toasts'
 import ActivityFeed from '../components/ActivityFeed'
 import BuildStrip from '../components/BuildStrip'
 import GameRulesButton from '../components/GameRulesButton'
+import AlmanacButton from '../components/AlmanacButton'
 import SettingsButton from '../components/SettingsButton'
 import TokenChip from '../components/TokenChip'
 import { describeEvent, isToastWorthy, playerLabel } from '../components/activityText'
@@ -46,23 +50,31 @@ const WAITING_KEY: Record<Exclude<PendingChoice['kind'], 'placedCard'>, string> 
   handCard: 'game.handCard.waiting',
   masterBuilder: 'game.masterBuilder.waiting',
   region: 'game.regionChoice.waiting',
+  newRegions: 'game.newRegions.waiting',
   discard: 'game.discardNow.waiting',
 }
 
 function waitingText(t: TFunction, choice: PendingChoice): string {
   const key = choice.kind === 'placedCard' ? `game.${choice.reason}.waiting` : WAITING_KEY[choice.kind]
-  return t(key, 'attackCardId' in choice ? { card: t(getCard(choice.attackCardId).nameKey) } : undefined)
+  return 'attackCardId' in choice ? t(key, { card: t(getCard(choice.attackCardId).nameKey) }) : t(key)
 }
 
 /** The final score once someone has won. */
-function GameOver({ view, myId, isPractice, onLeave }: {
+function GameOver({ view, myId, isPractice, isLocal, rematchOfferedBy, onRematch, onLeave }: {
   view: ProjectedState
   myId: PlayerId
   isPractice: boolean
+  isLocal: boolean
+  /** Online: who has offered a rematch so far. */
+  rematchOfferedBy: PlayerId | null
+  onRematch: () => void
   onLeave: () => void
 }) {
   const { t } = useTranslation()
   const tokens = tokenHolders(view)
+  const offeredByMe = !isLocal && rematchOfferedBy === myId
+  const offeredToMe = !isLocal && rematchOfferedBy === opponent(myId)
+  const names = { host: playerLabel(t, 'host', myId, isPractice), guest: playerLabel(t, 'guest', myId, isPractice) }
   return (
     <div className={styles.winOverlay}>
       <div className={styles.winCard}>
@@ -79,7 +91,17 @@ function GameOver({ view, myId, isPractice, onLeave }: {
             </li>
           ))}
         </ul>
-        <button className="primary" onClick={onLeave}>{t('game.backToLobby')}</button>
+        <details className={styles.stats}>
+          <summary>{t('game.stats.title')}</summary>
+          <GameStatsPanel stats={view.stats} vpTarget={view.config.vpTarget} names={names} />
+        </details>
+        {offeredToMe && <p className={styles.rematchNote}>{t('game.rematch.offered')}</p>}
+        <div className={styles.winButtons}>
+          <button className="primary" onClick={onRematch} disabled={offeredByMe}>
+            {offeredByMe ? t('game.rematch.waiting') : offeredToMe ? t('game.rematch.accept') : t('game.rematch.offer')}
+          </button>
+          <button className="secondary" onClick={onLeave}>{t('game.backToLobby')}</button>
+        </div>
       </div>
     </div>
   )
@@ -88,10 +110,13 @@ function GameOver({ view, myId, isPractice, onLeave }: {
 export default function GamePage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const { role, isPractice, myId, view, dispatchAction, disconnected, reconnecting, expired } = useGameSession()
+  const {
+    role, isPractice, isLocal, isTutorial, myId, view, dispatchAction, disconnected, reconnecting, expired, undo, rematch, rematchOfferedBy,
+  } = useGameSession()
   const settings = useClientSettings()
 
   const [opponentExpanded, setOpponentExpanded] = useState(false)
+  const [tutorialDismissed, setTutorialDismissed] = useState(false)
   // Card-first placement: the expansion card the player is currently placing on the board.
   const [placingCardId, setPlacingCardId] = useState<string | null>(null)
 
@@ -202,6 +227,7 @@ export default function GamePage() {
 
   // Placement is only valid during my own action phase; abandon it otherwise.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- dropping it for good: it must not come back with the next action phase
     if (placingCardId && !(isMyTurn && phase === 'action')) setPlacingCardId(null)
   }, [placingCardId, isMyTurn, phase])
 
@@ -212,7 +238,7 @@ export default function GamePage() {
     || (!!pendingTrade && pendingTrade.from !== myId)
   const sheetKey = `${view?.turn}|${phase}|${mySearch?.deck ?? ''}|${pendingTrade ? 'trade' : ''}`
   const [sheetOverride, setSheetOverride] = useState<{ key: string; collapsed: boolean } | null>(null)
-  const sheetCollapsed = !!placingCardId || !!regionChoice
+  const sheetCollapsed = !!placingCardId || !!regionChoice || myChoice?.kind === 'newRegions'
     || (sheetOverride?.key === sheetKey ? sheetOverride.collapsed : !panelNeedsMe)
 
   // One line telling the player what to do now; phases with their own panel explain themselves.
@@ -251,7 +277,12 @@ export default function GamePage() {
         <div className={styles.disconnectBanner}>{t(reconnecting ? 'game.reconnecting' : 'game.disconnected')}</div>
       )}
 
-      {winner && <GameOver view={view} myId={myId} isPractice={isPractice} onLeave={leaveGame} />}
+      {winner && (
+        <GameOver
+          view={view} myId={myId} isPractice={isPractice} isLocal={isLocal}
+          rematchOfferedBy={rematchOfferedBy} onRematch={rematch} onLeave={leaveGame}
+        />
+      )}
 
       {/* Mandatory picks; kept out of the turn panel so a collapsed phone sheet can't hide them. */}
       {myChoice && <ChoiceModal choice={myChoice} view={view} myId={myId} hand={myHand} onAction={dispatchAction} />}
@@ -280,6 +311,7 @@ export default function GamePage() {
 
         <div className={styles.headerEnd}>
           <GameRulesButton config={view.config} myId={myId} isPractice={isPractice} />
+          <AlmanacButton />
           <SettingsButton />
           <div className={styles.myScore}>
             <span className={styles.myScoreLabel}>{t('game.you')}</span>
@@ -308,6 +340,9 @@ export default function GamePage() {
             onReset={() => setRegionPicks({ key: regionKey, picks: [] })}
             onConfirm={() => { dispatchAction({ type: 'CHOOSE_REGIONS', regionIndices: picks }); setRegionPicks({ key: '', picks: [] }) }}
           />
+        )}
+        {myChoice?.kind === 'newRegions' && myState && (
+          <NewRegionsBar choice={myChoice} regions={myState.regions} onAction={dispatchAction} />
         )}
         {placingCardId && (
           <div className={styles.placingBanner}>
@@ -350,7 +385,9 @@ export default function GamePage() {
             </span>
           </div>
           <PhaseTracker phase={phase} isMyTurn={isMyTurn} />
-          {turnHint && <p className={styles.hint}>{turnHint}</p>}
+          {isTutorial && !tutorialDismissed && !winner
+            ? <TutorialCoach view={view} onDismiss={() => setTutorialDismissed(true)} />
+            : turnHint && <p className={styles.hint}>{turnHint}</p>}
         </div>
 
         <div className={`${styles.turnBody} ${sheetCollapsed ? styles.collapsed : ''}`}>
@@ -414,6 +451,9 @@ export default function GamePage() {
         </div>
 
         <div className={styles.controls}>
+          {undo && !winner && (
+            <button className={`secondary ${styles.undo}`} onClick={undo}>↩ {t('game.undo')}</button>
+          )}
           {phase === 'roll' && isMyTurn && (
             <button className="primary" onClick={() => dispatchAction({ type: 'ROLL_DICE' })}>
               {t('game.rollDice')}

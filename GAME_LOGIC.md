@@ -93,8 +93,12 @@ Field 1. The PDF does not list the Region stack's numbers; the app uses the set 
   a Road (never next to another Settlement/City).
   * Every Settlement has a Region at each of its 4 diagonal corners. Neighbouring Settlements share the
     two Regions above and below the Road between them. A new Settlement therefore needs **2 new Regions**
-    (on its outer side): take the **top 2 cards of the Region stack**; new Regions start at **0**.
-    *Scout* (§9) lets you choose them instead.
+    (on its outer side): draw the **top 2 cards of the Region stack**, look at both, then put one
+    above and the other below, as you choose (DE p.8); new Regions start at **0**. The Settlement and
+    both Regions are laid out at once (first card drawn above); the builder then names the Region for
+    the upper spot before doing anything else (`PLACE_NEW_REGIONS`, after paying, §2). Fewer than 2
+    Regions in the stack: no Settlement can be built. *Scout* (§9) lets you choose the 2 Regions from
+    the whole stack instead, each with its spot, so nothing is asked afterwards.
 * **Cities** cost 3 Ore + 2 Grain and are placed on top of an existing Settlement (the Settlement no longer
   counts for anything). City = 2 VP total.
 * **Building sites:** a Settlement has **2** (1 above, 1 below); a City has **4** (2 above, 2 below).
@@ -306,12 +310,24 @@ Buildings vs Units: Knights and Fleets are **Units**; everything else is a **Bui
 * **Harbor:** follows the card text (Harbor 1 Commerce + 1 per Fleet); the almanac example (3 Fleets +
   Harbor = 6) omits the Harbor's own point.
 * **Garrison** gives 1 Commerce Point (windmill icon on the card; not mentioned in the almanac text).
-* **New Regions without a Scout:** the first card drawn goes above, the second below (the PDF lets the
-  player choose the side after drawing the first).
+* **New Regions without a Scout:** follows the German rulebook (draw both, then place them, DE p.8);
+  the English one has the player place the first before drawing the second.
 * **Practice mode** (local, no server) is a hot-seat game: the screen always shows the seat that has to act.
 * **Computer opponent** (local, no server): the human plays one seat, a heuristic bot (`src/engine/bot.ts`) the
   other, through the same engine and seeing only what a player would. It answers trade offers but never
   offers any itself.
+* **Tutorial** (local): a game against the computer with rulebook settings in which the human starts,
+  always with the same deal and dice, and a coach explaining the first two turns.
+* **Randomness:** after the deal, every die and reshuffle (dice, attack die, Scout, Year End) comes from
+  a seeded generator kept in the Game State and never shown to a player, so the deal plus the actions
+  determine the whole game.
+* **Undo** (local games only): steps back one action at a time, but never past anything that showed
+  something new or passed the move on: a roll or reshuffle, a drawn, searched or buried card, newly
+  drawn Regions, a revealed hand (Spy), a computer move, the other seat's move, or the end of the game.
+* **Rematch:** after a game, a new one starts with the same Game Settings (so "who starts" applies
+  again). Online, one player offers and the other accepts; local games restart at once.
+* **Statistics** after a game: Victory Points after each turn, how often each die face came up, and what
+  each Region produced. All of it is public information.
 
 ---
 
@@ -320,39 +336,12 @@ Buildings vs Units: Knights and Fleets are **Units**; everything else is a **Bui
 Items marked **(rules)** change game behaviour and are specified here before they are coded.
 
 **Rules**
-* **(rules)** New Regions without a Scout: let the player choose the side after drawing the first (§12).
 * **(rules)** Theme sets of the German rulebook (Cannon, University, Metropolis …).
-* **(rules)** Optional turn timer as a Game Setting; what happens at timeout is undecided.
-* German Knight names: 8 of 9 not yet checked against the physical cards.
-
-**Engine**
-* Seeded RNG in the Game State (dice, attack die, Scout reshuffle), so a game is reproducible from
-  its seed and actions. Prerequisite for the next three.
-* Full action history: replay after the game, export of a game for bug reports.
-* Undo in local games (never past a roll or a draw).
-* Interactive tutorial: a scripted first game against the computer.
 
 **Computer opponent**
 * Difficulty levels.
 * Stronger play: plan several builds per turn, save up for a City, offer trades.
 * Tune the weights in `src/engine/bot.ts` by self-play; reinforcement learning only after that.
-* Computer joins a public game that nobody else has joined.
-
-**Players**
-* Rematch from the game-over screen.
-* End-of-game statistics (production per Region, dice, VP over time).
-* Card almanac in the app (all cards with cost, effect, count).
-* Installable app (PWA); local games playable offline.
-* Player names and preset emotes (no free-text chat).
-* Read-only spectator link.
-* Sound effects, as a Client Setting.
-* Hint button in local games (the computer's suggestion for your move).
 
 **Technical**
-* Accessibility: focus trap and Escape in dialogs, keyboard play, screen-reader labels for Regions,
-  colour-blind check of the resource colours.
-* Page metadata: favicon, description, `lang` following the UI language.
-* Stale docs: README's VP targets ("7, 12 or 13"), ADR-0004 (Host picks more than the VP target).
-* Major dependency upgrades (Vite 8, Vitest 5, ESLint 10, TypeScript 7).
-* Optional session snapshot to disk, so a server restart does not end games.
-* Per-client limits on session creation (today only a global limit, `MAX_SESSIONS`).
+* TypeScript 7: the linter (typescript-eslint) only supports TypeScript below 6.1 so far.

@@ -427,6 +427,8 @@ function answerChoice(s: GameState, me: PlayerId, head: PendingChoice): GameActi
       return bestOf(s, me, head.options.map((site): GameAction => ({ type: 'CHOOSE_PLACED_CARD', ...site })))
     case 'region':
       return { type: 'CHOOSE_REGIONS', regionIndices: regionPicks(s, me, head) }
+    case 'newRegions':
+      return { type: 'PLACE_NEW_REGIONS', above: s.players[me].regions[head.regionIndices[0]].regionId }
     case 'discard':
       return { type: 'DISCARD_TO_LIMIT', discards: discardsFor(s, me) }
     case 'counter':

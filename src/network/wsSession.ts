@@ -9,7 +9,10 @@ export interface NetworkSession {
   /** Set only for the session's creator (Host), built from the roomId at creation time. */
   inviteUrl?: string
   sendAction: (action: GameAction) => void
-  onStateUpdate: (cb: (state: ProjectedState) => void) => void
+  /** After a game is over: offer a rematch, or accept the opponent's offer. */
+  requestRematch: () => void
+  /** `rematchOfferedBy`: who wants a rematch of the finished game, if anyone. */
+  onStateUpdate: (cb: (state: ProjectedState, rematchOfferedBy: PlayerId | null) => void) => void
   /** Fires when the *other* player (re)connects — not our own connection. */
   onPeerConnect: (cb: () => void) => void
   /** Fires when the *other* player disconnects — not our own connection. */
@@ -33,7 +36,7 @@ function wsUrl(): string {
 }
 
 interface Handlers {
-  stateUpdate: ((state: ProjectedState) => void) | null
+  stateUpdate: ((state: ProjectedState, rematchOfferedBy: PlayerId | null) => void) | null
   peerConnect: (() => void) | null
   peerDisconnect: (() => void) | null
   sessionExpired: (() => void) | null
@@ -62,7 +65,7 @@ class WsSession {
   // not on demand. A subscriber that registers after one already arrived (e.g. GamePage
   // mounting after LobbyPage consumed the first one just to trigger navigation) needs the
   // latest value replayed immediately, or it's stuck with nothing to render.
-  private lastState: ProjectedState | null = null
+  private lastState: { state: ProjectedState; rematchOfferedBy: PlayerId | null } | null = null
 
   constructor(
     socket: WebSocket,
@@ -118,8 +121,8 @@ class WsSession {
   private handleMessage(message: ServerMessage): void {
     switch (message.type) {
       case 'state_update':
-        this.lastState = message.state
-        this.handlers.stateUpdate?.(message.state)
+        this.lastState = { state: message.state, rematchOfferedBy: message.rematchOfferedBy ?? null }
+        this.handlers.stateUpdate?.(this.lastState.state, this.lastState.rematchOfferedBy)
         break
       case 'peer_connected':     this.handlers.peerConnect?.(); break
       case 'peer_disconnected':  this.handlers.peerDisconnect?.(); break
@@ -131,9 +134,11 @@ class WsSession {
   }
 
   sendAction(action: GameAction): void {
-    if (this.socket.readyState !== WebSocket.OPEN) return
-    const message: ClientMessage = { type: 'action', action }
-    this.socket.send(JSON.stringify(message))
+    this.send({ type: 'action', action })
+  }
+
+  private send(message: ClientMessage): void {
+    if (this.socket.readyState === WebSocket.OPEN) this.socket.send(JSON.stringify(message))
   }
 
   close(): void {
@@ -152,9 +157,10 @@ class WsSession {
       token: this.token,
       inviteUrl,
       sendAction: action => this.sendAction(action),
+      requestRematch: () => this.send({ type: 'rematch' }),
       onStateUpdate: cb => {
         this.handlers.stateUpdate = cb
-        if (this.lastState) cb(this.lastState)
+        if (this.lastState) cb(this.lastState.state, this.lastState.rematchOfferedBy)
       },
       onPeerConnect: cb => { this.handlers.peerConnect = cb },
       onPeerDisconnect: cb => { this.handlers.peerDisconnect = cb },

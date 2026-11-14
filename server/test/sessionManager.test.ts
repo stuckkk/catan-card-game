@@ -132,6 +132,67 @@ describe('SessionManager', () => {
     })
   })
 
+  describe('rematch', () => {
+    const finished = () => {
+      const { roomId } = manager.createSession({ vpTarget: 9 }, 'de', false, fakeSocket())
+      manager.joinSession(roomId, fakeSocket())
+      const session = manager.getSession(roomId)!
+      session.state = { ...session.state, winner: 'host', turn: 30 }
+      return { roomId, session }
+    }
+
+    it('is refused while the game is still running', () => {
+      const { roomId } = manager.createSession({ vpTarget: 12 }, 'en', false, fakeSocket())
+      expect(manager.requestRematch(roomId, 'host')).toBe(false)
+      expect(manager.getSession(roomId)!.rematchOfferedBy).toBeNull()
+    })
+
+    it('records the first request as an offer; repeating it changes nothing', () => {
+      const { roomId, session } = finished()
+      expect(manager.requestRematch(roomId, 'guest')).toBe(true)
+      expect(session.rematchOfferedBy).toBe('guest')
+      expect(session.state.winner).toBe('host')
+      expect(manager.requestRematch(roomId, 'guest')).toBe(false)
+    })
+
+    it('starts a new game with the same Game Settings once the other player accepts', () => {
+      const { roomId, session } = finished()
+      manager.requestRematch(roomId, 'guest')
+      expect(manager.requestRematch(roomId, 'host')).toBe(true)
+      expect(session.state).toMatchObject({ winner: null, phase: 'setup', turn: 0, config: { vpTarget: 9, language: 'de' } })
+      expect(session.rematchOfferedBy).toBeNull()
+    })
+  })
+
+  describe('snapshot and restore', () => {
+    it('carries the games and seats over to a new server; players reconnect with their tokens', () => {
+      const host = manager.createSession({ vpTarget: 9 }, 'en', true, fakeSocket())
+      const guest = manager.joinSession(host.roomId, fakeSocket())
+      manager.applyAction(host.roomId, 'host', { type: 'SWAP_STARTING_REGIONS', a: 0, b: 1 })
+      const state = manager.getSession(host.roomId)!.state
+
+      const next = new SessionManager()
+      next.restore(JSON.parse(JSON.stringify(manager.snapshot())))
+      expect(next.getSession(host.roomId)!.state).toEqual(state)
+      expect(next.reconnect(host.roomId, host.token, fakeSocket())).toEqual({ ok: true, playerId: 'host' })
+      expect(guest.ok && next.reconnect(host.roomId, guest.token, fakeSocket())).toEqual({ ok: true, playerId: 'guest' })
+      expect(next.reconnect(host.roomId, 'wrong', fakeSocket())).toEqual({ ok: false, code: 'INVALID_TOKEN' })
+    })
+
+    it('lets a restored session expire when nobody comes back', () => {
+      vi.useFakeTimers()
+      try {
+        const { roomId } = manager.createSession({ vpTarget: 12 }, 'en', false, fakeSocket())
+        const next = new SessionManager(1000)
+        next.restore(manager.snapshot())
+        vi.advanceTimersByTime(1001)
+        expect(next.getSession(roomId)).toBeUndefined()
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+  })
+
   describe('leave', () => {
     it('deletes the session when the host leaves before a guest joined', () => {
       const { roomId } = manager.createSession({ vpTarget: 12 }, 'en', true, fakeSocket())

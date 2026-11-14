@@ -4,7 +4,7 @@ import type { GameAction, GameRules, GameState, Language, PlayerId } from '../..
 import type { PublicGameSummary } from '../../src/network/protocol'
 import {
   DEFAULT_IDLE_TIMEOUT_MS, DEFAULT_MAX_SESSIONS, generateRoomId, generateToken,
-  type Session,
+  type Session, type SessionSnapshot,
 } from './session'
 
 export interface CreateSessionResult {
@@ -55,6 +55,7 @@ export class SessionManager {
         host: { token, socket },
         guest: null,
       },
+      rematchOfferedBy: null,
       idleTimer: null,
     })
     return { roomId, token, playerId: 'host' }
@@ -133,6 +134,55 @@ export class SessionManager {
     if (!session) return null
     session.state = applyEngineAction(session.state, actingPlayer, action)
     return session.state
+  }
+
+  /** A finished game only: the first request is an offer, the other player's request accepts it
+   *  and starts a new game in the same session with the same Game Settings. Returns whether
+   *  anything changed. */
+  requestRematch(roomId: string, playerId: PlayerId): boolean {
+    const session = this.sessions.get(roomId)
+    if (!session?.state.winner || session.rematchOfferedBy === playerId) return false
+    if (session.rematchOfferedBy) {
+      session.state = createInitialState(session.state.config)
+      session.rematchOfferedBy = null
+    } else {
+      session.rematchOfferedBy = playerId
+    }
+    return true
+  }
+
+  /** Every session without its connections, to carry the games over a server restart. */
+  snapshot(): SessionSnapshot[] {
+    return [...this.sessions.values()].map(s => ({
+      roomId: s.roomId,
+      state: s.state,
+      createdAt: s.createdAt,
+      isPublic: s.isPublic,
+      tokens: { host: s.players.host?.token ?? null, guest: s.players.guest?.token ?? null },
+      rematchOfferedBy: s.rematchOfferedBy,
+    }))
+  }
+
+  /** Bring back sessions from `snapshot()`. Nobody is connected yet: the players reconnect with
+   *  their tokens, and a session nobody returns to expires like any idle one. */
+  restore(snapshots: SessionSnapshot[]): void {
+    for (const s of snapshots) {
+      if (this.sessions.has(s.roomId) || this.isFull) continue
+      const session: Session = {
+        roomId: s.roomId,
+        state: s.state,
+        createdAt: s.createdAt,
+        isPublic: s.isPublic,
+        players: {
+          host: s.tokens.host ? { token: s.tokens.host, socket: null } : null,
+          guest: s.tokens.guest ? { token: s.tokens.guest, socket: null } : null,
+        },
+        rematchOfferedBy: s.rematchOfferedBy,
+        idleTimer: null,
+      }
+      this.sessions.set(s.roomId, session)
+      this.startIdleTimer(s.roomId, session)
+    }
   }
 
   getSession(roomId: string): Session | undefined {

@@ -14,8 +14,20 @@ export interface Session {
   /** Public sessions are listed in every lobby's Open Games list while waiting for a guest. */
   isPublic: boolean
   players: Record<PlayerId, SessionPlayer | null>
+  /** After a game is over: who offered a rematch. It starts once the other player offers too. */
+  rematchOfferedBy: PlayerId | null
   /** Set only while no player has a live socket; cleared on any connect/reconnect. */
   idleTimer: ReturnType<typeof setTimeout> | null
+}
+
+/** A session as written to disk when the server stops: everything but the live connections. */
+export interface SessionSnapshot {
+  roomId: string
+  state: GameState
+  createdAt: number
+  isPublic: boolean
+  tokens: Record<PlayerId, string | null>
+  rematchOfferedBy: PlayerId | null
 }
 
 export const DEFAULT_IDLE_TIMEOUT_MS = 30 * 60 * 1000

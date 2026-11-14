@@ -4,6 +4,7 @@ import { getCard } from '../engine/cards'
 import type { DeclarativeEffect, ResourceType, Resources } from '../engine/types'
 import { ALL_RESOURCE_TYPES } from '../engine/board'
 import { basket, missingResources } from './resourceMeta'
+import { useDialog } from './useDialog'
 import styles from './CardDetail.module.css'
 
 interface Props {
@@ -24,7 +25,8 @@ interface Props {
   onClose: () => void
 }
 
-function useEffectText() {
+// eslint-disable-next-line react-refresh/only-export-components -- a hook shared with the almanac
+export function useEffectText() {
   const { t } = useTranslation()
   const res = (r: ResourceType) => t(`resources.${r}`)
   return (e: DeclarativeEffect): string => {
@@ -48,6 +50,7 @@ export default function CardDetail({ cardId, canPlay, canBuild, affordable = tru
   const effectText = useEffectText()
   const def = getCard(cardId)
   const [confirming, setConfirming] = useState(false)
+  const ref = useDialog<HTMLDivElement>(onClose)
 
   const cost = def.cost ? ALL_RESOURCE_TYPES.filter(r => (def.cost?.[r] ?? 0) > 0) : []
   const typeLabel = [
@@ -57,7 +60,7 @@ export default function CardDetail({ cardId, canPlay, canBuild, affordable = tru
 
   return (
     <div className={styles.backdrop} onClick={onClose}>
-      <div className={styles.sheet} onClick={e => e.stopPropagation()} role="dialog" aria-modal="true">
+      <div className={styles.sheet} ref={ref} tabIndex={-1} style={{ outline: 'none' }} onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={t(def.nameKey)}>
         <div className={[styles.swatch, styles[def.expansionColor ?? (def.category === 'action' ? 'yellow' : 'central')]].join(' ')} />
         <h3 className={styles.name}>{t(def.nameKey)}</h3>
         <p className={styles.type}>{typeLabel}</p>

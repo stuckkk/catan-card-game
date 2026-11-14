@@ -36,12 +36,13 @@ docker run -p 8080:8080 catan-card-game
 - `PORT`: port to listen on (default `8080`).
 - `SESSION_IDLE_TIMEOUT_MS`: how long an in-memory session survives with nobody connected before it's dropped (default 30 minutes).
 - `MAX_SESSIONS`: how many sessions the server holds at once (default 500); beyond that, new games are refused until one ends.
+- `SESSION_SNAPSHOT_FILE`: optional path of a file the running games are written to when the server stops (SIGTERM/SIGINT) and read back from when it starts. Players then rejoin their seats as after a lost connection. The file must be on storage that outlives the process.
 
-Sessions are held in memory only, so restarting the server ends any in-progress games. `GET /healthz` returns `200 ok` and can be used for container or proxy health checks.
+Sessions are held in memory, so without `SESSION_SNAPSHOT_FILE` restarting the server ends any in-progress games. One network address can create at most 10 games per 10 minutes. `GET /healthz` returns `200 ok` and can be used for container or proxy health checks.
 
 ### Exposing the server
 
-The server has no accounts or authentication: anyone who can reach the port can create or join a game, and sees every public game in the Open games list (`GET /api/games`). If you put it on the internet, run it behind a reverse proxy with TLS. The client switches to `wss://` automatically when the page is served over HTTPS; make sure the proxy forwards WebSocket upgrades on `/ws`.
+The server has no accounts or authentication: anyone who can reach the port can create or join a game, and sees every public game in the Open games list (`GET /api/games`). Behind a proxy, the limit on new games per address goes by the first entry of `X-Forwarded-For`. If you put it on the internet, run it behind a reverse proxy with TLS. The client switches to `wss://` automatically when the page is served over HTTPS; make sure the proxy forwards WebSocket upgrades on `/ws`.
 
 ### Deploying on Render
 
@@ -54,20 +55,23 @@ The server has no accounts or authentication: anyone who can reach the port can 
    - set **Health Check Path** to `/healthz`.
 4. The game is then live at `https://<service-name>.onrender.com`. The invite links use that address.
 
-On the free instance type the service goes to sleep after about 15 minutes without traffic, and the first request after that takes up to a minute to wake it. Since sessions are only held in memory, going to sleep or deploying again ends any game in progress.
+On the free instance type the service goes to sleep after about 15 minutes without traffic, and the first request after that takes up to a minute to wake it. Since sessions are only held in memory, going to sleep or deploying again ends any game in progress (the free instance has no disk that would outlive this, so `SESSION_SNAPSHOT_FILE` does not help there).
 
 ## How to play
 
-1. Open the server in a browser. Under **New Game**, pick an opponent and a victory point target (7, 12 or 13; the rulebook uses 12), then press **Start**:
+1. Open the server in a browser. Under **New Game**, pick an opponent and, under **Rules**, the Game Settings (victory point target 5 to 20, and more; the defaults are the rulebook's), then press **Start**. **Tutorial** starts a first game against the computer with a coach explaining the turn:
    - **Friend**: a private game; only people with your invite link or room code can join.
    - **Public**: the game is also listed under **Open games** at the top of the lobby for everyone on the same server.
    - **Computer** and **Hot-seat**: see below.
 2. Share the invite link with your opponent. Opening it joins the game automatically; alternatively they can enter the room code under **Have a code?**, or pick a public game from **Open games** (refreshed every 5 seconds, or with **Refresh**). **Cancel** on the waiting screen ends a game nobody has joined yet.
 3. If a player reloads the page or briefly loses connection, they rejoin the same seat.
+4. After a game, the final screen shows statistics and offers a **Rematch** with the same settings (online, the opponent has to accept).
+
+In the header, 📖 explains the rules and 🃏 lists every card with its cost, effect and number of copies.
 
 **Hot-seat** runs the rules engine in the browser instead of on the server. It is a hot-seat game: one screen, always showing the seat that has to act.
 
-**Computer** also runs in the browser, with a computer opponent in the other seat (it answers your trade offers but never makes any). Like hot-seat mode, the game survives a reload of the page, but only in that browser tab and until you return to the lobby.
+**Computer** also runs in the browser, with a computer opponent in the other seat (it answers your trade offers but never makes any). Like hot-seat mode, the game survives a reload of the page, but only in that browser tab and until you return to the lobby. Both local modes have an **Undo** button; it never goes back past a dice roll, a drawn card or anything else that revealed something.
 
 ## Local development
 
@@ -97,6 +101,7 @@ Pull requests run lint, tests and the build in GitHub Actions (`.github/workflow
 | `src/engine/` | Rules engine: game state, actions, card catalog, regions |
 | `src/components/`, `src/pages/` | React UI |
 | `src/i18n/` | English and German translations |
+| `src/tutorial/` | The guided first game against the computer |
 | `src/network/` | Browser-side WebSocket session and reconnect handling |
 | `server/` | Node server: HTTP static hosting, WebSocket protocol, session management |
 

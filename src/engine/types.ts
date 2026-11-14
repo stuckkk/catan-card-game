@@ -193,6 +193,17 @@ export interface StackSearch {
   purpose: 'setup' | 'draw' | 'exchange' | 'masterBuilder'
 }
 
+/** What happened so far, for the statistics after the game. All of it is public. */
+export interface GameStats {
+  /** How often each Production Die number came up; index 0 is the number 1. */
+  productionRolls: number[]
+  eventRolls: Record<EventSymbol, number>
+  /** Resources each player's Regions gained from production rolls, by Region id. */
+  produced: Record<PlayerId, Record<string, number>>
+  /** Both players' Victory Points at the end of every turn (and when the game is won). */
+  vpHistory: Record<PlayerId, number>[]
+}
+
 export interface GameState {
   sessionId: string
   config: GameConfig
@@ -221,6 +232,11 @@ export interface GameState {
   pendingChoices: PendingChoice[]
   /** Log of human-readable event keys for the action log UI */
   eventLog: GameEvent[]
+  stats: GameStats
+  /** Where the game's random number generator stands (board.ts withRandom): every die and
+   *  reshuffle after the deal comes from it, so the seed and the actions determine the game.
+   *  Never sent to a player. */
+  rngState: number
 }
 
 /** A proposed player-to-player resource trade, from the proposer's perspective. */
@@ -325,9 +341,18 @@ export interface PendingRegionChoice {
   changes: Partial<Resources>
 }
 
+/** A Settlement built without a Scout drew 2 Regions (DE p.8). Both lie at the Settlement already;
+ *  `player` names the one for the upper spot (PLACE_NEW_REGIONS). */
+export interface PendingNewRegions {
+  kind: 'newRegions'
+  player: PlayerId
+  /** Indices into the player's regions: [above, below] as laid out for now. */
+  regionIndices: [number, number]
+}
+
 export type PendingChoice =
   | PendingResourceChoice | PendingPlacedCardChoice | PendingDiscard | PendingCounter | PendingAttackRoll
-  | PendingHandCardChoice | PendingMasterBuilderChoice | PendingRegionChoice
+  | PendingHandCardChoice | PendingMasterBuilderChoice | PendingRegionChoice | PendingNewRegions
 
 export interface GameEvent {
   id: string
@@ -342,7 +367,7 @@ export interface GameEvent {
 /** What one viewer may see: the opponent's hand is a count, every stack is a count, the Region
  *  stack is its (public) composition in sorted order, and an open search reveals that stack to
  *  the searcher only, a Spy/Conflict pick the opponent's hand to the picker. */
-export type ProjectedState = Omit<GameState, 'players' | 'decks' | 'regionStack'> & {
+export type ProjectedState = Omit<GameState, 'players' | 'decks' | 'regionStack' | 'rngState'> & {
   players: Record<PlayerId, Omit<PlayerState, 'hand'> & { hand: string[] | number }>
   deckSizes: Record<DeckId, number>
   /** Region stack contents, sorted (the order stays hidden). */
@@ -385,6 +410,8 @@ export type GameAction =
   /** Re-place the head Region choice: one Region index per resource unit (gain: put 1 there,
    *  loss: take 1 from there). */
   | { type: 'CHOOSE_REGIONS'; regionIndices: number[] }
+  /** Answer the head new-Regions prompt: the id of the drawn Region that goes above. */
+  | { type: 'PLACE_NEW_REGIONS'; above: string }
   /** Active player offers a resource trade to the opponent. */
   | { type: 'PROPOSE_TRADE'; give: Partial<Resources>; receive: Partial<Resources> }
   /** Opponent accepts the pending trade offer. */

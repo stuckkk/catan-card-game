@@ -24,7 +24,15 @@ export default function RegionCard({ region, onClick, selected, producedKey, bad
     <div
       className={[styles.region, onClick ? styles.swappable : '', selected ? styles.selected : ''].join(' ')}
       onClick={onClick}
-      role={onClick ? 'button' : undefined}
+      role={onClick ? 'button' : 'img'}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={onClick && (e => {
+        if (e.key !== 'Enter' && e.key !== ' ') return
+        e.preventDefault()
+        onClick()
+      })}
+      aria-pressed={onClick ? !!selected : undefined}
+      aria-label={t('game.regionLabel', { name: t(def.nameKey), number: def.productionNumber, stored: fill })}
       style={{ '--rc': RESOURCE_COLOR[def.resourceType] } as React.CSSProperties}
       title={t(def.nameKey)}
     >

@@ -39,7 +39,9 @@
     "waitingMinutes": "waiting {{count}} min",
     "publicListed": "Your game is listed under Open Games, so anyone on this server can join.",
     "cancel": "Cancel",
-    "haveCode": "Have a code?"
+    "haveCode": "Have a code?",
+    "tutorial": "Tutorial: your first game",
+    "rateLimited": "Too many games were created from your network in a short time. Please try again in a few minutes."
   },
   "rules": {
     "open": "Rules",
@@ -166,6 +168,10 @@
       "prompt": "Choose the Regions: tap one per resource.",
       "reset": "Reset",
       "waiting": "Opponent is choosing Regions for their resources…"
+    },
+    "newRegions": {
+      "prompt": "New Regions: which one goes above? The other goes below.",
+      "waiting": "Opponent is placing their new Regions…"
     },
     "attack": {
       "counterTitle": "⚔️ {{card}} attacks!",
@@ -393,7 +399,23 @@
       "trade": "In your action phase: 3 of one resource for 1 of your choice from the bank, or 2:1 for a resource whose Trade Fleet you own (Mint: Gold 1:1). You can also offer your opponent any deal.",
       "tokensTitle": "Knight and Windmill Tokens",
       "tokens": "The Knight Token goes to the player with more Strength Points. The Windmill Token goes to the player with more Commerce Points who also has at least one City. On a tie nobody holds it."
-    }
+    },
+    "undo": "Undo",
+    "rematch": {
+      "offer": "Rematch",
+      "waiting": "Waiting for the opponent…",
+      "accept": "Accept rematch",
+      "offered": "Your opponent wants a rematch."
+    },
+    "stats": {
+      "title": "Statistics",
+      "vpOverTime": "Victory Points after each turn",
+      "turn": "Turn {{n}}",
+      "productionDie": "Dice rolled",
+      "rolled": "{{number}}: rolled {{count}} times",
+      "production": "Produced per Region"
+    },
+    "regionLabel": "{{name}}, number {{number}}, holds {{stored}} of 3"
   },
   "card": {
     "cost": "Cost",
@@ -685,5 +707,29 @@
     "plaguePrincipality": "All your regions are immune to the Plague",
     "plagueCity": "The 4 regions of this City are immune to the Plague",
     "civilWarProtection": "Knights and Fleets in this City are safe from Civil War"
+  },
+  "almanac": {
+    "open": "All cards",
+    "title": "All cards",
+    "all": "All",
+    "green": "Region",
+    "red": "City",
+    "action": "Action",
+    "event": "Event",
+    "filter": "Card type",
+    "copies": "{{count}}×",
+    "vp": "{{count}} VP"
+  },
+  "tutorial": {
+    "setup": "Welcome! This is your principality: 2 Settlements, a Road and 6 Regions. Each Region shows its resource, its die number and how much it holds (0 to 3). You may tap two Regions to swap them. Then open a stack and take 3 starting cards.",
+    "opponentSetup": "The computer is choosing its starting cards.",
+    "roll": "Every turn starts with the dice. The number die makes every Region with that number produce 1 resource, for both players. The event die triggers an event first. Roll the dice.",
+    "event": "The event die asks for a decision. Answer it to go on.",
+    "action": "Action phase: build and trade as much as you can afford. Tap a card in your hand to see its cost, then place it above or below a Settlement. A Road (1 🪵 2 🧱) at either end makes room for a new Settlement (🪵 🧱 🌾 🐑); a City (2 🌾 3 ⛏️) replaces a Settlement. Missing something? Trade 3 of one resource for 1 of another. When you are done, end the action phase.",
+    "draw": "End of turn: draw back up to 3 hand cards. Take the top card of any stack for free, or pay 2 resources to search a stack for the card you want. With a full hand you may exchange one card instead.",
+    "opponentTurn": "The computer’s turn. Its number roll produces for you too, and the event die affects you both.",
+    "free": "That is a whole turn: roll, act, draw. The first to reach {{target}} Victory Points wins: a Settlement counts 1, a City 2, plus some buildings and the two tokens for the most Strength and the most Commerce. 📖 explains the rules, 🃏 lists all cards. Good luck!",
+    "skip": "Skip tutorial",
+    "done": "Got it"
   }
 }

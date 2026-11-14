@@ -142,6 +142,26 @@ export function shuffle<T>(arr: T[], rng: () => number = Math.random): T[] {
   return a
 }
 
+/** A seeded random number generator (mulberry32); returns numbers in [0, 1). */
+export function mulberry32(seed: number): () => number {
+  return () => {
+    seed |= 0; seed = (seed + 0x6d2b79f5) | 0
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed)
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+}
+
+/** Use the game's own random numbers (GameState.rngState): `use` gets the generator, and the
+ *  returned state remembers how far it got, so the next call continues the same sequence. */
+export function withRandom<T>(state: GameState, draw: (rng: () => number) => T): [T, GameState] {
+  let draws = 0
+  const rng = mulberry32(state.rngState)
+  const value = draw(() => { draws++; return rng() })
+  // mulberry32 advances its seed by a constant per number drawn.
+  return [value, { ...state, rngState: (state.rngState + Math.imul(draws, 0x6d2b79f5)) | 0 }]
+}
+
 // ─── Board Geometry ────────────────────────────────────────────────────────────
 // A Settlement/City lists its corner Regions as [topLeft, bottomLeft, topRight, bottomRight].
 // Its Building Sites are split in half: the first half sits above the axis, the second below.

@@ -24,6 +24,8 @@
   gap: 12px;
 }
 
+.sheet:focus { outline: none; }
+
 @media (min-width: 640px) {
   .backdrop { align-items: center; }
   .sheet { border-radius: var(--radius-lg); }

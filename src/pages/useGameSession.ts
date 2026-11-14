@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useLocation } from 'react-router-dom'
-import { applyAction, nextActor, normalizeRules, projectStateFor } from '../engine/engine'
+import { applyAction, createInitialState, emptyStats, nextActor, normalizeRules, projectStateFor } from '../engine/engine'
+import { canUndo } from '../engine/undo'
 import { botShouldAct, chooseBotAction } from '../engine/bot'
 import type { GameState, GameAction, ProjectedState, PlayerId } from '../engine/types'
 import { reconnectSession } from '../network/wsSession'
@@ -27,6 +28,8 @@ export function useGameSession() {
   const nav = (location.state ?? {}) as {
     role?: ClientRole
     initialGameState?: GameState
+    /** A game against the computer with the coach explaining the first turns. */
+    tutorial?: boolean
   }
   const persisted = loadPersisted()
   const role: ClientRole | undefined = nav.role ?? persisted?.role
@@ -36,13 +39,23 @@ export function useGameSession() {
   // history.state only holds the game as it started; a reload continues from the state saved
   // after its last action (saveLocalGame). Either may come from an older version without some
   // Game Settings: those fall back to the rulebook, as that game was played with.
-  const [gameState, setGameState] = useState<GameState | null>(() => {
+  // `undo`: the states a local game may step back to, oldest first (canUndo decides what gets in).
+  const [local, setLocal] = useState<{ game: GameState; undo: GameState[] } | null>(() => {
     const initial = nav.initialGameState
     if (!initial) return null
     const state = loadLocalGame(initial.sessionId) ?? initial
-    return { ...state, config: { ...normalizeRules(state.config), language: state.config.language } }
+    const game: GameState = {
+      ...state,
+      config: { ...normalizeRules(state.config), language: state.config.language },
+      stats: state.stats ?? emptyStats(),
+      rngState: state.rngState ?? (Math.random() * 2 ** 32) | 0,
+    }
+    return { game, undo: [] }
   })
+  const gameState = local?.game ?? null
   const [projected, setProjected] = useState<ProjectedState | null>(null)
+  // Online, after the game: who offered a rematch.
+  const [rematchOfferedBy, setRematchOfferedBy] = useState<PlayerId | null>(null)
   const [disconnected, setDisconnected] = useState(false)
   const [expired, setExpired] = useState(false)
   // Our own connection to the server (online games); it reconnects by itself.
@@ -59,9 +72,30 @@ export function useGameSession() {
 
   const dispatchAction = useCallback((action: GameAction) => {
     if (role === 'practice' || role === 'computer') {
-      setGameState(prev => (prev ? applyAction(prev, role === 'practice' ? nextActor(prev) : 'host', action) : prev))
+      setLocal(prev => {
+        if (!prev) return prev
+        const game = applyAction(prev.game, role === 'practice' ? nextActor(prev.game) : 'host', action)
+        if (game === prev.game) return prev
+        return { game, undo: canUndo(prev.game, game) ? [...prev.undo, prev.game] : [] }
+      })
     } else {
       sessionRef.current?.sendAction(action)
+    }
+  }, [role])
+
+  /** Local games: take back the last action (see canUndo for how far this goes). */
+  const undo = useCallback(() => {
+    setLocal(prev => (prev && prev.undo.length > 0 ? { game: prev.undo[prev.undo.length - 1], undo: prev.undo.slice(0, -1) } : prev))
+  }, [])
+
+  /** After a game: play again with the same Game Settings. Online this is an offer the opponent
+   *  accepts with the same call; a local game restarts at once (under its old id, so a reload
+   *  finds the new game). */
+  const rematch = useCallback(() => {
+    if (role === 'practice' || role === 'computer') {
+      setLocal(prev => prev && { game: { ...createInitialState(prev.game.config), sessionId: prev.game.sessionId }, undo: [] })
+    } else {
+      sessionRef.current?.requestRematch()
     }
   }, [role])
 
@@ -75,8 +109,9 @@ export function useGameSession() {
 
     function wireSession(session: NetworkSession) {
       sessionRef.current = session
-      session.onStateUpdate(state => {
+      session.onStateUpdate((state, offeredBy) => {
         setProjected(state)
+        setRematchOfferedBy(offeredBy)
         setDisconnected(false)
       })
       session.onPeerConnect(() => setDisconnected(false))
@@ -113,9 +148,10 @@ export function useGameSession() {
   // The computer's moves: one at a time, after a short pause, whenever it has to act.
   useEffect(() => {
     if (role !== 'computer' || !gameState || !botShouldAct(gameState, COMPUTER_SEAT)) return
-    const timer = setTimeout(() => setGameState(prev => {
-      const action = prev && chooseBotAction(prev, COMPUTER_SEAT)
-      return action ? applyAction(prev, COMPUTER_SEAT, action) : prev
+    // What the computer did can't be taken back: its move ends the undo history.
+    const timer = setTimeout(() => setLocal(prev => {
+      const action = prev && chooseBotAction(prev.game, COMPUTER_SEAT)
+      return action ? { game: applyAction(prev.game, COMPUTER_SEAT, action), undo: [] } : prev
     }), computerDelay)
     return () => clearTimeout(timer)
   }, [role, gameState, computerDelay])
@@ -124,5 +160,8 @@ export function useGameSession() {
   // works off a ProjectedState.
   const view: ProjectedState | null = isLocal ? (gameState ? projectStateFor(gameState, myId) : null) : projected
 
-  return { role, isPractice, myId, view, dispatchAction, disconnected, reconnecting, expired }
+  return {
+    role, isPractice, isLocal, isTutorial: !!nav.tutorial && role === 'computer', myId, view, dispatchAction, disconnected, reconnecting, expired,
+    undo: isLocal && local && local.undo.length > 0 ? undo : null, rematch, rematchOfferedBy,
+  }
 }

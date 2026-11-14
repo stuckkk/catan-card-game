@@ -163,6 +163,7 @@ const SCENARIOS: Record<string, (seed: number) => GameState> = {
     s = update(s, 'host', stock({ brick: 3 }))
     s = applyAction(s, 'host', { type: 'BUILD_ROAD', side: 'right' })
     s = applyAction(s, 'host', { type: 'BUILD_SETTLEMENT', slotIndex: 4 })
+    s = applyAction(s, 'host', { type: 'PLACE_NEW_REGIONS', above: 'forest-2' })
     return update(s, 'host', stock({ lumber: 1, brick: 2, ore: 3 }))
   },
 }

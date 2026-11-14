@@ -4,7 +4,7 @@ import type {
 } from './types'
 import {
   ALL_RESOURCE_TYPES, availableResources, canAfford, countResources, roomFor, stealableTypes,
-  spendFromRegions, addToRegions, shuffle, regionsBorderingCards, cityRegionIndices, opponent, mapPlayers,
+  spendFromRegions, addToRegions, shuffle, withRandom, regionsBorderingCards, cityRegionIndices, opponent, mapPlayers,
 } from './board'
 
 // Card catalogue from the official rulebook's almanac (GAME_LOGIC.md §10).
@@ -238,7 +238,10 @@ export const EVENT_PROGRESS = event('progress', (state, roller) => {
 })
 
 /** Reshuffle the whole event deck (the engine has already put Year End back under it). */
-export const EVENT_YEAR_END = event('year-end', state => ({ ...state, decks: { ...state.decks, event: shuffle(state.decks.event) } }))
+export const EVENT_YEAR_END = event('year-end', state => {
+  const [deck, s] = withRandom(state, rng => shuffle(state.decks.event, rng))
+  return { ...s, decks: { ...s.decks, event: deck } }
+})
 
 /** Each player returns 1 Knight or Fleet to hand, chosen by the opponent (roller chooses first);
  *  units in a City with a Church are safe. Then both discard down to their hand limit at once. */
@@ -331,6 +334,9 @@ const EVENT_COUNTS: [CardDefinition, number][] = [
   [EVENT_CIVIL_WAR, 1], [EVENT_CONFLICT, 1], [EVENT_MASTER_BUILDER, 1],
   [EVENT_PLAGUE, 2], [EVENT_PRODUCTIVE_YEAR, 2], [EVENT_PROGRESS, 2], [EVENT_YEAR_END, 1],
 ]
+
+/** Every card that is drawn or revealed during a game, with its number of copies (the almanac). */
+export const CARD_COUNTS: [CardDefinition, number][] = [...EXPANSION_COUNTS, ...EVENT_COUNTS]
 
 /** Expand counts into a deck. */
 function deckOf(counts: [CardDefinition, number][]): string[] {

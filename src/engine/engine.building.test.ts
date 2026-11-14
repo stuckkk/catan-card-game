@@ -43,6 +43,49 @@ describe('roads and settlements', () => {
     expect(computeVP(s, 'host')).toBe(3)
   })
 
+  describe('placing the 2 drawn Regions (DE p.8)', () => {
+    const built = () => {
+      let s = { ...builder({ lumber: 3, brick: 3, wool: 1, grain: 1, ore: 3 }), regionStack: ['hills-3', 'forest-2', 'fields-5'] }
+      s = applyAction(s, 'host', { type: 'BUILD_ROAD', side: 'right' })
+      return applyAction(s, 'host', { type: 'BUILD_SETTLEMENT', slotIndex: 4 })
+    }
+    const newRegions = (s: ReturnType<typeof built>) => s.players.host.regions.slice(6).map(r => r.regionId)
+
+    it('asks the builder which Region goes above, and blocks everything else until then', () => {
+      const s = built()
+      expect(s.pendingChoices).toEqual([{ kind: 'newRegions', player: 'host', regionIndices: [6, 7] }])
+      expect(applyAction(s, 'host', { type: 'END_ACTION_PHASE' })).toBe(s)
+      expect(applyAction(s, 'guest', { type: 'PLACE_NEW_REGIONS', above: 'forest-2' })).toBe(s)
+    })
+
+    it('keeps the layout when the first drawn Region is named for the upper spot', () => {
+      const s = applyAction(built(), 'host', { type: 'PLACE_NEW_REGIONS', above: 'fields-5' })
+      expect(newRegions(s)).toEqual(['fields-5', 'forest-2'])
+      expect(s.pendingChoices).toEqual([])
+    })
+
+    it('swaps the two when the other Region is named', () => {
+      const s = applyAction(built(), 'host', { type: 'PLACE_NEW_REGIONS', above: 'forest-2' })
+      expect(newRegions(s)).toEqual(['forest-2', 'fields-5'])
+      expect(s.players.host.principality[4].regionIndices).toEqual([2, 5, 6, 7])
+      expect(s.pendingChoices).toEqual([])
+      expect(applyAction(s, 'host', { type: 'END_ACTION_PHASE' }).phase).not.toBe('action')
+    })
+
+    it('rejects a Region that is not one of the two', () => {
+      const s = built()
+      expect(applyAction(s, 'host', { type: 'PLACE_NEW_REGIONS', above: 'hills-3' })).toBe(s)
+    })
+
+    it('asks nothing after a Scout, which names both spots itself', () => {
+      let s = { ...builder(), regionStack: ['hills-3', 'forest-2', 'goldfield-2', 'fields-5'] }
+      s = { ...s, players: { ...s.players, host: { ...s.players.host, hand: ['scout'] } } }
+      s = applyAction(s, 'host', { type: 'BUILD_ROAD', side: 'right' })
+      s = applyAction(s, 'host', { type: 'BUILD_SETTLEMENT', slotIndex: 4, scoutRegionIds: ['goldfield-2', 'hills-3'] })
+      expect(s.pendingChoices).toEqual([])
+    })
+  })
+
   it('builds a settlement on the left, sharing the neighbour’s left corners', () => {
     let s = { ...builder(), regionStack: ['hills-3', 'forest-2'] }
     s = applyAction(s, 'host', { type: 'BUILD_ROAD', side: 'left' })
@@ -235,7 +278,7 @@ describe('Region choice', () => {
     const host = { principality, playedCards: playedFor(principality), regions: regionsWith({ lumber: 2, brick: 1, wool: 1, grain: 1 }) }
     const s = applyAction(makeState({ players: players(host), regionStack: ['forest-2', 'hills-3'] }), 'host', { type: 'BUILD_SETTLEMENT', slotIndex: 4 })
     expect(s.players.host.principality[4].kind).toBe('settlement')
-    expect(s.pendingChoices).toEqual([])
+    expect(s.pendingChoices.map(c => c.kind)).toEqual(['newRegions'])
   })
 
   it('lets the Windmill holder place the stolen resource and the victim pick where it came from, then produces', () => {

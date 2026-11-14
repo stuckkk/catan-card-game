@@ -1,0 +1,60 @@
+/* Shown on the sand-coloured game-over card. Seat colours are fixed per seat and checked for
+   colour-blind separation and contrast against --sand. */
+.panel {
+  --seat-host: #1B5FA0;
+  --seat-guest: #A8321F;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  text-align: left;
+}
+
+.figure figcaption { font-weight: 700; margin-bottom: 4px; }
+
+.chart { width: 100%; height: auto; display: block; }
+.axis { stroke: var(--ink-muted); stroke-width: 1; }
+.target { stroke: var(--ink-muted); stroke-width: 1; stroke-dasharray: 4 3; }
+.tick { font-size: 10px; fill: var(--ink-muted); }
+.line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.dot { stroke: var(--sand); stroke-width: 2; }
+.host .line { stroke: var(--seat-host); }
+.host .dot { fill: var(--seat-host); }
+.guest .line { stroke: var(--seat-guest); }
+.guest .dot { fill: var(--seat-guest); }
+.hit { fill: transparent; }
+.hit:hover { fill: color-mix(in srgb, var(--ink) 10%, transparent); }
+
+.legend { list-style: none; display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 13px; }
+.legend li { display: flex; align-items: center; gap: 6px; }
+.swatch { width: 14px; height: 4px; border-radius: 2px; }
+.swatch.host { background: var(--seat-host); }
+.swatch.guest { background: var(--seat-guest); }
+
+.bars { display: flex; align-items: flex-end; gap: 2px; height: 84px; }
+.barCol { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 2px; }
+.bar { width: 100%; max-width: 28px; min-height: 1px; border-radius: 4px 4px 0 0; background: var(--ink-muted); }
+.barValue { font-size: 12px; font-weight: 700; }
+.barLabel { font-size: 12px; color: var(--ink-muted); }
+
+.chips { list-style: none; display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; font-size: 13px; }
+.chips li {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ink) 8%, transparent);
+  white-space: nowrap;
+}
+.regionNumber { font-weight: 700; }
+
+.production { display: flex; align-items: baseline; gap: 8px; }
+.production + .production { margin-top: 4px; }
+.productionName { min-width: 64px; font-weight: 700; font-size: 13px; }
+.production .chips { margin-top: 0; }
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

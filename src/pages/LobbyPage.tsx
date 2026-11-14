@@ -7,17 +7,19 @@ import type { PublicGameSummary } from '../network/protocol'
 import { sessionStore } from '../network/sessionStore'
 import { clearPersisted, savePersisted } from '../network/persistence'
 import { createInitialState, hasCustomRules, STANDARD_RULES } from '../engine/engine'
+import { createTutorialGame } from '../tutorial/tutorial'
 import { loadLobbyChoices, saveLobbyChoices } from '../settings/clientSettings'
 import type { Opponent } from '../settings/clientSettings'
 import type { GameRules, Language } from '../engine/types'
 import HelpButton from '../components/HelpButton'
+import AlmanacButton from '../components/AlmanacButton'
 import GameRulesSheet from '../components/GameRulesSheet'
 import SettingsButton from '../components/SettingsButton'
 import type { ClientRole } from './useGameSession'
 import styles from './LobbyPage.module.css'
 
 type LobbyMode = 'idle' | 'hosting' | 'joining' | 'error'
-type ErrorKey = 'connectionLost' | 'roomNotFound' | 'sessionExpired' | 'serverUnreachable' | 'serverFull'
+type ErrorKey = 'connectionLost' | 'roomNotFound' | 'sessionExpired' | 'serverUnreachable' | 'serverFull' | 'rateLimited'
 
 const OPPONENTS: { value: Opponent; icon: string; labelKey: string; hintKey: string }[] = [
   { value: 'private', icon: '👥', labelKey: 'lobby.opponentPrivate', hintKey: 'lobby.opponentPrivateHint' },
@@ -34,6 +36,7 @@ function errorKeyForCode(code: string): ErrorKey {
     case 'SESSION_EXPIRED': return 'sessionExpired'
     case 'UNREACHABLE': return 'serverUnreachable'
     case 'SERVER_FULL': return 'serverFull'
+    case 'RATE_LIMITED': return 'rateLimited'
     default: return 'connectionLost'
   }
 }
@@ -86,6 +89,7 @@ export default function LobbyPage() {
   // every few seconds, and stop as soon as the player hosts, joins or hits an error.
   useEffect(() => {
     if (mode !== 'idle') return
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- the list is fetched from the server; state is set when the answer arrives
     refreshPublicGames()
     const timer = setInterval(refreshPublicGames, PUBLIC_GAMES_REFRESH_MS)
     return () => clearInterval(timer)
@@ -167,6 +171,12 @@ export default function LobbyPage() {
     navigate('/game', { state: { role, initialGameState: initialState } })
   }
 
+  /** A first game against the computer with the coach: always the same deal, rulebook settings. */
+  function startTutorial() {
+    sessionStore.set(null)
+    navigate('/game', { state: { role: 'computer', initialGameState: createTutorialGame(currentLanguage()), tutorial: true } })
+  }
+
   function handleStart() {
     if (opponent === 'computer' || opponent === 'practice') startLocalGame(opponent)
     else handleCreateGame(opponent === 'public')
@@ -201,6 +211,7 @@ export default function LobbyPage() {
           <div className={styles.headerTools}>
             {/* The rules overview explains the rules in general, with the rulebook values; a game's own settings are in its 📜. */}
             <HelpButton vpTarget={STANDARD_RULES.vpTarget} />
+            <AlmanacButton />
             <SettingsButton />
           </div>
           <h1 className={styles.title}>{t('lobby.title')}</h1>
@@ -279,6 +290,9 @@ export default function LobbyPage() {
               )}
 
               <button className="primary" onClick={handleStart}>{t('lobby.start')}</button>
+              <button className="secondary" onClick={startTutorial}>
+                <span aria-hidden="true">🎓 </span>{t('lobby.tutorial')}
+              </button>
             </section>
 
             <div className={styles.codeRow}>

@@ -1,10 +1,8 @@
 import { useTranslation } from 'react-i18next'
 import type { DiceRoll } from '../engine/types'
+import { EVENT_ICONS } from './resourceMeta'
 import styles from './DiceDisplay.module.css'
 
-const EVENT_ICONS: Record<string, string> = {
-  brigand: '🗡️', commerce: '⚖️', tournament: '🛡️', yearOfPlenty: '☀️', event: '?',
-}
 
 interface Props { roll: DiceRoll }
 

@@ -3,6 +3,7 @@ import { projectStateFor } from '../../src/engine/engine'
 import { opponent } from '../../src/engine/board'
 import type { PlayerId } from '../../src/engine/types'
 import type { ClientMessage, ServerErrorCode, ServerMessage } from '../../src/network/protocol'
+import type { CreationLimiter } from './creationLimiter'
 import type { SessionManager } from './sessionManager'
 import { send } from './wsSend'
 
@@ -10,6 +11,8 @@ import { send } from './wsSend'
 export interface ConnectionState {
   roomId: string | null
   playerId: PlayerId | null
+  /** Where the connection comes from, for the limit on creating sessions. */
+  address: string
 }
 
 const ERROR_MESSAGES: Record<ServerErrorCode, string> = {
@@ -18,6 +21,7 @@ const ERROR_MESSAGES: Record<ServerErrorCode, string> = {
   INVALID_TOKEN: 'Reconnect token was not recognized.',
   MALFORMED_MESSAGE: 'Malformed message.',
   SERVER_FULL: 'The server has no room for another game right now.',
+  RATE_LIMITED: 'Too many games created from this address. Try again later.',
 }
 
 /** The shape check for what arrives off the wire. An action's own fields are the engine's to
@@ -31,6 +35,7 @@ function isClientMessage(message: unknown): message is ClientMessage {
     case 'join_session': return isString(m.roomId)
     case 'reconnect': return isString(m.roomId) && isString(m.token)
     case 'action': return typeof m.action === 'object' && m.action !== null && isString((m.action as { type?: unknown }).type)
+    case 'rematch':
     case 'leave': return true
     default: return false
   }
@@ -39,7 +44,10 @@ function isClientMessage(message: unknown): message is ClientMessage {
 function sendState(manager: SessionManager, roomId: string, viewer: PlayerId, socket: WebSocket): void {
   const session = manager.getSession(roomId)
   if (!session) return
-  send(socket, { type: 'state_update', state: projectStateFor(session.state, viewer) })
+  send(socket, {
+    type: 'state_update', state: projectStateFor(session.state, viewer),
+    ...(session.rematchOfferedBy && { rematchOfferedBy: session.rematchOfferedBy }),
+  })
 }
 
 function broadcastState(manager: SessionManager, roomId: string): void {
@@ -66,15 +74,19 @@ export function handleClientMessage(
   socket: WebSocket,
   conn: ConnectionState,
   message: unknown,
+  limiter?: CreationLimiter,
 ): void {
   if (!isClientMessage(message)) return sendError(socket, 'MALFORMED_MESSAGE')
   // One seat per connection: the client opens a new connection for every session.
-  if (conn.roomId && message.type !== 'action' && message.type !== 'leave') return sendError(socket, 'MALFORMED_MESSAGE')
+  if (conn.roomId && (message.type === 'create_session' || message.type === 'join_session' || message.type === 'reconnect')) {
+    return sendError(socket, 'MALFORMED_MESSAGE')
+  }
 
   switch (message.type) {
     case 'create_session': {
       const language = message.language === 'de' ? 'de' : 'en'
       if (manager.isFull) return sendError(socket, 'SERVER_FULL')
+      if (limiter && !limiter.allow(conn.address)) return sendError(socket, 'RATE_LIMITED')
       const { roomId, token, playerId } = manager.createSession(message.rules ?? {}, language, message.isPublic === true, socket)
       conn.roomId = roomId
       conn.playerId = playerId
@@ -117,6 +129,12 @@ export function handleClientMessage(
       if (!next) return send(socket, { type: 'session_expired' })
 
       broadcastState(manager, conn.roomId)
+      return
+    }
+
+    case 'rematch': {
+      if (!conn.roomId || !conn.playerId) return sendError(socket, 'MALFORMED_MESSAGE')
+      if (manager.requestRematch(conn.roomId, conn.playerId)) broadcastState(manager, conn.roomId)
       return
     }
 

@@ -1,7 +1,7 @@
 import type {
   GameState, PlayerState, PlayerId, ResourceType, Resources, GameAction, ProjectedState,
   DiceRoll, EventSymbol, ProductionNumber, DeckId, DrawStackId, CentralSlot, PlayerStats, Supply, GameConfig, GameRules,
-  ActionCardParams, DeclarativeEffect, GameEvent, PendingChoice, PendingMasterBuilderChoice, PendingPlacedCardChoice, SiteRef,
+  ActionCardParams, DeclarativeEffect, GameEvent, GameStats, PendingChoice, PendingMasterBuilderChoice, PendingPlacedCardChoice, SiteRef,
 } from './types'
 import {
   getCard, CARD_REGISTRY, ALL_DRAW_CARDS, DRAW_STACK_IDS, DEFAULT_EVENT_DECK, ROAD, SETTLEMENT, CITY, SCOUT, COUNTER_CARD,
@@ -11,7 +11,7 @@ import { getRegion, STARTING_REGIONS, STACK_REGIONS } from './regions'
 import {
   ALL_RESOURCE_TYPES, availableResources, canAfford, countResources, spendFromRegions, addToRegions,
   shuffle, isSettlementLike, regionsBorderingCards, returnToHand, stealableTypes, regionChoices,
-  opponent, withPlayer, mapPlayers, removeFirst, removeAll, totalOf, withSite,
+  opponent, withPlayer, mapPlayers, removeFirst, removeAll, totalOf, withSite, withRandom,
 } from './board'
 
 export { availableResources } from './board'
@@ -221,6 +221,15 @@ export function hasCustomRules(rules: GameRules): boolean {
     || rules.startingPlayer !== STANDARD_RULES.startingPlayer
 }
 
+export function emptyStats(): GameStats {
+  return {
+    productionRolls: [0, 0, 0, 0, 0, 0],
+    eventRolls: { brigand: 0, commerce: 0, tournament: 0, yearOfPlenty: 0, event: 0 },
+    produced: { host: {}, guest: {} },
+    vpHistory: [],
+  }
+}
+
 export function createInitialState(
   config: Partial<GameRules> & Pick<GameConfig, 'language'>,
   rng: () => number = Math.random,
@@ -255,6 +264,8 @@ export function createInitialState(
     pendingTrade: null,
     pendingChoices: [],
     eventLog: [],
+    stats: emptyStats(),
+    rngState: Math.floor(rng() * 2 ** 32) | 0,
   }
 }
 
@@ -386,8 +397,13 @@ export function rollDice(rng: () => number = Math.random): DiceRoll {
 export function applyRoll(state: GameState, roll: DiceRoll): GameState {
   if (state.phase !== 'roll') return state
   const finalRoll: DiceRoll = state.alchemistNumber ? { ...roll, productionNumber: state.alchemistNumber } : roll
+  const stats: GameStats = {
+    ...state.stats,
+    productionRolls: state.stats.productionRolls.map((n, i) => (i === finalRoll.productionNumber - 1 ? n + 1 : n)),
+    eventRolls: { ...state.stats.eventRolls, [finalRoll.eventSymbol]: state.stats.eventRolls[finalRoll.eventSymbol] + 1 },
+  }
   const afterEvent = resolveEventSymbol(
-    { ...state, lastRoll: finalRoll, alchemistNumber: null, phase: 'event-resolution' },
+    { ...state, stats, lastRoll: finalRoll, alchemistNumber: null, phase: 'event-resolution' },
     finalRoll.eventSymbol,
   )
   return afterEvent.phase === 'production' ? runProduction(afterEvent, finalRoll.productionNumber) : afterEvent
@@ -395,7 +411,16 @@ export function applyRoll(state: GameState, roll: DiceRoll): GameState {
 
 function runProduction(state: GameState, roll: ProductionNumber): GameState {
   const produced = mapPlayers(state, p => produceForPlayer(p, roll))
-  return logEvent({ ...produced, phase: 'action' }, state.activePlayer, 'production', { roll, gains: gainsByPlayer(state, produced) })
+  const perRegion = (p: PlayerId) => {
+    const out = { ...state.stats.produced[p] }
+    produced.players[p].regions.forEach((r, i) => {
+      const gain = r.storedResources - state.players[p].regions[i].storedResources
+      if (gain > 0) out[r.regionId] = (out[r.regionId] ?? 0) + gain
+    })
+    return out
+  }
+  const stats: GameStats = { ...state.stats, produced: { host: perRegion('host'), guest: perRegion('guest') } }
+  return logEvent({ ...produced, stats, phase: 'action' }, state.activePlayer, 'production', { roll, gains: gainsByPlayer(state, produced) })
 }
 
 /** Cards in hand above the hand limit (0 if none). */
@@ -644,12 +669,15 @@ function applyBuildSettlement(
 
   // The 2 new Regions: chosen with a Scout (then reshuffle the stack), else the top 2 cards.
   let top: string, bottom: string, regionStack: string[], hand = player.hand, discardPile = state.discardPile
+  let rngState = state.rngState
   if (scoutRegionIds) {
     if (!player.hand.includes(SCOUT.id)) return state
     const rest = removeAll(state.regionStack, scoutRegionIds)
     if (!rest || scoutRegionIds[0] === scoutRegionIds[1]) return state
     ;[top, bottom] = scoutRegionIds
-    regionStack = shuffle(rest)
+    const [shuffled, drawn] = withRandom(state, rng => shuffle(rest, rng))
+    regionStack = shuffled
+    rngState = drawn.rngState
     hand = removeFirst(player.hand, SCOUT.id)
     discardPile = [...discardPile, SCOUT.id]
   } else {
@@ -669,6 +697,8 @@ function applyBuildSettlement(
   const principality = player.principality.map((s, i) =>
     i === slotIndex ? { kind: 'settlement' as const, cardId: 'settlement', regionIndices, expansionSlots: [null, null] } : s)
 
+  // Drawn Regions: the builder still decides which of the two goes above (a Scout named both spots).
+  const placing: PendingChoice[] = scoutRegionIds ? [] : [{ kind: 'newRegions', player: actingPlayer, regionIndices: [n, n + 1] }]
   return {
     ...withPlayer(state, actingPlayer, {
       ...spent, hand, regions, principality, playedCards: [...player.playedCards, 'settlement'],
@@ -676,7 +706,21 @@ function applyBuildSettlement(
     regionStack,
     discardPile,
     supply: takeFromSupply(state.supply, 'settlement'),
+    pendingChoices: [...placing, ...state.pendingChoices],
+    rngState,
   }
+}
+
+/** Answer the head new-Regions prompt: `above` is the drawn Region for the upper spot. */
+function applyPlaceNewRegions(state: GameState, actingPlayer: PlayerId, above: string): GameState {
+  const choice = state.pendingChoices[0]
+  if (choice?.kind !== 'newRegions' || choice.player !== actingPlayer) return state
+  const player = state.players[actingPlayer]
+  const [a, b] = choice.regionIndices
+  if (above !== player.regions[a].regionId && above !== player.regions[b].regionId) return state
+  const regions = [...player.regions]
+  if (above === regions[b].regionId) [regions[a], regions[b]] = [regions[b], regions[a]]
+  return resumeAfterChoices({ ...withPlayer(state, actingPlayer, { ...player, regions }), pendingChoices: state.pendingChoices.slice(1) })
 }
 
 function applyBuildCity(state: GameState, actingPlayer: PlayerId, slotIndex: number): GameState {
@@ -797,8 +841,13 @@ function stacksEmpty(state: GameState): boolean {
   return DRAW_STACK_IDS.every(d => state.decks[d].length === 0)
 }
 
+/** The stats with both players' current VP appended. */
+function withVpRecorded(state: GameState): GameStats {
+  return { ...state.stats, vpHistory: [...state.stats.vpHistory, { host: computeVP(state, 'host'), guest: computeVP(state, 'guest') }] }
+}
+
 function passTurn(state: GameState): GameState {
-  return { ...state, phase: 'roll', activePlayer: opponent(state.activePlayer), turn: state.turn + 1, search: null, pendingTrade: null }
+  return { ...state, stats: withVpRecorded(state), phase: 'roll', activePlayer: opponent(state.activePlayer), turn: state.turn + 1, search: null, pendingTrade: null }
 }
 
 /** After a draw: the turn ends once the hand is full (or nothing is left to draw). */
@@ -966,6 +1015,7 @@ function mayAct(state: GameState, actingPlayer: PlayerId, action: GameAction): b
     case 'CHOOSE_PLACED_CARD':
     case 'CHOOSE_HAND_CARDS':
     case 'CHOOSE_REGIONS':
+    case 'PLACE_NEW_REGIONS':
     case 'ANSWER_ATTACK':
     case 'ROLL_ATTACK': return state.pendingChoices[0]?.player === actingPlayer
     // Not while a Region pick is open: it holds a snapshot of the Regions.
@@ -984,6 +1034,13 @@ function mayAct(state: GameState, actingPlayer: PlayerId, action: GameAction): b
   }
 }
 
+/** `apply` with a value drawn from the game's random numbers; a refused action draws nothing. */
+function withDraw<T>(state: GameState, draw: (rng: () => number) => T, apply: (s: GameState, value: T) => GameState): GameState {
+  const [value, drawn] = withRandom(state, draw)
+  const next = apply(drawn, value)
+  return next === drawn ? state : next
+}
+
 export function applyAction(state: GameState, actingPlayer: PlayerId, action: GameAction): GameState {
   if (state.winner || !mayAct(state, actingPlayer, action)) return state
 
@@ -992,7 +1049,7 @@ export function applyAction(state: GameState, actingPlayer: PlayerId, action: Ga
     case 'SWAP_STARTING_REGIONS': next = applySwapStartingRegions(state, actingPlayer, action.a, action.b); break
     case 'SEARCH_STACK':       next = applySearchStack(state, actingPlayer, action.deck, action.payWith); break
     case 'TAKE_FROM_SEARCH':   next = applyTakeFromSearch(state, actingPlayer, action.cardIds, action.giveBack); break
-    case 'ROLL_DICE':          next = applyRoll(state, rollDice()); break
+    case 'ROLL_DICE':          next = withDraw(state, rollDice, applyRoll); break
     case 'BUILD_ROAD':         next = applyBuildRoad(state, actingPlayer, action.side); break
     case 'BUILD_SETTLEMENT':   next = applyBuildSettlement(state, actingPlayer, action.slotIndex, action.scoutRegionIds); break
     case 'BUILD_CITY':         next = applyBuildCity(state, actingPlayer, action.slotIndex); break
@@ -1003,8 +1060,9 @@ export function applyAction(state: GameState, actingPlayer: PlayerId, action: Ga
     case 'CHOOSE_PLACED_CARD': next = applyChoosePlacedCard(state, actingPlayer, action); break
     case 'CHOOSE_HAND_CARDS':  next = applyChooseHandCards(state, actingPlayer, action.cardIds, action.toDeck); break
     case 'CHOOSE_REGIONS':     next = applyChooseRegions(state, actingPlayer, action.regionIndices); break
+    case 'PLACE_NEW_REGIONS':  next = applyPlaceNewRegions(state, actingPlayer, action.above); break
     case 'ANSWER_ATTACK':      next = applyAnswerAttack(state, actingPlayer, action.playCounter); break
-    case 'ROLL_ATTACK':        next = resolveAttackRoll(state, rollDie()); break
+    case 'ROLL_ATTACK':        next = withDraw(state, rollDie, resolveAttackRoll); break
     case 'PROPOSE_TRADE':      next = applyProposeTrade(state, actingPlayer, action.give, action.receive); break
     case 'ACCEPT_TRADE':       next = applyRespondTrade(state, actingPlayer, true); break
     case 'DECLINE_TRADE':      next = applyRespondTrade(state, actingPlayer, false); break
@@ -1019,7 +1077,8 @@ export function applyAction(state: GameState, actingPlayer: PlayerId, action: Ga
 
   if (REGION_CHOICE_ACTIONS.has(action.type)) next = withRegionChoices(state, next, actingPlayer)
   if (next === state) return state
-  return { ...next, eventLog: withActionLogged(state, next, actingPlayer, action), winner: checkVictory(next) }
+  const winner = checkVictory(next)
+  return { ...next, eventLog: withActionLogged(state, next, actingPlayer, action), winner, stats: winner ? withVpRecorded(next) : next.stats }
 }
 
 /** Most recent activity-log entries kept in the state (and so sent to both players). */
@@ -1069,6 +1128,7 @@ function actionLogPayload(before: GameState, after: GameState, actingPlayer: Pla
     }
     case 'CHOOSE_PLACED_CARD': return null  // the return itself is logged ('returned-to-hand')
     case 'CHOOSE_REGIONS': return null  // the Regions are public
+    case 'PLACE_NEW_REGIONS': return null
     case 'CHOOSE_HAND_CARDS': {
       // Both players know the cards; the log names the one the Spy took, and only how many
       // cards Conflict put under which stack.
@@ -1102,7 +1162,8 @@ function actionLogPayload(before: GameState, after: GameState, actingPlayer: Pla
 export function projectStateFor(state: GameState, viewer: PlayerId): ProjectedState {
   const other = opponent(viewer)
   const head = state.pendingChoices[0]
-  const { decks, regionStack, ...rest } = state
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- rngState would give away every coming die
+  const { decks, regionStack, rngState, ...rest } = state
   const deckSizes = Object.fromEntries(Object.entries(decks).map(([id, cards]) => [id, cards.length])) as Record<DeckId, number>
   return {
     ...rest,

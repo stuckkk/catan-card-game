@@ -1,8 +1,13 @@
-import type { ResourceType, Resources } from '../engine/types'
+import type { EventSymbol, ResourceType, Resources } from '../engine/types'
 import { ALL_RESOURCE_TYPES } from '../engine/board'
 
 export const RESOURCE_ICON: Record<ResourceType, string> = {
   lumber: '🪵', wool: '🐑', brick: '🧱', ore: '⛏️', grain: '🌾', gold: '💰',
+}
+
+/** The faces of the Event Die. */
+export const EVENT_ICONS: Record<EventSymbol, string> = {
+  brigand: '🗡️', commerce: '⚖️', tournament: '🛡️', yearOfPlenty: '☀️', event: '?',
 }
 
 export const RESOURCE_COLOR: Record<ResourceType, string> = {

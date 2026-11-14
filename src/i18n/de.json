@@ -39,7 +39,9 @@
     "waitingMinutes": "wartet seit {{count}} Min.",
     "publicListed": "Dein Spiel steht unter „Offene Spiele“ – alle auf diesem Server können beitreten.",
     "cancel": "Abbrechen",
-    "haveCode": "Hast du einen Code?"
+    "haveCode": "Hast du einen Code?",
+    "tutorial": "Tutorial: dein erstes Spiel",
+    "rateLimited": "Von deinem Netzwerk wurden in kurzer Zeit zu viele Spiele erstellt. Bitte versuche es in ein paar Minuten erneut."
   },
   "rules": {
     "open": "Regeln",
@@ -166,6 +168,10 @@
       "prompt": "Wähle die Landschaften: Tippe je Rohstoff eine an.",
       "reset": "Zurücksetzen",
       "waiting": "Der Gegner wählt die Landschaften für seine Rohstoffe…"
+    },
+    "newRegions": {
+      "prompt": "Neue Landschaften: Welche kommt nach oben? Die andere kommt nach unten.",
+      "waiting": "Der Gegner legt seine neuen Landschaften an…"
     },
     "attack": {
       "counterTitle": "⚔️ {{card}} greift an!",
@@ -431,7 +437,23 @@
       "trade": "In deiner Aktionsphase: 3 gleiche Rohstoffe gegen 1 beliebigen von der Bank, oder 2:1 für einen Rohstoff, dessen Handelsflotte du besitzt (Münzgießerei: Gold 1:1). Du kannst dem Gegner auch jeden beliebigen Handel anbieten.",
       "tokensTitle": "Ritter- und Windmühlenplättchen",
       "tokens": "Das Ritterplättchen bekommt, wer mehr Stärkepunkte hat. Das Windmühlenplättchen bekommt, wer mehr Handelspunkte und mindestens eine Stadt hat. Bei Gleichstand hat es niemand."
-    }
+    },
+    "undo": "Zurück",
+    "rematch": {
+      "offer": "Revanche",
+      "waiting": "Warte auf den Gegner…",
+      "accept": "Revanche annehmen",
+      "offered": "Dein Gegner möchte eine Revanche."
+    },
+    "stats": {
+      "title": "Statistik",
+      "vpOverTime": "Siegpunkte nach jedem Zug",
+      "turn": "Zug {{n}}",
+      "productionDie": "Gewürfelt",
+      "rolled": "{{number}}: {{count}}-mal gewürfelt",
+      "production": "Erträge je Landschaft"
+    },
+    "regionLabel": "{{name}}, Zahl {{number}}, {{stored}} von 3 Rohstoffen"
   },
   "card": {
     "cost": "Kosten",
@@ -723,5 +745,29 @@
     "plaguePrincipality": "Alle deine Landschaften sind vor der Seuche geschützt",
     "plagueCity": "Die 4 Landschaften dieser Stadt sind vor der Seuche geschützt",
     "civilWarProtection": "Ritter und Flotten dieser Stadt sind vor dem Bürgerkrieg geschützt"
+  },
+  "almanac": {
+    "open": "Alle Karten",
+    "title": "Alle Karten",
+    "all": "Alle",
+    "green": "Gebiet",
+    "red": "Stadt",
+    "action": "Aktion",
+    "event": "Ereignis",
+    "filter": "Kartenart",
+    "copies": "{{count}}×",
+    "vp": "{{count}} SP"
+  },
+  "tutorial": {
+    "setup": "Willkommen! Das ist dein Fürstentum: 2 Siedlungen, eine Straße und 6 Landschaften. Jede Landschaft zeigt ihren Rohstoff, ihre Würfelzahl und wie viel sie gerade hält (0 bis 3). Du kannst zwei Landschaften antippen, um sie zu tauschen. Öffne dann einen Stapel und nimm 3 Startkarten.",
+    "opponentSetup": "Der Computer wählt seine Startkarten.",
+    "roll": "Jeder Zug beginnt mit den Würfeln. Der Zahlenwürfel lässt jede Landschaft mit dieser Zahl 1 Rohstoff produzieren, bei beiden Spielern. Der Ereigniswürfel löst zuerst ein Ereignis aus. Würfle.",
+    "event": "Der Ereigniswürfel verlangt eine Entscheidung. Triff sie, dann geht es weiter.",
+    "action": "Aktionsphase: Baue und handle, so viel du dir leisten kannst. Tippe eine Handkarte an, um ihre Kosten zu sehen, und lege sie über oder unter eine Siedlung. Eine Straße (1 🪵 2 🧱) an einem Ende schafft Platz für eine neue Siedlung (🪵 🧱 🌾 🐑); eine Stadt (2 🌾 3 ⛏️) ersetzt eine Siedlung. Fehlt dir etwas? Tausche 3 gleiche Rohstoffe gegen 1 anderen. Wenn du fertig bist, beende die Aktionsphase.",
+    "draw": "Zugende: Ziehe auf 3 Handkarten nach. Nimm kostenlos die oberste Karte eines Stapels oder zahle 2 Rohstoffe, um einen Stapel nach deiner Wunschkarte zu durchsuchen. Mit voller Hand darfst du stattdessen eine Karte tauschen.",
+    "opponentTurn": "Der Computer ist am Zug. Sein Zahlenwurf produziert auch für dich, und der Ereigniswürfel betrifft euch beide.",
+    "free": "Das war ein ganzer Zug: würfeln, handeln, nachziehen. Wer zuerst {{target}} Siegpunkte hat, gewinnt: Eine Siedlung zählt 1, eine Stadt 2, dazu kommen einige Gebäude und die beiden Spielfiguren für die größte Rittermacht und die größte Handelsmacht. 📖 erklärt die Regeln, 🃏 zeigt alle Karten. Viel Erfolg!",
+    "skip": "Tutorial beenden",
+    "done": "Alles klar"
   }
 }

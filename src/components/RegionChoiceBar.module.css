@@ -34,4 +34,4 @@
 
 .buttons { display: flex; gap: 8px; }
 .buttons button { padding: 4px 12px; }
-.buttons button.secondary { color: var(--ink); border-color: var(--ink); }
+.buttons button:global(.secondary) { color: var(--ink); border-color: var(--ink); }
